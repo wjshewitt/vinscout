@@ -1,4 +1,6 @@
-export const vehicleData = {
+import { NextResponse } from 'next/server';
+
+const vehicleData = {
   "Abarth": ["124 Spider", "500", "500e", "595", "695", "Grande Punto", "Punto Evo"],
   "Alfa Romeo": ["4C", "147", "156", "159", "166", "Brera", "GT", "GTV", "Giulia", "Giulietta", "MiTo", "Spider", "Stelvio", "Tonale"],
   "Alpine": ["A110"],
@@ -62,3 +64,18 @@ export const vehicleData = {
   "Volkswagen": ["Amarok", "Arteon", "Beetle", "Bora", "CC", "Caddy", "Corrado", "Eos", "Fox", "Golf", "ID. Buzz", "ID.3", "ID.4", "ID.5", "ID.7", "Jetta", "Lupo", "Passat", "Phaeton", "Polo", "Scirocco", "Sharan", "T-Cross", "T-Roc", "Taigo", "Tiguan", "Tiguan Allspace", "Touareg", "Touran", "Up!"],
   "Volvo": ["480", "850", "940", "C30", "C40", "C70", "EX30", "EX90", "S40", "S60", "S90", "V40", "V50", "V60", "V70", "V90", "XC40", "XC60", "XC90"]
 };
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const make = searchParams.get('make');
+
+  if (make) {
+    const models = vehicleData[make as keyof typeof vehicleData] || [];
+    return NextResponse.json({ models });
+  }
+
+  const makes = Object.keys(vehicleData);
+  return NextResponse.json({ makes });
+}
+
+    

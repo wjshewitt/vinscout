@@ -11,8 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Upload } from 'lucide-react';
-import { vehicleData } from '@/data/vehicle-data';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { submitVehicleReport } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -32,7 +31,6 @@ const reportSchema = z.object({
 
 type ReportFormValues = z.infer<typeof reportSchema>;
 
-const manufacturers = Object.keys(vehicleData);
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: currentYear - 1949 }, (_, i) => currentYear - i);
 
@@ -41,6 +39,8 @@ export function VehicleReportForm() {
   const { toast } = useToast();
   const { user } = useAuth();
   const router = useRouter();
+  const [makes, setMakes] = useState<string[]>([]);
+  const [models, setModels] = useState<string[]>([]);
   const [selectedMake, setSelectedMake] = useState<string>('');
   
   const form = useForm<ReportFormValues>({
@@ -58,10 +58,43 @@ export function VehicleReportForm() {
     },
   });
 
-  const handleMakeChange = (make: string) => {
+  useEffect(() => {
+    const fetchMakes = async () => {
+      try {
+        const response = await fetch('/api/vehicles');
+        const data = await response.json();
+        setMakes(data.makes);
+      } catch (error) {
+        console.error('Failed to fetch vehicle makes:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not load vehicle manufacturers.',
+        });
+      }
+    };
+    fetchMakes();
+  }, [toast]);
+
+  const handleMakeChange = async (make: string) => {
     setSelectedMake(make);
     form.setValue('make', make);
-    form.setValue('model', ''); // Reset model when make changes
+    form.setValue('model', '');
+    setModels([]);
+    if (make) {
+      try {
+        const response = await fetch(`/api/vehicles?make=${encodeURIComponent(make)}`);
+        const data = await response.json();
+        setModels(data.models);
+      } catch (error) {
+        console.error('Failed to fetch vehicle models:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not load vehicle models for the selected make.',
+        });
+      }
+    }
   };
 
   async function onSubmit(data: ReportFormValues) {
@@ -110,7 +143,7 @@ export function VehicleReportForm() {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {manufacturers.map((make) => (
+                    {makes.map((make) => (
                       <SelectItem key={make} value={make}>{make}</SelectItem>
                     ))}
                   </SelectContent>
@@ -125,14 +158,14 @@ export function VehicleReportForm() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Model</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={!selectedMake}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={!selectedMake || models.length === 0}>
                   <FormControl>
                     <SelectTrigger className="h-12 rounded-lg">
                       <SelectValue placeholder="Select Model" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {selectedMake && vehicleData[selectedMake as keyof typeof vehicleData].map((model) => (
+                    {models.map((model) => (
                       <SelectItem key={model} value={model}>{model}</SelectItem>
                     ))}
                   </SelectContent>
@@ -298,3 +331,5 @@ export function VehicleReportForm() {
     </Form>
   );
 }
+
+    
