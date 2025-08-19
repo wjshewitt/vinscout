@@ -37,7 +37,6 @@ export function Header() {
 
   const navLinks = [
     { href: '/', label: 'Home' },
-    { href: '/report', label: 'Report Stolen' },
     { href: '/map', label: 'Live Map' },
     { href: '/community', label: 'Community' },
   ];

@@ -14,16 +14,18 @@ export default function Home() {
     { id: '2', make: 'Ferrari', model: 'F8 Tributo', year: 2021, lastSeen: 'New York, NY', dateStolen: 'March 10, 2024', photo: 'https://placehold.co/40x40.png' },
     { id: '3', make: 'Porsche', model: '911 GT3', year: 1999, lastSeen: 'Chicago, IL', dateStolen: 'March 5, 2024', photo: 'https://placehold.co/40x40.png' },
     { id: '4', make: 'Ford', model: 'Mustang GT', year: 1968, lastSeen: 'Miami, FL', dateStolen: 'March 2, 2024', photo: 'https://placehold.co/40x40.png' },
-    { id: '5', make: 'Nissan', model: 'Skyline GT-R', year: 1995, lastSeen: 'San Francisco, CA', dateStolen: 'February 28, 2024', photo: 'https://placehold.co/40x40.png' },
-    { id: '6', make: 'Toyota', model: 'Supra', year: 1998, lastSeen: 'London, UK', dateStolen: 'February 25, 2024', photo: 'https://placehold.co/40x40.png' },
-    { id: '7', make: 'BMW', model: 'M3', year: 2020, lastSeen: 'Manchester, UK', dateStolen: 'February 20, 2024', photo: 'https://placehold.co/40x40.png' },
   ];
 
   return (
     <div className="container mx-auto py-12">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold">Stolen Vehicle Reports</h1>
-        <p className="text-muted-foreground">Browse community reports. Your vigilance can help recover these vehicles.</p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-4xl font-bold">Stolen Vehicle Reports</h1>
+          <p className="text-muted-foreground">Browse community reports. Your vigilance can help recover these vehicles.</p>
+        </div>
+        <Button asChild>
+            <Link href="/report">Report a Vehicle</Link>
+        </Button>
       </div>
 
       <Card>
@@ -84,15 +86,6 @@ export default function Home() {
             <PaginationLink href="#" isActive>
               2
             </PaginationLink>
-          </PaginationItem>
-          <PaginationItem>
-            <PaginationLink href="#">3</PaginationLink>
-          </PaginationItem>
-           <PaginationItem>
-            <span className="px-4">...</span>
-          </PaginationItem>
-           <PaginationItem>
-            <PaginationLink href="#">10</PaginationLink>
           </PaginationItem>
           <PaginationItem>
             <PaginationNext href="#" />
