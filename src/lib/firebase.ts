@@ -12,12 +12,12 @@ import {
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
 
 const firebaseConfig = {
-  projectId: "vigilante-garage",
-  appId: "1:109449796594:web:9cdb5b50aed0dfa46ce96b",
-  storageBucket: "vigilante-garage.appspot.com",
-  apiKey: "AIzaSyBdqrM1jTSCT3Iv4alBwpt1I48f4v4qZOg",
-  authDomain: "vigilante-garage.firebaseapp.com",
-  messagingSenderId: "109449796594",
+  projectId: 'vigilante-garage-435201',
+  appId: '1:643237320634:web:e7145a3b729e7195f15f60',
+  storageBucket: 'vigilante-garage-435201.appspot.com',
+  apiKey: 'AIzaSyChhC3g2z9m5tT9aV5qY8z6i7f0r3E4o5I',
+  authDomain: 'vigilante-garage-435201.firebaseapp.com',
+  messagingSenderId: '643237320634'
 };
 
 // Initialize Firebase
