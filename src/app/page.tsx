@@ -26,6 +26,14 @@ export default function Home() {
   const recentVehicles = [...stolenVehicles]
     .sort((a, b) => new Date(b.dateStolen).getTime() - new Date(a.dateStolen).getTime())
     .slice(0, 3);
+    
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
 
   return (
     <div className="container mx-auto py-12">
@@ -65,10 +73,6 @@ export default function Home() {
                 <h3 className="font-bold text-lg">Join the Effort</h3>
                 <p className="text-muted-foreground">Sign up to report a stolen vehicle or notify an owner of a sighting.</p>
               </div>
-            </div>
-            <div className="flex gap-4">
-              <Button asChild variant="outline"><Link href="/login">Log In</Link></Button>
-              <Button asChild><Link href="/signup">Sign Up</Link></Button>
             </div>
           </CardContent>
         </Card>
@@ -118,7 +122,7 @@ export default function Home() {
                     </div>
                   </TableCell>
                   <TableCell>{vehicle.lastSeen}</TableCell>
-                  <TableCell>{vehicle.dateStolen}</TableCell>
+                  <TableCell>{formatDate(vehicle.dateStolen)}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/vehicles/${vehicle.id}`}>View Details</Link>
@@ -138,11 +142,6 @@ export default function Home() {
           </PaginationItem>
           <PaginationItem>
             <PaginationLink href="#">1</PaginationLink>
-          </PaginationItem>
-          <PaginationItem>
-            <PaginationLink href="#" isActive>
-              2
-            </PaginationLink>
           </PaginationItem>
           <PaginationItem>
             <PaginationNext href="#" />
