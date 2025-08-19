@@ -5,7 +5,7 @@ import { Header } from '@/components/layout/header';
 import { AuthProvider } from '@/hooks/use-auth';
 
 export const metadata: Metadata = {
-  title: 'Vigilante Garage',
+  title: 'AutoFind',
   description: 'Community-based stolen vehicle recovery.',
 };
 
