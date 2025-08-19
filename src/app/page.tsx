@@ -8,27 +8,39 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { Search, AlertTriangle } from 'lucide-react';
+import { Search, AlertTriangle, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
+import { useState, useEffect } from 'react';
+import { getVehicleReports, VehicleReport } from '@/lib/firebase';
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const [reports, setReports] = useState<VehicleReport[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReports = async () => {
+      setLoading(true);
+      const fetchedReports = await getVehicleReports();
+      setReports(fetchedReports);
+      setLoading(false);
+    };
+    fetchReports();
+  }, []);
+
   const isLoggedIn = !!user;
 
-  const stolenVehicles = [
-    { id: '1', make: 'Lamborghini', model: 'Huracan', year: 2022, lastSeen: 'Los Angeles, CA', dateStolen: '2024-03-15', photo: 'https://placehold.co/40x40.png' },
-    { id: '2', make: 'Ferrari', model: 'F8 Tributo', year: 2021, lastSeen: 'New York, NY', dateStolen: '2024-03-10', photo: 'https://placehold.co/40x40.png' },
-    { id: '3', make: 'Porsche', model: '911 GT3', year: 1999, lastSeen: 'Chicago, IL', dateStolen: '2024-03-05', photo: 'https://placehold.co/40x40.png' },
-    { id: '4', make: 'Ford', model: 'Mustang GT', year: 1968, lastSeen: 'Miami, FL', dateStolen: '2024-03-02', photo: 'https://placehold.co/40x40.png' },
-  ];
-
-  const recentVehicles = [...stolenVehicles]
-    .sort((a, b) => new Date(b.dateStolen).getTime() - new Date(a.dateStolen).getTime())
-    .slice(0, 3);
+  const recentVehicles = reports.slice(0, 3);
     
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', {
+  const formatDate = (date: Date | string) => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(d.getTime())) {
+      // Try to parse from a different format if needed, or return original string
+      if (typeof date === 'string') return date;
+      return 'Invalid Date';
+    }
+    return d.toLocaleDateString('en-GB', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -47,24 +59,32 @@ export default function Home() {
 
       <div className="mb-12">
         <h2 className="text-2xl font-bold mb-4">Most Recent Reports</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {recentVehicles.map(vehicle => (
-            <Card key={vehicle.id} className="overflow-hidden hover:border-primary transition-colors">
-               <Link href={`/vehicles/${vehicle.id}`}>
-                <div className="aspect-video w-full">
-                  <Image src="https://placehold.co/600x400.png" alt={`${vehicle.make} ${vehicle.model}`} width={600} height={400} className="object-cover w-full h-full" data-ai-hint="car front" />
-                </div>
-                <CardHeader>
-                  <CardTitle>{vehicle.make} {vehicle.model}</CardTitle>
-                  <CardDescription>{vehicle.year} - Last seen in {vehicle.lastSeen}</CardDescription>
-                </CardHeader>
-              </Link>
-            </Card>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex justify-center items-center h-48">
+            <Loader2 className="animate-spin text-primary" size={32} />
+          </div>
+        ) : recentVehicles.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {recentVehicles.map(vehicle => (
+              <Card key={vehicle.id} className="overflow-hidden hover:border-primary transition-colors">
+                 <Link href={`/vehicles/${vehicle.id}`}>
+                  <div className="aspect-video w-full">
+                    <Image src={vehicle.photos?.[0] || "https://placehold.co/600x400.png"} alt={`${vehicle.make} ${vehicle.model}`} width={600} height={400} className="object-cover w-full h-full" data-ai-hint="car front" />
+                  </div>
+                  <CardHeader>
+                    <CardTitle>{vehicle.make} {vehicle.model}</CardTitle>
+                    <CardDescription>{vehicle.year} - Last seen in {vehicle.lastSeen}</CardDescription>
+                  </CardHeader>
+                </Link>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">No vehicles reported yet.</div>
+        )}
       </div>
 
-      {!loading && !isLoggedIn && (
+      {!authLoading && !isLoggedIn && (
         <Card className="mb-12 bg-blue-900/20 border-blue-500/30">
           <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
@@ -97,41 +117,55 @@ export default function Home() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40%]">Vehicle</TableHead>
-                <TableHead>Last Seen Location</TableHead>
-                <TableHead>Date Stolen</TableHead>
-                <TableHead className="text-right"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {stolenVehicles.map((vehicle) => (
-                <TableRow key={vehicle.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-10 w-10 rounded-md">
-                        <AvatarImage src={vehicle.photo} alt={vehicle.make} data-ai-hint="car front" />
-                        <AvatarFallback className="rounded-md">{vehicle.make.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{vehicle.make} {vehicle.model}</div>
-                        <div className="text-sm text-muted-foreground">{vehicle.year}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{vehicle.lastSeen}</TableCell>
-                  <TableCell>{formatDate(vehicle.dateStolen)}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/vehicles/${vehicle.id}`}>View Details</Link>
-                    </Button>
-                  </TableCell>
+           {loading ? (
+             <div className="flex justify-center items-center py-20">
+               <Loader2 className="animate-spin text-primary" size={32} />
+             </div>
+           ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40%]">Vehicle</TableHead>
+                  <TableHead>Last Seen Location</TableHead>
+                  <TableHead>Date Stolen</TableHead>
+                  <TableHead className="text-right"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {reports.length > 0 ? (
+                  reports.map((vehicle) => (
+                    <TableRow key={vehicle.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-4">
+                          <Avatar className="h-10 w-10 rounded-md">
+                            <AvatarImage src={vehicle.photos?.[0] || 'https://placehold.co/40x40.png'} alt={vehicle.make} data-ai-hint="car front" />
+                            <AvatarFallback className="rounded-md">{vehicle.make.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{vehicle.make} {vehicle.model}</div>
+                            <div className="text-sm text-muted-foreground">{vehicle.year}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{vehicle.location}</TableCell>
+                      <TableCell>{formatDate(vehicle.date)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/vehicles/${vehicle.id}`}>View Details</Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={4} className="text-center py-20 text-muted-foreground">
+                            No vehicle reports found.
+                        </TableCell>
+                    </TableRow>
+                )}
+              </TableBody>
+            </Table>
+           )}
         </CardContent>
       </Card>
       

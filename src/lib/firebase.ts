@@ -13,7 +13,7 @@ import {
   browserSessionPersistence,
   AuthError
 } from 'firebase/auth';
-import { getFirestore, collection, addDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, query, where, orderBy, limit } from 'firebase/firestore';
 
 const firebaseConfig = {
   "projectId": "vigilante-garage",
@@ -97,5 +97,78 @@ const submitVehicleReport = async (reportData: object) => {
     }
 }
 
+// Types
+export interface VehicleReport {
+    id: string;
+    make: string;
+    model: string;
+    year: number;
+    color: string;
+    licensePlate: string;
+    vin?: string;
+    features?: string;
+    location: string;
+    date: string;
+    reportedAt: Date;
+    status: 'Active' | 'Recovered';
+    reporterId: string;
+    photos?: string[];
+    details?: string;
+    lastSeen?: string;
+    owner?: { name: string };
+    lat?: number;
+    lng?: number;
+}
+
+
+// Fetch all vehicle reports
+export const getVehicleReports = async (): Promise<VehicleReport[]> => {
+    try {
+        const q = query(collection(db, "vehicleReports"), orderBy("reportedAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        const reports: VehicleReport[] = [];
+        querySnapshot.forEach((doc) => {
+            reports.push({ id: doc.id, ...doc.data() } as VehicleReport);
+        });
+        return reports;
+    } catch (error) {
+        console.error("Error fetching vehicle reports: ", error);
+        return [];
+    }
+};
+
+// Fetch a single vehicle report by ID
+export const getVehicleReportById = async (id: string): Promise<VehicleReport | null> => {
+    try {
+        const docRef = doc(db, "vehicleReports", id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            return { id: docSnap.id, ...docSnap.data() } as VehicleReport;
+        } else {
+            console.log("No such document!");
+            return null;
+        }
+    } catch (error) {
+        console.error("Error fetching vehicle report by ID: ", error);
+        return null;
+    }
+}
+
+// Fetch reports for a specific user
+export const getUserVehicleReports = async (userId: string): Promise<VehicleReport[]> => {
+    try {
+        const q = query(collection(db, "vehicleReports"), where("reporterId", "==", userId), orderBy("reportedAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        const reports: VehicleReport[] = [];
+        querySnapshot.forEach((doc) => {
+            reports.push({ id: doc.id, ...doc.data() } as VehicleReport);
+        });
+        return reports;
+    } catch (error) {
+        console.error("Error fetching user vehicle reports: ", error);
+        return [];
+    }
+};
 
 export { auth, db, signInWithGoogle, logout, signUpWithEmail, signInWithEmail, submitVehicleReport };

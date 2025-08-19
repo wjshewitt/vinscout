@@ -10,82 +10,9 @@ import { Search, Send, Paperclip, MoreVertical, Car } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
 // Dummy data for conversations and messages
-const conversations = [
-  {
-    id: 1,
-    name: 'Sarah M.',
-    avatar: 'https://placehold.co/100x100.png',
-    online: true,
-    lastMessage: 'That sounds like it could be mine!…',
-    timestamp: '12:30 PM',
-    unread: 1,
-    vehicle: 'Ford Fiesta',
-  },
-  {
-    id: 2,
-    name: 'Alex R.',
-    avatar: 'https://placehold.co/100x100.png',
-    online: false,
-    lastMessage: 'Spotted a red Porsche 911 on I-5 North.',
-    timestamp: '11:45 AM',
-    unread: 0,
-    vehicle: 'Porsche 911',
-  },
-  {
-    id: 3,
-    name: 'Chris L.',
-    avatar: 'https://placehold.co/100x100.png',
-    online: false,
-    lastMessage: 'Saw the black Mustang near the docks.',
-    timestamp: 'Yesterday',
-    unread: 0,
-    vehicle: 'Ford Mustang',
-  },
-  {
-    id: 4,
-    name: 'Emily T.',
-    avatar: 'https://placehold.co/100x100.png',
-    online: false,
-    lastMessage: 'Is that your silver Audi R8?',
-    timestamp: '2 days ago',
-    unread: 2,
-    vehicle: 'Audi R8',
-  },
-];
+const conversations: any[] = [];
+const messagesData: any = {};
 
-const messagesData = {
-  1: [
-    {
-      id: 1,
-      sender: 'Sarah M.',
-      text: 'I think I saw your car near the old mill on Elm Street. It was heading north.',
-      timestamp: '12:28 PM',
-      avatar: 'https://placehold.co/100x100.png',
-    },
-    {
-      id: 2,
-      sender: 'You',
-      text: 'Thanks, Sarah! Do you have any more details? Color, any distinguishing features?',
-      timestamp: '12:29 PM',
-    },
-    {
-      id: 3,
-      sender: 'Sarah M.',
-      text: 'It was a dark blue sedan, looked like a 2018 model. I noticed a small dent on the rear bumper.',
-      timestamp: '12:30 PM',
-      avatar: 'https://placehold.co/100x100.png',
-    },
-    {
-      id: 4,
-      sender: 'You',
-      text: 'That sounds like it could be mine! I\'ll check it out. Really appreciate your help!',
-      timestamp: '12:30 PM',
-    },
-  ],
-  2: [ { id: 1, sender: 'Alex R.', text: 'Spotted a red Porsche 911 on I-5 North.', timestamp: '11:45 AM', avatar: 'https://placehold.co/100x100.png', } ],
-  3: [ { id: 1, sender: 'Chris L.', text: 'Saw the black Mustang near the docks.', timestamp: 'Yesterday', avatar: 'https://placehold.co/100x100.png', } ],
-  4: [ { id: 1, sender: 'Emily T.', text: 'Is that your silver Audi R8?', timestamp: '2 days ago', avatar: 'https://placehold.co/100x100.png', } ],
-};
 
 export default function MessagesPage() {
   const [selectedConversation, setSelectedConversation] = useState(conversations[0]);
@@ -95,7 +22,17 @@ export default function MessagesPage() {
     setSelectedConversation(conversation);
   };
   
-  const messages = messagesData[selectedConversation.id as keyof typeof messagesData] || [];
+  const messages = selectedConversation ? messagesData[selectedConversation.id as keyof typeof messagesData] || [] : [];
+
+  if (conversations.length === 0) {
+    return (
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)] text-center">
+            <MessageSquare size={48} className="text-muted-foreground mb-4" />
+            <h2 className="text-2xl font-bold">No Messages Yet</h2>
+            <p className="text-muted-foreground">Your conversations will appear here.</p>
+        </div>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-4rem)] flex text-foreground">

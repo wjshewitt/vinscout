@@ -1,15 +1,46 @@
 
+'use client';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { getUserVehicleReports, VehicleReport } from '@/lib/firebase';
+import { Loader2 } from 'lucide-react';
 
 export default function MyVehiclesPage() {
-  // Dummy data for user's reported vehicles
-  const myVehicles = [
-    { id: '1', make: 'Ford', model: 'Fiesta', year: 2019, licensePlate: 'AB19 CDE', status: 'Active', dateReported: '2024-03-10' },
-  ];
+  const { user, loading: authLoading } = useAuth();
+  const [reports, setReports] = useState<VehicleReport[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      const fetchReports = async () => {
+        setLoading(true);
+        const userReports = await getUserVehicleReports(user.uid);
+        setReports(userReports);
+        setLoading(false);
+      };
+      fetchReports();
+    } else if (!authLoading) {
+      setLoading(false);
+    }
+  }, [user, authLoading]);
+  
+  const formatDate = (date: Date | string) => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(d.getTime())) {
+      return 'Invalid Date';
+    }
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
 
   return (
     <div className="container mx-auto py-12 max-w-4xl">
@@ -21,7 +52,11 @@ export default function MyVehiclesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {myVehicles.length > 0 ? (
+          {loading ? (
+            <div className="flex justify-center items-center py-20">
+               <Loader2 className="animate-spin text-primary" size={32} />
+            </div>
+          ) : reports.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -33,11 +68,11 @@ export default function MyVehiclesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {myVehicles.map((vehicle) => (
+                {reports.map((vehicle) => (
                   <TableRow key={vehicle.id}>
                     <TableCell className="font-medium">{vehicle.make} {vehicle.model} ({vehicle.year})</TableCell>
                     <TableCell>{vehicle.licensePlate}</TableCell>
-                    <TableCell>{vehicle.dateReported}</TableCell>
+                    <TableCell>{formatDate(vehicle.reportedAt)}</TableCell>
                     <TableCell>
                       <Badge variant={vehicle.status === 'Active' ? 'default' : 'secondary'}>
                         {vehicle.status}
