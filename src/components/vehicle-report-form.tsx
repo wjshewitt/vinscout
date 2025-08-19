@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Upload } from 'lucide-react';
+import { Upload, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { submitVehicleReport } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
@@ -30,19 +30,28 @@ const reportSchema = z.object({
 });
 
 type ReportFormValues = z.infer<typeof reportSchema>;
+type FieldName = keyof ReportFormValues;
 
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: currentYear - 1949 }, (_, i) => currentYear - i);
 
+const steps: { title: string; fields: FieldName[] }[] = [
+    { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
+    { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
+    { title: 'Theft Details', fields: ['location', 'date', 'additionalInfo'] },
+    { title: 'Upload Photos', fields: [] },
+];
 
 export function VehicleReportForm() {
   const { toast } = useToast();
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [makes, setMakes] = useState<string[]>([]);
   const [models, setModels] = useState<string[]>([]);
   const [selectedMake, setSelectedMake] = useState<string>('');
-  
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
@@ -75,6 +84,21 @@ export function VehicleReportForm() {
     };
     fetchMakes();
   }, [toast]);
+  
+  useEffect(() => {
+    const savedFormData = localStorage.getItem('vehicleReportForm');
+    if (savedFormData) {
+        form.reset(JSON.parse(savedFormData));
+    }
+  }, [form]);
+
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      localStorage.setItem('vehicleReportForm', JSON.stringify(value));
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
 
   const handleMakeChange = async (make: string) => {
     setSelectedMake(make);
@@ -97,6 +121,18 @@ export function VehicleReportForm() {
     }
   };
 
+  const handleNextStep = async () => {
+      const fields = steps[currentStep].fields;
+      const isValid = await form.trigger(fields as FieldName[], { shouldFocus: true });
+      if (isValid) {
+        setCurrentStep(prev => prev + 1);
+      }
+  };
+
+  const handlePrevStep = () => {
+      setCurrentStep(prev => prev - 1);
+  };
+
   async function onSubmit(data: ReportFormValues) {
     if (!user) {
         toast({
@@ -107,6 +143,8 @@ export function VehicleReportForm() {
         router.push('/login');
         return;
     }
+    
+    setIsSubmitting(true);
 
     try {
         const reportId = await submitVehicleReport({
@@ -123,6 +161,7 @@ export function VehicleReportForm() {
             });
             form.reset();
             setSelectedMake('');
+            localStorage.removeItem('vehicleReportForm');
             router.push(`/vehicles/${reportId}`);
         } else {
             throw new Error("Submission failed to return an ID.");
@@ -134,212 +173,245 @@ export function VehicleReportForm() {
             title: 'Submission Failed',
             description: 'There was an error submitting your report. Please try again.',
         });
+    } finally {
+        setIsSubmitting(false);
     }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="make"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Make</FormLabel>
-                <Select onValueChange={handleMakeChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="h-12 rounded-lg">
-                      <SelectValue placeholder="Select Make" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {makes.map((make) => (
-                      <SelectItem key={make} value={make}>{make}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <div className="space-y-6">
+            {currentStep === 0 && (
+                 <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+                    <FormField
+                        control={form.control}
+                        name="make"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Make</FormLabel>
+                            <Select onValueChange={handleMakeChange} value={field.value}>
+                            <FormControl>
+                                <SelectTrigger className="h-12 rounded-lg">
+                                <SelectValue placeholder="Select Make" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {makes.map((make) => (
+                                <SelectItem key={make} value={make}>{make}</SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="model"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Model</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedMake || models.length === 0}>
+                            <FormControl>
+                                <SelectTrigger className="h-12 rounded-lg">
+                                <SelectValue placeholder="Select Model" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {models.map((model) => (
+                                <SelectItem key={model} value={model}>{model}</SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="year"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Year</FormLabel>
+                            <Select onValueChange={(value) => field.onChange(parseInt(value, 10))} value={field.value?.toString()}>
+                            <FormControl>
+                                <SelectTrigger className="h-12 rounded-lg">
+                                <SelectValue placeholder="Select Year" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {years.map((year) => (
+                                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                 </div>
             )}
-          />
-          <FormField
-            control={form.control}
-            name="model"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Model</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={!selectedMake || models.length === 0}>
-                  <FormControl>
-                    <SelectTrigger className="h-12 rounded-lg">
-                      <SelectValue placeholder="Select Model" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {models.map((model) => (
-                      <SelectItem key={model} value={model}>{model}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
+             {currentStep === 1 && (
+                 <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+                    <FormField
+                        control={form.control}
+                        name="color"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Color</FormLabel>
+                            <FormControl>
+                            <Input placeholder="e.g., Python Green" {...field} className="h-12 rounded-lg" />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="licensePlate"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>License Plate Number</FormLabel>
+                            <FormControl>
+                            <Input placeholder="Enter License Plate Number" {...field} className="h-12 rounded-lg" />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <div className="sm:col-span-2">
+                    <FormField
+                        control={form.control}
+                        name="vin"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>VIN (Optional)</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Enter Vehicle Identification Number" {...field} className="h-12 rounded-lg" />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    </div>
+                    <div className="sm:col-span-2">
+                    <FormField
+                        control={form.control}
+                        name="features"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Distinctive Features (Optional)</FormLabel>
+                            <FormControl>
+                            <Textarea
+                                placeholder="e.g., Carbon fiber roof, aftermarket wheels, small dent on rear bumper"
+                                className="resize-none min-h-[100px] rounded-lg"
+                                {...field}
+                            />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    </div>
+                </div>
             )}
-          />
-          <FormField
-            control={form.control}
-            name="year"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Year</FormLabel>
-                <Select onValueChange={(value) => field.onChange(parseInt(value, 10))} >
-                   <FormControl>
-                    <SelectTrigger className="h-12 rounded-lg">
-                      <SelectValue placeholder="Select Year" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                     {years.map((year) => (
-                      <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="color"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Color</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., Python Green" {...field} className="h-12 rounded-lg" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-           <div className="sm:col-span-2">
-            <FormField
-              control={form.control}
-              name="vin"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>VIN</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter Vehicle Identification Number" {...field} className="h-12 rounded-lg" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <FormField
-              control={form.control}
-              name="licensePlate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>License Plate Number</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter License Plate Number" {...field} className="h-12 rounded-lg" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <div className="sm:col-span-2">
-          <FormField
-            control={form.control}
-            name="features"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Distinctive Features</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="e.g., Carbon fiber roof, aftermarket wheels, small dent on rear bumper"
-                    className="resize-none min-h-[100px] rounded-lg"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          </div>
-          <FormField
-            control={form.control}
-            name="location"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Location of Theft</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., 123 Main St, Anytown, USA" {...field} className="h-12 rounded-lg" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="date"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Date of Theft</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} className="h-12 rounded-lg" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <div className="sm:col-span-2">
-           <FormField
-            control={form.control}
-            name="additionalInfo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Additional Information</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Provide any other details that might be helpful"
-                    className="resize-none min-h-[100px] rounded-lg"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          </div>
 
-        <div className="sm:col-span-2">
-        <FormItem>
-          <FormLabel>Upload Photos</FormLabel>
-          <FormControl>
-            <div className="relative flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-input bg-background p-8 transition-colors hover:border-primary">
-              <div className="text-center">
-              <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-              <p className="mt-4 text-sm text-muted-foreground">
-                <span className="font-semibold text-primary">Click to upload</span> or drag and drop
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                  PNG, JPG, GIF up to 10MB
-              </p>
-              </div>
-              <input id="photos" type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple disabled />
-            </div>
-          </FormControl>
-          <FormMessage />
-        </FormItem>
+            {currentStep === 2 && (
+                <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+                     <FormField
+                        control={form.control}
+                        name="location"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Last Known Location</FormLabel>
+                            <FormControl>
+                            <Input placeholder="e.g., 123 Main St, Anytown, USA" {...field} className="h-12 rounded-lg" />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="date"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Date of Theft</FormLabel>
+                            <FormControl>
+                            <Input type="date" {...field} className="h-12 rounded-lg" />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                     <div className="sm:col-span-2">
+                        <FormField
+                            control={form.control}
+                            name="additionalInfo"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Additional Information (Optional)</FormLabel>
+                                <FormControl>
+                                <Textarea
+                                    placeholder="Provide any other details that might be helpful"
+                                    className="resize-none min-h-[100px] rounded-lg"
+                                    {...field}
+                                />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {currentStep === 3 && (
+                 <div className="sm:col-span-2">
+                    <FormItem>
+                    <FormLabel>Upload Photos (Optional)</FormLabel>
+                    <FormControl>
+                        <div className="relative flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-input bg-background p-8 transition-colors hover:border-primary">
+                        <div className="text-center">
+                        <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <p className="mt-4 text-sm text-muted-foreground">
+                            <span className="font-semibold text-primary">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            PNG, JPG, GIF up to 10MB
+                        </p>
+                        </div>
+                        <input id="photos" type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple disabled />
+                        </div>
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                </div>
+            )}
         </div>
-        <div className="sm:col-span-2">
-        <Button type="submit" size="lg" className="w-full h-14 text-base font-bold shadow-lg shadow-blue-500/30 transition-all duration-300 hover:scale-105" disabled={loading}>
-          {loading ? 'Authenticating...' : 'Alert the Network'}
-        </Button>
+
+        <div className="flex justify-between">
+            {currentStep > 0 && (
+                <Button type="button" variant="outline" onClick={handlePrevStep}>
+                    <ChevronLeft className="mr-2 h-4 w-4" /> Back
+                </Button>
+            )}
+            {currentStep < steps.length - 1 && (
+                <Button type="button" onClick={handleNextStep} className="ml-auto">
+                    Next <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+            )}
+            {currentStep === steps.length - 1 && (
+                <Button type="submit" size="lg" className="w-full h-14 text-base font-bold shadow-lg shadow-blue-500/30 transition-all duration-300 hover:scale-105" disabled={authLoading || isSubmitting}>
+                   {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting...</> : (authLoading ? 'Authenticating...' : 'Alert the Network')}
+                </Button>
+            )}
         </div>
+
       </form>
     </Form>
   );
 }
+
+    
