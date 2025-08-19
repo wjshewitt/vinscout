@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import Image from 'next/image';
@@ -11,10 +12,9 @@ import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { useEffect, useState } from 'react';
 
 // This would fetch data in a real app
-const getVehicleData = (id: string) => {
+const getVehicleData = async (id: string) => {
   // Dummy data for stolen vehicles in the UK
   const stolenVehicles = [
     { id: '1', lat: 51.5074, lng: -0.1278, make: 'Ford', model: 'Fiesta', year: 2019, color: 'Red', licensePlate: 'AB19 CDE', lastSeen: 'Central London', vin: 'VF12...890123', reportedAt: new Date().toISOString(), details: 'Small scratch on the driver side door.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'James S.' } },
@@ -29,12 +29,16 @@ const getVehicleData = (id: string) => {
 };
 
 export default function VehicleDetailPage({ params }: { params: { id: string } }) {
-  const [vehicle, setVehicle] = useState(getVehicleData(params.id));
   const { user, loading } = useAuth();
   const isLoggedIn = !!user;
+  const [vehicle, setVehicle] = React.useState<Awaited<ReturnType<typeof getVehicleData>>>(undefined);
 
-  useEffect(() => {
-    setVehicle(getVehicleData(params.id));
+  React.useEffect(() => {
+    async function loadVehicle() {
+      const vehicleData = await getVehicleData(params.id);
+      setVehicle(vehicleData);
+    }
+    loadVehicle();
   }, [params.id]);
 
 
