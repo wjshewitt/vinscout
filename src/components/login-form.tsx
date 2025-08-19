@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useForm } from 'react-hook-form';
@@ -12,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { signInWithGoogle, signInWithEmail } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { getAdditionalUserInfo } from 'firebase/auth';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -42,9 +44,14 @@ export function LoginForm() {
   }
   
   const handleGoogleSignIn = async () => {
-    const user = await signInWithGoogle();
-    if (user) {
-      router.push('/dashboard');
+    const result = await signInWithGoogle();
+    if (result) {
+      const additionalInfo = getAdditionalUserInfo(result);
+      if (additionalInfo?.isNewUser) {
+        router.push('/welcome');
+      } else {
+        router.push('/dashboard');
+      }
     }
   };
 

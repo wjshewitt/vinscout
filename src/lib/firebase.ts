@@ -1,3 +1,4 @@
+
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { 
@@ -9,7 +10,8 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
   setPersistence,
-  browserSessionPersistence
+  browserSessionPersistence,
+  AuthError
 } from 'firebase/auth';
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
 
@@ -35,9 +37,16 @@ setPersistence(auth, browserSessionPersistence);
 const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
-    return result.user;
+    return result;
   } catch (error) {
-    console.error("Error signing in with Google", error);
+    const authError = error as AuthError;
+    console.error("Error signing in with Google", authError);
+    // More detailed error logging
+    console.error("Error Code:", authError.code);
+    console.error("Error Message:", authError.message);
+    // This will help us see the full error object
+    console.error("Full Error Object:", error);
+    alert(`Google Sign-In Error: ${authError.message}`);
     return null;
   }
 };

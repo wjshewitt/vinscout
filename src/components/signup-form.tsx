@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useForm } from 'react-hook-form';
@@ -32,7 +33,7 @@ export function SignupForm() {
   async function onSubmit(data: SignupFormValues) {
     const user = await signUpWithEmail(data.name, data.email, data.password);
     if (user) {
-      router.push('/dashboard');
+      router.push('/welcome');
     } else {
       toast({
         variant: 'destructive',
@@ -45,7 +46,7 @@ export function SignupForm() {
   const handleGoogleSignIn = async () => {
     const user = await signInWithGoogle();
     if (user) {
-      router.push('/dashboard');
+      router.push('/welcome');
     }
   };
 
