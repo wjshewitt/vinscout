@@ -13,6 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Upload } from 'lucide-react';
 import { vehicleData } from '@/data/vehicle-data';
 import { useState } from 'react';
+import { submitVehicleReport } from '@/lib/firebase';
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
 
 const reportSchema = z.object({
   make: z.string().min(1, 'Make is required'),
@@ -36,6 +39,8 @@ const years = Array.from({ length: currentYear - 1949 }, (_, i) => currentYear -
 
 export function VehicleReportForm() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const router = useRouter();
   const [selectedMake, setSelectedMake] = useState<string>('');
   
   const form = useForm<ReportFormValues>({
@@ -59,14 +64,34 @@ export function VehicleReportForm() {
     form.setValue('model', ''); // Reset model when make changes
   };
 
-  function onSubmit(data: ReportFormValues) {
-    console.log(data);
-    toast({
-      title: 'Report Submitted',
-      description: 'Your stolen vehicle report has been submitted successfully.',
-    });
-    form.reset();
-    setSelectedMake('');
+  async function onSubmit(data: ReportFormValues) {
+    if (!user) {
+        toast({
+            variant: 'destructive',
+            title: 'Authentication Required',
+            description: 'You must be logged in to report a vehicle.',
+        });
+        router.push('/login');
+        return;
+    }
+
+    const reportId = await submitVehicleReport(data);
+
+    if (reportId) {
+        toast({
+          title: 'Report Submitted',
+          description: 'Your stolen vehicle report has been submitted successfully.',
+        });
+        form.reset();
+        setSelectedMake('');
+        router.push(`/vehicles/${reportId}`);
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Submission Failed',
+            description: 'There was an error submitting your report. Please try again.',
+        });
+    }
   }
 
   return (
@@ -260,7 +285,7 @@ export function VehicleReportForm() {
                   PNG, JPG, GIF up to 10MB
               </p>
               </div>
-              <input id="photos" type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple />
+              <input id="photos" type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple disabled />
             </div>
           </FormControl>
           <FormMessage />
@@ -273,5 +298,3 @@ export function VehicleReportForm() {
     </Form>
   );
 }
-
-    

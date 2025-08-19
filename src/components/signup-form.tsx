@@ -9,8 +9,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from './ui/separator';
-import { signInWithGoogle } from '@/lib/firebase';
+import { signInWithGoogle, signUpWithEmail } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -22,14 +23,23 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 export function SignupForm() {
   const router = useRouter();
+  const { toast } = useToast();
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: { name: '', email: '', password: '' },
   });
 
-  function onSubmit(data: SignupFormValues) {
-    console.log(data);
-    // Handle signup logic
+  async function onSubmit(data: SignupFormValues) {
+    const user = await signUpWithEmail(data.name, data.email, data.password);
+    if (user) {
+      router.push('/dashboard');
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Signup Failed',
+        description: 'An error occurred. Please try again.',
+      });
+    }
   }
 
   const handleGoogleSignIn = async () => {
