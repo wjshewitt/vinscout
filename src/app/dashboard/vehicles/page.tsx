@@ -30,15 +30,19 @@ export default function MyVehiclesPage() {
     }
   }, [user, authLoading]);
   
-  const formatDate = (date: Date | string) => {
-    const d = typeof date === 'string' ? new Date(date) : date;
-    if (isNaN(d.getTime())) {
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'Invalid Date';
+    // To avoid timezone issues, we can treat the date as UTC.
+    // '2024-05-20T...' becomes a Date object interpreted as UTC.
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
       return 'Invalid Date';
     }
-    return d.toLocaleDateString('en-GB', {
+    return date.toLocaleDateString('en-GB', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
+      timeZone: 'UTC' // Specify UTC to ensure consistency
     });
   };
 

@@ -33,17 +33,20 @@ export default function Home() {
 
   const recentVehicles = reports.slice(0, 3);
     
-  const formatDate = (date: Date | string) => {
-    const d = typeof date === 'string' ? new Date(date) : date;
-    if (isNaN(d.getTime())) {
-      // Try to parse from a different format if needed, or return original string
-      if (typeof date === 'string') return date;
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'Invalid Date';
+    // To avoid timezone issues, we can treat the date as UTC.
+    // '2024-05-20' becomes '2024-05-20T00:00:00.000Z'
+    const safeDateString = dateString.includes('T') ? dateString : `${dateString}T00:00:00.000Z`;
+    const date = new Date(safeDateString);
+    if (isNaN(date.getTime())) {
       return 'Invalid Date';
     }
-    return d.toLocaleDateString('en-GB', {
+    return date.toLocaleDateString('en-GB', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
+      timeZone: 'UTC' // Specify UTC to ensure consistency
     });
   };
 
@@ -73,7 +76,7 @@ export default function Home() {
                   </div>
                   <CardHeader>
                     <CardTitle>{vehicle.make} {vehicle.model}</CardTitle>
-                    <CardDescription>{vehicle.year} - Last seen in {vehicle.lastSeen}</CardDescription>
+                    <CardDescription>{vehicle.year} - Last seen in {vehicle.lastSeen || vehicle.location}</CardDescription>
                   </CardHeader>
                 </Link>
               </Card>

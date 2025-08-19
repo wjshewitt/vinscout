@@ -13,22 +13,30 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { VehicleReport } from '@/lib/firebase';
 
+// This function now safely formats a date string (like '2024-05-20' or an ISO string)
+// without being affected by server/client timezone differences.
+const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) => {
+    if (!dateString) return 'N/A';
+    // Add 'T00:00:00.000Z' to date-only strings to treat them as UTC midnight
+    const safeDateString = dateString.includes('T') ? dateString : `${dateString}T00:00:00.000Z`;
+    const date = new Date(safeDateString);
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+    return date.toLocaleDateString('en-US', { ...options, timeZone: 'UTC' });
+};
+
+
 export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
   const { user, loading: authLoading } = useAuth();
   const isLoggedIn = !!user;
 
-  const formatDate = (date: Date | string) => {
-    if (!date) return 'N/A';
-    const d = typeof date === 'string' ? new Date(date) : date;
-    if (isNaN(d.getTime())) {
-      if (typeof date === 'string') return date;
-      return 'Invalid Date';
-    }
-    return d.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+  const formatReportedAt = (date: string) => {
+     return formatDateUTC(date, { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+  
+   const formatTheftDate = (date: string) => {
+     return formatDateUTC(date, { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   return (
@@ -36,7 +44,7 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-3xl">{vehicle.make} {vehicle.model} ({vehicle.year})</CardTitle>
-          <CardDescription>Reported Stolen on {formatDate(vehicle.reportedAt)}</CardDescription>
+          <CardDescription>Reported Stolen on {formatReportedAt(vehicle.reportedAt)}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-2 gap-8">
@@ -80,7 +88,7 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
               <Separator />
               <div>
                 <h3 className="text-lg font-semibold mb-2">Last Known Information</h3>
-                <p className="text-sm"><strong>Date of Theft:</strong> {formatDate(vehicle.date)}</p>
+                <p className="text-sm"><strong>Date of Theft:</strong> {formatTheftDate(vehicle.date)}</p>
                 <p className="text-sm"><strong>Location:</strong> {vehicle.location}</p>
                 <p className="text-sm mt-2"><strong>Details:</strong> {vehicle.features || 'No additional details provided.'}</p>
               </div>
