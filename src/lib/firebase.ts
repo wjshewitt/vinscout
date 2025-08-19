@@ -128,6 +128,10 @@ const toVehicleReport = (doc: any): VehicleReport => {
         if (dateField instanceof Timestamp) {
             return dateField.toDate().toISOString();
         }
+        // If it's a date object from the form
+        if (dateField instanceof Date) {
+            return dateField.toISOString();
+        }
         return dateField;
     };
     

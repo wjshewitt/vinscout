@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -10,11 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { submitVehicleReport } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
+import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
+import { useDebouncedCallback } from 'use-debounce';
 
 const reportSchema = z.object({
   make: z.string().min(1, 'Make is required'),
@@ -27,6 +29,8 @@ const reportSchema = z.object({
   location: z.string().min(2, "Location is required"),
   date: z.string().min(1, "Date is required"),
   additionalInfo: z.string().optional(),
+  lat: z.number().optional(),
+  lng: z.number().optional(),
 });
 
 type ReportFormValues = z.infer<typeof reportSchema>;
@@ -38,9 +42,91 @@ const years = Array.from({ length: currentYear - 1949 }, (_, i) => currentYear -
 const steps: { title: string; fields: FieldName[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
     { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
-    { title: 'Theft Details', fields: ['location', 'date', 'additionalInfo'] },
+    { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng'] },
     { title: 'Upload Photos', fields: [] },
 ];
+
+function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: number; lng: number; address: string }) => void }) {
+    const defaultPosition = { lat: 51.5072, lng: -0.1276 }; // Default to London
+    const [markerPos, setMarkerPos] = useState<google.maps.LatLngLiteral>(defaultPosition);
+    const map = useMap();
+    const { toast } = useToast();
+
+    const geocodeAddress = useDebouncedCallback((address: string) => {
+        if (!address) return;
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ address }, (results, status) => {
+            if (status === 'OK' && results && results[0]) {
+                const location = results[0].geometry.location;
+                const newPos = { lat: location.lat(), lng: location.lng() };
+                setMarkerPos(newPos);
+                if (map) {
+                    map.panTo(newPos);
+                }
+                onLocationChange({ ...newPos, address: results[0].formatted_address });
+            } else {
+                 toast({
+                     variant: 'destructive',
+                     title: 'Geocoding Failed',
+                     description: `Could not find a location for the address: ${address}. Please be more specific.`,
+                 });
+            }
+        });
+    }, 1000);
+
+    const handleMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
+        if (e.latLng) {
+            const newPos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+            setMarkerPos(newPos);
+            // Reverse geocode to get address from lat/lng
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: newPos }, (results, status) => {
+                if (status === 'OK' && results && results[0]) {
+                    onLocationChange({ ...newPos, address: results[0].formatted_address });
+                }
+            });
+        }
+    };
+    
+    const locationValue = useWatch<ReportFormValues>({ name: 'location' });
+    useEffect(() => {
+        if (locationValue) {
+            geocodeAddress(locationValue);
+        }
+    }, [locationValue, geocodeAddress]);
+
+
+    return (
+        <div className="space-y-4">
+            <FormField
+                name="location"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Last Known Location</FormLabel>
+                     <FormControl>
+                        <Input placeholder="e.g., 123 Main St, Anytown, USA" {...field} className="h-12 rounded-lg" />
+                     </FormControl>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+            <div className="h-64 w-full rounded-lg overflow-hidden border">
+                <Map
+                    defaultCenter={markerPos}
+                    defaultZoom={12}
+                    mapId="report_form_map"
+                    gestureHandling="greedy"
+                    disableDefaultUI={true}
+                >
+                    <AdvancedMarker position={markerPos} draggable={true} onDragEnd={handleMarkerDragEnd}>
+                        <MapPin size={32} className="text-primary" />
+                    </AdvancedMarker>
+                </Map>
+            </div>
+             <p className="text-sm text-muted-foreground">Type an address or drag the pin to the exact location of the theft.</p>
+        </div>
+    );
+}
 
 export function VehicleReportForm() {
   const { toast } = useToast();
@@ -51,6 +137,8 @@ export function VehicleReportForm() {
   const [selectedMake, setSelectedMake] = useState<string>('');
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
 
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
@@ -138,6 +226,13 @@ export function VehicleReportForm() {
   const handlePrevStep = () => {
       setCurrentStep(prev => prev - 1);
   };
+  
+  const handleLocationChange = useCallback(({ lat, lng, address }: { lat: number; lng: number; address: string }) => {
+    form.setValue('lat', lat);
+    form.setValue('lng', lng);
+    form.setValue('location', address, { shouldValidate: true });
+  }, [form]);
+
 
   async function onSubmit(data: ReportFormValues) {
     if (!user) {
@@ -153,6 +248,17 @@ export function VehicleReportForm() {
     setIsSubmitting(true);
 
     try {
+        // Ensure lat/lng are set if location is present
+        if(data.location && (!data.lat || !data.lng)) {
+             toast({
+                variant: 'destructive',
+                title: 'Location Incomplete',
+                description: 'Please select a valid point on the map for the last known location.',
+            });
+            setIsSubmitting(false);
+            return;
+        }
+    
         const reportId = await submitVehicleReport({
             ...data,
             reportedAt: new Date(),
@@ -184,6 +290,14 @@ export function VehicleReportForm() {
     }
   }
 
+  if (!apiKey) {
+    return (
+        <div className="flex items-center justify-center p-8 bg-destructive/10 border border-destructive rounded-lg">
+            <p className="text-destructive text-center">Google Maps API key is missing. The report form cannot be displayed.</p>
+        </div>
+    );
+  }
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -196,7 +310,7 @@ export function VehicleReportForm() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Make</FormLabel>
-                            <Select onValueChange={handleMakeChange} value={field.value}>
+                            <Select onValueChange={(value) => handleMakeChange(value, true)} value={field.value}>
                             <FormControl>
                                 <SelectTrigger className="h-12 rounded-lg">
                                 <SelectValue placeholder="Select Make" />
@@ -325,19 +439,12 @@ export function VehicleReportForm() {
 
             {currentStep === 2 && (
                 <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-                     <FormField
-                        control={form.control}
-                        name="location"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Last Known Location</FormLabel>
-                            <FormControl>
-                            <Input placeholder="e.g., 123 Main St, Anytown, USA" {...field} className="h-12 rounded-lg" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
+                    <div className="sm:col-span-2">
+                        <APIProvider apiKey={apiKey}>
+                           <LocationPicker onLocationChange={handleLocationChange} />
+                        </APIProvider>
+                    </div>
+                    
                     <FormField
                         control={form.control}
                         name="date"
@@ -397,27 +504,32 @@ export function VehicleReportForm() {
             )}
         </div>
 
-        <div className="flex justify-between">
-            {currentStep > 0 && (
-                <Button type="button" variant="outline" onClick={handlePrevStep}>
-                    <ChevronLeft className="mr-2 h-4 w-4" /> Back
-                </Button>
-            )}
-            {currentStep < steps.length - 1 && (
-                <Button type="button" onClick={handleNextStep} className="ml-auto">
-                    Next <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-            )}
-            {currentStep === steps.length - 1 && (
-                <Button type="submit" size="lg" className="w-full h-14 text-base font-bold shadow-lg shadow-blue-500/30 transition-all duration-300 hover:scale-105" disabled={authLoading || isSubmitting}>
-                   {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting...</> : (authLoading ? 'Authenticating...' : 'Alert the Network')}
-                </Button>
-            )}
+        <div className="flex justify-between items-center pt-4 border-t">
+            <div>
+              {currentStep > 0 && (
+                  <Button type="button" variant="outline" onClick={handlePrevStep}>
+                      <ChevronLeft className="mr-2 h-4 w-4" /> Back
+                  </Button>
+              )}
+            </div>
+             <div className="flex-1 text-center text-sm font-medium text-muted-foreground">
+                Step {currentStep + 1} of {steps.length}
+            </div>
+            <div>
+              {currentStep < steps.length - 1 && (
+                  <Button type="button" onClick={handleNextStep}>
+                      Next <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+              )}
+              {currentStep === steps.length - 1 && (
+                  <Button type="submit" size="lg" className="w-full h-12 text-base font-bold shadow-lg shadow-primary/30 transition-all duration-300 hover:scale-105" disabled={authLoading || isSubmitting}>
+                    {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting...</> : (authLoading ? 'Authenticating...' : 'Alert the Network')}
+                  </Button>
+              )}
+            </div>
         </div>
 
       </form>
     </Form>
   );
 }
-
-    
