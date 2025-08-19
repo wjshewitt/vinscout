@@ -1,3 +1,6 @@
+
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,28 +8,82 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { Search } from 'lucide-react';
+import { Search, AlertTriangle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function Home() {
+  const { user, loading } = useAuth();
+  const isLoggedIn = !!user;
+
   const stolenVehicles = [
-    { id: '1', make: 'Lamborghini', model: 'Huracan', year: 2022, lastSeen: 'Los Angeles, CA', dateStolen: 'March 15, 2024', photo: 'https://placehold.co/40x40.png' },
-    { id: '2', make: 'Ferrari', model: 'F8 Tributo', year: 2021, lastSeen: 'New York, NY', dateStolen: 'March 10, 2024', photo: 'https://placehold.co/40x40.png' },
-    { id: '3', make: 'Porsche', model: '911 GT3', year: 1999, lastSeen: 'Chicago, IL', dateStolen: 'March 5, 2024', photo: 'https://placehold.co/40x40.png' },
-    { id: '4', make: 'Ford', model: 'Mustang GT', year: 1968, lastSeen: 'Miami, FL', dateStolen: 'March 2, 2024', photo: 'https://placehold.co/40x40.png' },
+    { id: '1', make: 'Lamborghini', model: 'Huracan', year: 2022, lastSeen: 'Los Angeles, CA', dateStolen: '2024-03-15', photo: 'https://placehold.co/40x40.png' },
+    { id: '2', make: 'Ferrari', model: 'F8 Tributo', year: 2021, lastSeen: 'New York, NY', dateStolen: '2024-03-10', photo: 'https://placehold.co/40x40.png' },
+    { id: '3', make: 'Porsche', model: '911 GT3', year: 1999, lastSeen: 'Chicago, IL', dateStolen: '2024-03-05', photo: 'https://placehold.co/40x40.png' },
+    { id: '4', make: 'Ford', model: 'Mustang GT', year: 1968, lastSeen: 'Miami, FL', dateStolen: '2024-03-02', photo: 'https://placehold.co/40x40.png' },
   ];
+
+  const recentVehicles = [...stolenVehicles]
+    .sort((a, b) => new Date(b.dateStolen).getTime() - new Date(a.dateStolen).getTime())
+    .slice(0, 3);
 
   return (
     <div className="container mx-auto py-12">
+
+      <div className="mb-12 text-center">
+        <h1 className="text-4xl font-bold tracking-tighter mb-4">Help Recover Stolen Vehicles</h1>
+        <p className="text-muted-foreground text-lg max-w-3xl mx-auto">
+          Our community is our greatest asset. Browse recent reports and keep an eye out. Your vigilance can make all the difference.
+        </p>
+      </div>
+
+      <div className="mb-12">
+        <h2 className="text-2xl font-bold mb-4">Most Recent Reports</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {recentVehicles.map(vehicle => (
+            <Card key={vehicle.id} className="overflow-hidden hover:border-primary transition-colors">
+               <Link href={`/vehicles/${vehicle.id}`}>
+                <div className="aspect-video w-full">
+                  <Image src="https://placehold.co/600x400.png" alt={`${vehicle.make} ${vehicle.model}`} width={600} height={400} className="object-cover w-full h-full" data-ai-hint="car front" />
+                </div>
+                <CardHeader>
+                  <CardTitle>{vehicle.make} {vehicle.model}</CardTitle>
+                  <CardDescription>{vehicle.year} - Last seen in {vehicle.lastSeen}</CardDescription>
+                </CardHeader>
+              </Link>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {!loading && !isLoggedIn && (
+        <Card className="mb-12 bg-blue-900/20 border-blue-500/30">
+          <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <AlertTriangle className="h-8 w-8 text-primary" />
+              <div>
+                <h3 className="font-bold text-lg">Join the Effort</h3>
+                <p className="text-muted-foreground">Sign up to report a stolen vehicle or notify an owner of a sighting.</p>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <Button asChild variant="outline"><Link href="/login">Log In</Link></Button>
+              <Button asChild><Link href="/signup">Sign Up</Link></Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       <div className="mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-4xl font-bold">Stolen Vehicle Reports</h1>
-          <p className="text-muted-foreground">Browse community reports. Your vigilance can help recover these vehicles.</p>
+          <h1 className="text-4xl font-bold">All Vehicle Reports</h1>
+          <p className="text-muted-foreground">Browse all community reports. Your vigilance can help recover these vehicles.</p>
         </div>
         <Button asChild>
             <Link href="/report">Report a Vehicle</Link>
         </Button>
       </div>
+
 
       <Card>
         <CardHeader>
@@ -61,7 +118,7 @@ export default function Home() {
                     </div>
                   </TableCell>
                   <TableCell>{vehicle.lastSeen}</TableCell>
-                  <TableCell>{vehicle.dateStolen}</TableCell>
+                  <TableCell>{new Date(vehicle.dateStolen).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/vehicles/${vehicle.id}`}>View Details</Link>
