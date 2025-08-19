@@ -190,7 +190,7 @@ export function VehicleReportForm() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Year</FormLabel>
-                <Select onValueChange={(value) => field.onChange(parseInt(value))} >
+                <Select onValueChange={(value) => field.onChange(parseInt(value, 10))} >
                    <FormControl>
                     <SelectTrigger className="h-12 rounded-lg">
                       <SelectValue placeholder="Select Year" />
