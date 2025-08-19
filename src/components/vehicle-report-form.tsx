@@ -88,7 +88,11 @@ export function VehicleReportForm() {
   useEffect(() => {
     const savedFormData = localStorage.getItem('vehicleReportForm');
     if (savedFormData) {
-        form.reset(JSON.parse(savedFormData));
+        const parsedData = JSON.parse(savedFormData);
+        form.reset(parsedData);
+        if (parsedData.make) {
+            handleMakeChange(parsedData.make, false);
+        }
     }
   }, [form]);
 
@@ -100,10 +104,12 @@ export function VehicleReportForm() {
   }, [form]);
 
 
-  const handleMakeChange = async (make: string) => {
+  const handleMakeChange = async (make: string, shouldResetModel = true) => {
     setSelectedMake(make);
     form.setValue('make', make);
-    form.setValue('model', '');
+    if (shouldResetModel) {
+        form.setValue('model', '');
+    }
     setModels([]);
     if (make) {
       try {
