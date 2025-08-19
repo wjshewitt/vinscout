@@ -7,7 +7,9 @@ import {
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  setPersistence,
+  browserSessionPersistence
 } from 'firebase/auth';
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
 
@@ -27,11 +29,17 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
+
+setPersistence(auth, browserSessionPersistence);
+
 const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error) {
+    if (error.code === 'auth/unauthorized-domain') {
+        console.error("This domain is not authorized for OAuth operations. Make sure to add it to the authorized domains in your Firebase console.")
+    }
     console.error("Error signing in with Google", error);
     return null;
   }
