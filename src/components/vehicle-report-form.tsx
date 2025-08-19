@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Upload } from 'lucide-react';
+import { vehicleData } from '@/lib/vehicle-data';
+import { useState } from 'react';
 
 const reportSchema = z.object({
-  make: z.string().min(2, 'Make is required'),
+  make: z.string().min(1, 'Make is required'),
   model: z.string().min(1, 'Model is required'),
   year: z.coerce.number().min(1900, 'Invalid year').max(new Date().getFullYear() + 1, 'Invalid year'),
   color: z.string().min(2, 'Color is required'),
@@ -24,8 +26,12 @@ const reportSchema = z.object({
 
 type ReportFormValues = z.infer<typeof reportSchema>;
 
+const manufacturers = Object.keys(vehicleData);
+
 export function VehicleReportForm() {
   const { toast } = useToast();
+  const [selectedMake, setSelectedMake] = useState<string>('');
+  
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
@@ -38,6 +44,12 @@ export function VehicleReportForm() {
     },
   });
 
+  const handleMakeChange = (make: string) => {
+    setSelectedMake(make);
+    form.setValue('make', make);
+    form.setValue('model', ''); // Reset model when make changes
+  };
+
   function onSubmit(data: ReportFormValues) {
     console.log(data);
     toast({
@@ -45,6 +57,7 @@ export function VehicleReportForm() {
       description: 'Your stolen vehicle report has been submitted successfully.',
     });
     form.reset();
+    setSelectedMake('');
   }
 
   return (
@@ -57,9 +70,18 @@ export function VehicleReportForm() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Make</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., Honda" {...field} />
-                </FormControl>
+                <Select onValueChange={handleMakeChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a make" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {manufacturers.map((make) => (
+                      <SelectItem key={make} value={make}>{make}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -70,9 +92,18 @@ export function VehicleReportForm() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Model</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., Civic" {...field} />
-                </FormControl>
+                <Select onValueChange={field.onChange} value={field.value} disabled={!selectedMake}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a model" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {selectedMake && vehicleData[selectedMake as keyof typeof vehicleData].map((model) => (
+                      <SelectItem key={model} value={model}>{model}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
