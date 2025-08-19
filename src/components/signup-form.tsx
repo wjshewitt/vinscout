@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from './ui/separator';
+import { signInWithGoogle } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -18,6 +21,7 @@ const signupSchema = z.object({
 type SignupFormValues = z.infer<typeof signupSchema>;
 
 export function SignupForm() {
+  const router = useRouter();
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: { name: '', email: '', password: '' },
@@ -27,6 +31,13 @@ export function SignupForm() {
     console.log(data);
     // Handle signup logic
   }
+
+  const handleGoogleSignIn = async () => {
+    const user = await signInWithGoogle();
+    if (user) {
+      router.push('/dashboard');
+    }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-10rem)] py-12">
@@ -80,6 +91,10 @@ export function SignupForm() {
               <Button type="submit" className="w-full">Create Account</Button>
             </form>
           </Form>
+          <Separator className="my-4" />
+          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+            Sign Up with Google
+          </Button>
           <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
             <Link href="/login" className="underline text-primary">

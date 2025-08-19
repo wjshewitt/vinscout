@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { Car, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,9 +13,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/hooks/use-auth';
+import { logout } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 export function Header() {
-  const isLoggedIn = false; // This would be dynamic in a real app
+  const { user, loading } = useAuth();
+  const isLoggedIn = !!user;
 
   const navLinks = [
     { href: '/', label: 'Map' },
@@ -36,7 +42,7 @@ export function Header() {
         </nav>
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-2">
-            {isLoggedIn ? (
+            {loading ? null : isLoggedIn ? (
               <UserMenu />
             ) : (
               <>
@@ -68,7 +74,7 @@ export function Header() {
                   </Link>
                 ))}
                  <div className="flex flex-col gap-4 mt-4">
-                  {isLoggedIn ? (
+                  {loading ? null : isLoggedIn ? (
                      <UserMenu isMobile={true} />
                   ) : (
                     <>
@@ -92,11 +98,21 @@ export function Header() {
 
 
 function UserMenu({ isMobile = false }) {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/');
+  };
+
+  if (!user) return null;
+
   const menuTrigger = (
     <Button variant="secondary" size="icon" className="rounded-full">
       <Avatar>
-        <AvatarImage src="https://placehold.co/40x40" alt="User" />
-        <AvatarFallback>VG</AvatarFallback>
+        <AvatarImage src={user.photoURL || `https://placehold.co/40x40`} alt={user.displayName || 'User'} />
+        <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
       </Avatar>
       <span className="sr-only">Toggle user menu</span>
     </Button>
@@ -107,18 +123,18 @@ function UserMenu({ isMobile = false }) {
       <div className="border-t pt-4">
         <div className="flex items-center gap-4 mb-4">
           <Avatar>
-            <AvatarImage src="https://placehold.co/40x40" alt="User" />
-            <AvatarFallback>VG</AvatarFallback>
+             <AvatarImage src={user.photoURL || `https://placehold.co/40x40`} alt={user.displayName || 'User'} />
+             <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-semibold">User Name</p>
-            <p className="text-sm text-muted-foreground">user@email.com</p>
+            <p className="font-semibold">{user.displayName}</p>
+            <p className="text-sm text-muted-foreground">{user.email}</p>
           </div>
         </div>
-        <Link href="/dashboard" className="w-full block text-muted-foreground transition-colors hover:text-primary">Dashboard</Link>
-        <Link href="/dashboard/messages" className="w-full block text-muted-foreground transition-colors hover:text-primary">Messages</Link>
-        <Link href="/dashboard/notifications" className="w-full block text-muted-foreground transition-colors hover:text-primary">Settings</Link>
-        <Button variant="ghost" className="w-full justify-start px-0">Log Out</Button>
+        <Link href="/dashboard" className="w-full block text-muted-foreground transition-colors hover:text-primary py-2">Dashboard</Link>
+        <Link href="/dashboard/messages" className="w-full block text-muted-foreground transition-colors hover:text-primary py-2">Messages</Link>
+        <Link href="/dashboard/notifications" className="w-full block text-muted-foreground transition-colors hover:text-primary py-2">Settings</Link>
+        <Button variant="ghost" className="w-full justify-start px-0" onClick={handleLogout}>Log Out</Button>
       </div>
     );
   }
@@ -135,7 +151,7 @@ function UserMenu({ isMobile = false }) {
         <DropdownMenuItem asChild><Link href="/dashboard/messages">Messages</Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link href="/dashboard/notifications">Settings</Link></DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>Log out</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { signInWithGoogle } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -17,6 +20,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
+  const router = useRouter();
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
@@ -24,8 +28,15 @@ export function LoginForm() {
 
   function onSubmit(data: LoginFormValues) {
     console.log(data);
-    // Handle login logic
+    // Handle email/password login logic here
   }
+  
+  const handleGoogleSignIn = async () => {
+    const user = await signInWithGoogle();
+    if (user) {
+      router.push('/dashboard');
+    }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-10rem)] py-12">
@@ -66,6 +77,10 @@ export function LoginForm() {
               <Button type="submit" className="w-full">Login</Button>
             </form>
           </Form>
+          <Separator className="my-4" />
+           <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+            Sign In with Google
+          </Button>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{' '}
             <Link href="/signup" className="underline text-primary">

@@ -1,9 +1,12 @@
+'use client'
+
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MessageSquare } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
 
 // This would fetch data in a real app
 const getVehicleData = (id: string) => {
@@ -18,7 +21,8 @@ const getVehicleData = (id: string) => {
 
 export default function VehicleDetailPage({ params }: { params: { id: string } }) {
   const vehicle = getVehicleData(params.id);
-  const isLoggedIn = true; // This would be dynamic
+  const { user, loading } = useAuth();
+  const isLoggedIn = !!user;
 
   return (
     <div className="container mx-auto py-12">
@@ -74,7 +78,7 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
               </div>
               <Separator />
               <div>
-                {isLoggedIn ? (
+                {loading ? null : isLoggedIn ? (
                   <Button size="lg" className="w-full">
                     <MessageSquare className="mr-2 h-4 w-4" /> Message Owner ({vehicle.owner.name})
                   </Button>
