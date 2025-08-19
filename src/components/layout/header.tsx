@@ -20,12 +20,12 @@ import { useRouter } from 'next/navigation';
 function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2">
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="32" height="32" rx="8" fill="hsl(var(--primary))"/>
-        <path d="M12 20L16 12L20 20" stroke="hsl(var(--primary-foreground))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M16 20L18 16" stroke="hsl(var(--primary-foreground))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-      <span className="font-bold text-lg">AutoFind</span>
+      <div className="size-8 text-primary">
+        <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+          <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
+        </svg>
+      </div>
+      <h2 className="text-2xl font-bold tracking-tighter">AutoFind</h2>
     </Link>
   )
 }
@@ -36,30 +36,32 @@ export function Header() {
   const isLoggedIn = !!user;
 
   const navLinks = [
-    { href: '/report', label: 'Report Theft' },
+    { href: '/', label: 'Home' },
+    { href: '/report', label: 'Report Stolen' },
     { href: '/map', label: 'Live Map' },
     { href: '/community', label: 'Community' },
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 max-w-7xl items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 px-4 md:px-10 py-3 backdrop-blur">
+      <div className="container flex h-14 max-w-7xl items-center justify-between mx-auto">
         <div className="flex items-center gap-6">
           <Logo />
-          <nav className="hidden md:flex items-center gap-6 text-sm">
+        </div>
+        
+        <nav className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="transition-colors text-muted-foreground hover:text-primary">
+              <Link key={link.href} href={link.href} className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                 {link.label}
               </Link>
             ))}
           </nav>
-        </div>
         
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-4">
             {loading ? null : isLoggedIn ? (
               <>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="rounded-full">
                   <Bell className="h-5 w-5" />
                   <span className="sr-only">Notifications</span>
                 </Button>
@@ -127,20 +129,14 @@ function UserMenu({ isMobile = false }) {
   if (!user) return null;
 
   const menuTrigger = (
-    <Avatar className="h-9 w-9 cursor-pointer">
-      <AvatarImage src={user.photoURL || `https://placehold.co/40x40.png`} alt={user.displayName || 'User'} />
-      <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
-    </Avatar>
+     <div className="h-10 w-10 rounded-full bg-cover bg-center bg-no-repeat ring-2 ring-primary ring-offset-2 ring-offset-background" style={{backgroundImage: `url(${user.photoURL || `https://placehold.co/40x40.png`})`}}></div>
   );
 
   if (isMobile) {
     return (
       <div className="border-t pt-4">
         <div className="flex items-center gap-4 mb-4">
-          <Avatar>
-             <AvatarImage src={user.photoURL || `https://placehold.co/40x40.png`} alt={user.displayName || 'User'} />
-             <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
-          </Avatar>
+           <div className="h-10 w-10 rounded-full bg-cover bg-center bg-no-repeat" style={{backgroundImage: `url(${user.photoURL || `https://placehold.co/40x40.png`})`}}></div>
           <div>
             <p className="font-semibold">{user.displayName}</p>
             <p className="text-sm text-muted-foreground">{user.email}</p>
