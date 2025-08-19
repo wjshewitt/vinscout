@@ -1,4 +1,4 @@
-import { getVehicleReportById, VehicleReport } from '@/lib/firebase';
+import { getVehicleReportById } from '@/lib/firebase';
 import { VehicleDetailClient } from '@/components/vehicle-detail-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

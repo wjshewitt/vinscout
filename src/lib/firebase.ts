@@ -13,7 +13,7 @@ import {
   browserSessionPersistence,
   AuthError
 } from 'firebase/auth';
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, query, where, orderBy, limit } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, query, where, orderBy, limit, Timestamp } from 'firebase/firestore';
 
 const firebaseConfig = {
   "projectId": "vigilante-garage",
@@ -109,7 +109,7 @@ export interface VehicleReport {
     features?: string;
     location: string;
     date: string;
-    reportedAt: Date;
+    reportedAt: string; // Changed to string
     status: 'Active' | 'Recovered';
     reporterId: string;
     photos?: string[];
@@ -128,7 +128,14 @@ export const getVehicleReports = async (): Promise<VehicleReport[]> => {
         const querySnapshot = await getDocs(q);
         const reports: VehicleReport[] = [];
         querySnapshot.forEach((doc) => {
-            reports.push({ id: doc.id, ...doc.data() } as VehicleReport);
+            const data = doc.data();
+            const report: VehicleReport = {
+                id: doc.id,
+                ...data,
+                reportedAt: (data.reportedAt as Timestamp).toDate().toISOString(),
+                date: (data.date as any) instanceof Timestamp ? (data.date as Timestamp).toDate().toISOString().split('T')[0] : data.date,
+            } as VehicleReport
+            reports.push(report);
         });
         return reports;
     } catch (error) {
@@ -144,7 +151,24 @@ export const getVehicleReportById = async (id: string): Promise<VehicleReport | 
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-            return { id: docSnap.id, ...docSnap.data() } as VehicleReport;
+            const data = docSnap.data();
+            // Convert Timestamp to a serializable format (ISO string)
+            const reportedAtTimestamp = data.reportedAt as Timestamp;
+            
+            // Handle date which could be a string or a Timestamp
+            let theftDateString: string;
+            if (data.date instanceof Timestamp) {
+                theftDateString = data.date.toDate().toISOString().split('T')[0];
+            } else {
+                theftDateString = data.date;
+            }
+
+            return { 
+                id: docSnap.id, 
+                ...data,
+                reportedAt: reportedAtTimestamp.toDate().toISOString(),
+                date: theftDateString,
+            } as VehicleReport;
         } else {
             console.log("No such document!");
             return null;
@@ -162,7 +186,14 @@ export const getUserVehicleReports = async (userId: string): Promise<VehicleRepo
         const querySnapshot = await getDocs(q);
         const reports: VehicleReport[] = [];
         querySnapshot.forEach((doc) => {
-            reports.push({ id: doc.id, ...doc.data() } as VehicleReport);
+             const data = doc.data();
+            const report: VehicleReport = {
+                id: doc.id,
+                ...data,
+                reportedAt: (data.reportedAt as Timestamp).toDate().toISOString(),
+                 date: (data.date as any) instanceof Timestamp ? (data.date as Timestamp).toDate().toISOString().split('T')[0] : data.date,
+            } as VehicleReport
+            reports.push(report);
         });
         return reports;
     } catch (error) {
