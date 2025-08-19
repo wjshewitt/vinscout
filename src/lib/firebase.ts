@@ -14,7 +14,7 @@ import { getFirestore, collection, addDoc } from 'firebase/firestore';
 const firebaseConfig = {
   projectId: "vigilante-garage",
   appId: "1:109449796594:web:9cdb5b50aed0dfa46ce96b",
-  storageBucket: "vigilante-garage.firebasestorage.app",
+  storageBucket: "vigilante-garage.appspot.com",
   apiKey: "AIzaSyBdqrM1jTSCT3Iv4alBwpt1I48f4v4qZOg",
   authDomain: "vigilante-garage.firebaseapp.com",
   messagingSenderId: "109449796594",
