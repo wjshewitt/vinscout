@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Upload } from 'lucide-react';
-import { vehicleData } from '@/lib/vehicle-data';
+import { vehicleData } from '@/data/vehicle-data';
 import { useState } from 'react';
 
 const reportSchema = z.object({
