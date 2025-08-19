@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -29,7 +30,8 @@ const reportSchema = z.object({
 type ReportFormValues = z.infer<typeof reportSchema>;
 
 const manufacturers = Object.keys(vehicleData);
-const years = Array.from({ length: new Date().getFullYear() - 1949 }, (_, i) => new Date().getFullYear() - i);
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: currentYear - 1949 }, (_, i) => currentYear - i);
 
 
 export function VehicleReportForm() {
@@ -271,3 +273,5 @@ export function VehicleReportForm() {
     </Form>
   );
 }
+
+    
