@@ -13,9 +13,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useEffect, useState } from 'react';
 import { getVehicleReportById, VehicleReport } from '@/lib/firebase';
+import React from 'react';
 
 
 export default function VehicleDetailPage({ params }: { params: { id: string } }) {
+  const resolvedParams = React.use(Promise.resolve(params));
   const { user, loading: authLoading } = useAuth();
   const [vehicle, setVehicle] = useState<VehicleReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,12 +25,12 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
   useEffect(() => {
     const fetchVehicle = async () => {
       setLoading(true);
-      const report = await getVehicleReportById(params.id);
+      const report = await getVehicleReportById(resolvedParams.id);
       setVehicle(report);
       setLoading(false);
     };
     fetchVehicle();
-  }, [params.id]);
+  }, [resolvedParams.id]);
   
   const isLoggedIn = !!user;
 
