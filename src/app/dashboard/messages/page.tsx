@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { Search, Send, Paperclip, MoreVertical, Car } from 'lucide-react';
+import { Search, Send, Paperclip, MoreVertical, Car, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
 // Dummy data for conversations and messages
