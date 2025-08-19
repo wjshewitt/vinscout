@@ -10,13 +10,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function Home() {
   const stolenVehicles = [
-    { id: '1', make: 'Lamborghini', model: 'Huracan', year: 2022, lastSeen: 'Los Angeles, CA', dateStolen: 'March 15, 2024', photo: 'https://placehold.co/40x40' },
-    { id: '2', make: 'Ferrari', model: 'F8 Tributo', year: 2021, lastSeen: 'New York, NY', dateStolen: 'March 10, 2024', photo: 'https://placehold.co/40x40' },
-    { id: '3', make: 'Porsche', model: '911 GT3', year: 1999, lastSeen: 'Chicago, IL', dateStolen: 'March 5, 2024', photo: 'https://placehold.co/40x40' },
-    { id: '4', make: 'Ford', model: 'Mustang GT', year: 1968, lastSeen: 'Miami, FL', dateStolen: 'March 2, 2024', photo: 'https://placehold.co/40x40' },
-    { id: '5', make: 'Nissan', model: 'Skyline GT-R', year: 1995, lastSeen: 'San Francisco, CA', dateStolen: 'February 28, 2024', photo: 'https://placehold.co/40x40' },
-    { id: '6', make: 'Toyota', model: 'Supra', year: 1998, lastSeen: 'London, UK', dateStolen: 'February 25, 2024', photo: 'https://placehold.co/40x40' },
-    { id: '7', make: 'BMW', model: 'M3', year: 2020, lastSeen: 'Manchester, UK', dateStolen: 'February 20, 2024', photo: 'https://placehold.co/40x40' },
+    { id: '1', make: 'Lamborghini', model: 'Huracan', year: 2022, lastSeen: 'Los Angeles, CA', dateStolen: 'March 15, 2024', photo: 'https://placehold.co/40x40.png' },
+    { id: '2', make: 'Ferrari', model: 'F8 Tributo', year: 2021, lastSeen: 'New York, NY', dateStolen: 'March 10, 2024', photo: 'https://placehold.co/40x40.png' },
+    { id: '3', make: 'Porsche', model: '911 GT3', year: 1999, lastSeen: 'Chicago, IL', dateStolen: 'March 5, 2024', photo: 'https://placehold.co/40x40.png' },
+    { id: '4', make: 'Ford', model: 'Mustang GT', year: 1968, lastSeen: 'Miami, FL', dateStolen: 'March 2, 2024', photo: 'https://placehold.co/40x40.png' },
+    { id: '5', make: 'Nissan', model: 'Skyline GT-R', year: 1995, lastSeen: 'San Francisco, CA', dateStolen: 'February 28, 2024', photo: 'https://placehold.co/40x40.png' },
+    { id: '6', make: 'Toyota', model: 'Supra', year: 1998, lastSeen: 'London, UK', dateStolen: 'February 25, 2024', photo: 'https://placehold.co/40x40.png' },
+    { id: '7', make: 'BMW', model: 'M3', year: 2020, lastSeen: 'Manchester, UK', dateStolen: 'February 20, 2024', photo: 'https://placehold.co/40x40.png' },
   ];
 
   return (

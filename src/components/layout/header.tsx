@@ -128,7 +128,7 @@ function UserMenu({ isMobile = false }) {
 
   const menuTrigger = (
     <Avatar className="h-9 w-9 cursor-pointer">
-      <AvatarImage src={user.photoURL || `https://placehold.co/40x40`} alt={user.displayName || 'User'} />
+      <AvatarImage src={user.photoURL || `https://placehold.co/40x40.png`} alt={user.displayName || 'User'} />
       <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
     </Avatar>
   );
@@ -138,7 +138,7 @@ function UserMenu({ isMobile = false }) {
       <div className="border-t pt-4">
         <div className="flex items-center gap-4 mb-4">
           <Avatar>
-             <AvatarImage src={user.photoURL || `https://placehold.co/40x40`} alt={user.displayName || 'User'} />
+             <AvatarImage src={user.photoURL || `https://placehold.co/40x40.png`} alt={user.displayName || 'User'} />
              <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
           </Avatar>
           <div>
