@@ -7,26 +7,13 @@ import Link from 'next/link';
 
 // This would fetch data in a real app
 const getVehicleData = (id: string) => {
-  return {
-    id: '1',
-    make: 'Honda',
-    model: 'Civic',
-    year: 2022,
-    color: 'Black',
-    licensePlate: '8ABC123',
-    vin: '1HGFB2...901234',
-    reportedAt: new Date().toISOString(),
-    lastSeen: 'Near Downtown Los Angeles',
-    details: 'Has a small dent on the rear bumper and a sticker on the back window.',
-    photos: [
-      'https://placehold.co/800x600',
-      'https://placehold.co/400x300',
-      'https://placehold.co/400x300',
-    ],
-    owner: {
-      name: 'John D.',
-    },
-  };
+  // Dummy data for stolen vehicles in the UK
+  const stolenVehicles = [
+    { id: '1', lat: 51.5074, lng: -0.1278, make: 'Ford', model: 'Fiesta', year: 2019, color: 'Red', licensePlate: 'AB19 CDE', lastSeen: 'Central London', vin: 'VF12...890123', reportedAt: new Date().toISOString(), details: 'Small scratch on the driver side door.', photos: ['https://placehold.co/800x600', 'https://placehold.co/400x300', 'https://placehold.co/400x300'], owner: { name: 'James S.' } },
+    { id: '2', lat: 53.4808, lng: -2.2426, make: 'Vauxhall', model: 'Corsa', year: 2021, color: 'Grey', licensePlate: 'GH21 IJK', lastSeen: 'Manchester City Centre', vin: 'VA23...901234', reportedAt: new Date().toISOString(), details: 'Aftermarket alloy wheels.', photos: ['https://placehold.co/800x600', 'https://placehold.co/400x300', 'https://placehold.co/400x300'], owner: { name: 'Sarah J.' } },
+    { id: '3', lat: 52.4862, lng: -1.8904, make: 'BMW', model: '3 Series', year: 2020, color: 'Blue', licensePlate: 'LM20 NOP', lastSeen: 'Birmingham', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600', 'https://placehold.co/400x300', 'https://placehold.co/400x300'], owner: { name: 'David B.' } },
+  ];
+  return stolenVehicles.find(v => v.id === id) || stolenVehicles[0];
 };
 
 export default function VehicleDetailPage({ params }: { params: { id: string } }) {

@@ -1,7 +1,7 @@
 'use client';
 
-import { APIProvider, Map, AdvancedMarker, Pin, InfoWindow } from '@vis.gl/react-google-maps';
-import { useState } from 'react';
+import { APIProvider, Map, AdvancedMarker, Pin, InfoWindow, useMap } from '@vis.gl/react-google-maps';
+import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';
@@ -38,8 +38,8 @@ const VehicleMap: FC<VehicleMapProps> = ({ vehicles }) => {
   return (
     <APIProvider apiKey={apiKey}>
       <Map
-        defaultCenter={{ lat: 39.8283, lng: -98.5795 }}
-        defaultZoom={4}
+        defaultCenter={{ lat: 54.5, lng: -2.5 }}
+        defaultZoom={6}
         mapId="vigilante_garage_map"
         fullscreenControl={false}
         streetViewControl={false}
