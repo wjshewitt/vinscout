@@ -34,7 +34,7 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
 
   if (loading) {
     return (
-      <div className="container mx-auto py-12 flex justify-center items-center">
+      <div className="container mx-auto py-12 flex justify-center items-center h-[calc(100vh-4rem)]">
          <Loader2 className="animate-spin text-primary" size={32} />
       </div>
     );
@@ -49,6 +49,9 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
           </CardHeader>
           <CardContent>
             <p>The vehicle you are looking for does not exist.</p>
+             <Button asChild variant="link">
+                <Link href="/">Go back to homepage</Link>
+             </Button>
           </CardContent>
         </Card>
       </div>
@@ -56,16 +59,21 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
   }
   
   const formatDate = (date: Date | string) => {
+    if (!date) return 'N/A';
     const d = typeof date === 'string' ? new Date(date) : date;
+    // Check if the date is valid after creation.
     if (isNaN(d.getTime())) {
+      // If it's a string that couldn't be parsed, try to return it as is.
+      if (typeof date === 'string') return date;
       return 'Invalid Date';
     }
-    return d.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
+    return d.toLocaleDateString('en-US', {
       year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
   };
+
 
   return (
     <div className="container mx-auto py-12">
@@ -116,21 +124,24 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
               <Separator />
               <div>
                 <h3 className="text-lg font-semibold mb-2">Last Known Information</h3>
+                <p className="text-sm"><strong>Date of Theft:</strong> {formatDate(vehicle.date)}</p>
                 <p className="text-sm"><strong>Location:</strong> {vehicle.location}</p>
                 <p className="text-sm mt-2"><strong>Details:</strong> {vehicle.features || 'No additional details provided.'}</p>
               </div>
               <Separator />
               <div>
-                {authLoading ? null : isLoggedIn ? (
+                {authLoading ? (
+                   <Loader2 className="animate-spin text-primary" />
+                ) : isLoggedIn && vehicle.reporterId !== user.uid ? (
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button size="lg" className="w-full" disabled={!vehicle.owner}>
-                        <MessageSquare className="mr-2 h-4 w-4" /> Message Owner {vehicle.owner ? `(${vehicle.owner.name})` : ''}
+                      <Button size="lg" className="w-full">
+                        <MessageSquare className="mr-2 h-4 w-4" /> Message Owner
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
                       <DialogHeader>
-                        <DialogTitle>Send a message to {vehicle.owner?.name}</DialogTitle>
+                        <DialogTitle>Send a message to the owner</DialogTitle>
                         <DialogDescription>
                           Provide any information that could help locate the vehicle. Your message will be sent securely.
                         </DialogDescription>
@@ -144,6 +155,12 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                       <Button type="submit">Send Message</Button>
                     </DialogContent>
                   </Dialog>
+                ) : isLoggedIn && vehicle.reporterId === user.uid ? (
+                    <Card className="bg-muted/50">
+                        <CardContent className="p-4 text-center">
+                            <p className="text-sm text-muted-foreground">This is your report.</p>
+                        </CardContent>
+                    </Card>
                 ) : (
                   <Card className="bg-muted/50">
                     <CardContent className="p-4 text-center">
