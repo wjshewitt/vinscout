@@ -108,17 +108,27 @@ export function VehicleReportForm() {
         return;
     }
 
-    const reportId = await submitVehicleReport(data);
-
-    if (reportId) {
-        toast({
-          title: 'Report Submitted',
-          description: 'Your stolen vehicle report has been submitted successfully.',
+    try {
+        const reportId = await submitVehicleReport({
+            ...data,
+            reportedAt: new Date(),
+            status: 'Active',
+            reporterId: user.uid
         });
-        form.reset();
-        setSelectedMake('');
-        router.push(`/vehicles/${reportId}`);
-    } else {
+
+        if (reportId) {
+            toast({
+              title: 'Report Submitted',
+              description: 'Your stolen vehicle report has been submitted successfully.',
+            });
+            form.reset();
+            setSelectedMake('');
+            router.push(`/vehicles/${reportId}`);
+        } else {
+            throw new Error("Submission failed to return an ID.");
+        }
+    } catch (error) {
+        console.error("Error submitting report: ", error);
         toast({
             variant: 'destructive',
             title: 'Submission Failed',
@@ -331,5 +341,3 @@ export function VehicleReportForm() {
     </Form>
   );
 }
-
-    

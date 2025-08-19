@@ -82,14 +82,14 @@ const signInWithEmail = async (email: string, pass: string) => {
     }
 }
 
-const submitVehicleReport = async (reportData: any) => {
+const submitVehicleReport = async (reportData: object) => {
+    if (!auth.currentUser) {
+        console.error("No user is signed in to submit a report.");
+        return null;
+    }
+    
     try {
-        const docRef = await addDoc(collection(db, 'vehicleReports'), {
-            ...reportData,
-            reportedAt: new Date(),
-            status: 'Active',
-            reporterId: auth.currentUser?.uid
-        });
+        const docRef = await addDoc(collection(db, 'vehicleReports'), reportData);
         return docRef.id;
     } catch (error) {
         console.error("Error adding document: ", error);
