@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { useEffect, useState } from 'react';
 
 // This would fetch data in a real app
 const getVehicleData = (id: string) => {
@@ -19,18 +20,38 @@ const getVehicleData = (id: string) => {
     { id: '1', lat: 51.5074, lng: -0.1278, make: 'Ford', model: 'Fiesta', year: 2019, color: 'Red', licensePlate: 'AB19 CDE', lastSeen: 'Central London', vin: 'VF12...890123', reportedAt: new Date().toISOString(), details: 'Small scratch on the driver side door.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'James S.' } },
     { id: '2', lat: 53.4808, lng: -2.2426, make: 'Vauxhall', model: 'Corsa', year: 2021, color: 'Grey', licensePlate: 'GH21 IJK', lastSeen: 'Manchester City Centre', vin: 'VA23...901234', reportedAt: new Date().toISOString(), details: 'Aftermarket alloy wheels.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'Sarah J.' } },
     { id: '3', lat: 52.4862, lng: -1.8904, make: 'BMW', model: '3 Series', year: 2020, color: 'Blue', licensePlate: 'LM20 NOP', lastSeen: 'Birmingham', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' } },
-    { id: '4', make: 'Ford', model: 'Mustang GT', year: 1968, lastSeen: 'Miami, FL', dateStolen: 'March 2, 2024', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' } },
-    { id: '5', make: 'Nissan', model: 'Skyline GT-R', year: 1995, lastSeen: 'San Francisco, CA', dateStolen: 'February 28, 2024', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' } },
-    { id: '6', make: 'Toyota', model: 'Supra', year: 1998, lastSeen: 'London, UK', dateStolen: 'February 25, 2024', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' } },
-    { id: '7', make: 'BMW', model: 'M3', year: 2020, lastSeen: 'Manchester, UK', dateStolen: 'February 20, 2024', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' } },
+    { id: '4', make: 'Ford', model: 'Mustang GT', year: 1968, lastSeen: 'Miami, FL', dateStolen: 'March 2, 2024', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' }, color: 'Black', licensePlate: 'MUSTANG' },
+    { id: '5', make: 'Nissan', model: 'Skyline GT-R', year: 1995, lastSeen: 'San Francisco, CA', dateStolen: 'February 28, 2024', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' }, color: 'Silver', licensePlate: 'GTR' },
+    { id: '6', make: 'Toyota', model: 'Supra', year: 1998, lastSeen: 'London, UK', dateStolen: 'February 25, 2024', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' }, color: 'White', licensePlate: 'SUPRA' },
+    { id: '7', make: 'BMW', model: 'M3', year: 2020, lastSeen: 'Manchester, UK', dateStolen: 'February 20, 2024', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' }, color: 'Blue', licensePlate: 'M3BWM' },
   ];
-  return stolenVehicles.find(v => v.id === id) || stolenVehicles[0];
+  return stolenVehicles.find(v => v.id === id);
 };
 
 export default function VehicleDetailPage({ params }: { params: { id: string } }) {
-  const vehicle = getVehicleData(params.id);
+  const [vehicle, setVehicle] = useState(getVehicleData(params.id));
   const { user, loading } = useAuth();
   const isLoggedIn = !!user;
+
+  useEffect(() => {
+    setVehicle(getVehicleData(params.id));
+  }, [params.id]);
+
+
+  if (!vehicle) {
+    return (
+      <div className="container mx-auto py-12">
+        <Card>
+          <CardHeader>
+            <CardTitle>Vehicle not found</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>The vehicle you are looking for does not exist.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-12">
