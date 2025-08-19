@@ -37,7 +37,7 @@ const years = Array.from({ length: currentYear - 1949 }, (_, i) => currentYear -
 
 export function VehicleReportForm() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const [makes, setMakes] = useState<string[]>([]);
   const [models, setModels] = useState<string[]>([]);
@@ -335,7 +335,9 @@ export function VehicleReportForm() {
         </FormItem>
         </div>
         <div className="sm:col-span-2">
-        <Button type="submit" size="lg" className="w-full h-14 text-base font-bold shadow-lg shadow-blue-500/30 transition-all duration-300 hover:scale-105">Alert the Network</Button>
+        <Button type="submit" size="lg" className="w-full h-14 text-base font-bold shadow-lg shadow-blue-500/30 transition-all duration-300 hover:scale-105" disabled={loading}>
+          {loading ? 'Authenticating...' : 'Alert the Network'}
+        </Button>
         </div>
       </form>
     </Form>
