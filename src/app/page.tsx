@@ -118,7 +118,7 @@ export default function Home() {
                     </div>
                   </TableCell>
                   <TableCell>{vehicle.lastSeen}</TableCell>
-                  <TableCell>{new Date(vehicle.dateStolen).toLocaleDateString()}</TableCell>
+                  <TableCell>{vehicle.dateStolen}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/vehicles/${vehicle.id}`}>View Details</Link>
