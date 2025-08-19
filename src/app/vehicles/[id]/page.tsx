@@ -1,3 +1,4 @@
+
 'use client'
 
 import Image from 'next/image';
@@ -7,6 +8,9 @@ import { MessageSquare } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 // This would fetch data in a real app
 const getVehicleData = (id: string) => {
@@ -15,6 +19,10 @@ const getVehicleData = (id: string) => {
     { id: '1', lat: 51.5074, lng: -0.1278, make: 'Ford', model: 'Fiesta', year: 2019, color: 'Red', licensePlate: 'AB19 CDE', lastSeen: 'Central London', vin: 'VF12...890123', reportedAt: new Date().toISOString(), details: 'Small scratch on the driver side door.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'James S.' } },
     { id: '2', lat: 53.4808, lng: -2.2426, make: 'Vauxhall', model: 'Corsa', year: 2021, color: 'Grey', licensePlate: 'GH21 IJK', lastSeen: 'Manchester City Centre', vin: 'VA23...901234', reportedAt: new Date().toISOString(), details: 'Aftermarket alloy wheels.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'Sarah J.' } },
     { id: '3', lat: 52.4862, lng: -1.8904, make: 'BMW', model: '3 Series', year: 2020, color: 'Blue', licensePlate: 'LM20 NOP', lastSeen: 'Birmingham', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' } },
+    { id: '4', make: 'Ford', model: 'Mustang GT', year: 1968, lastSeen: 'Miami, FL', dateStolen: 'March 2, 2024', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' } },
+    { id: '5', make: 'Nissan', model: 'Skyline GT-R', year: 1995, lastSeen: 'San Francisco, CA', dateStolen: 'February 28, 2024', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' } },
+    { id: '6', make: 'Toyota', model: 'Supra', year: 1998, lastSeen: 'London, UK', dateStolen: 'February 25, 2024', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' } },
+    { id: '7', make: 'BMW', model: 'M3', year: 2020, lastSeen: 'Manchester, UK', dateStolen: 'February 20, 2024', vin: 'WB34...012345', reportedAt: new Date().toISOString(), details: 'Has a roof rack installed.', photos: ['https://placehold.co/800x600.png', 'https://placehold.co/400x300.png', 'https://placehold.co/400x300.png'], owner: { name: 'David B.' } },
   ];
   return stolenVehicles.find(v => v.id === id) || stolenVehicles[0];
 };
@@ -79,9 +87,28 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
               <Separator />
               <div>
                 {loading ? null : isLoggedIn ? (
-                  <Button size="lg" className="w-full">
-                    <MessageSquare className="mr-2 h-4 w-4" /> Message Owner ({vehicle.owner.name})
-                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button size="lg" className="w-full">
+                        <MessageSquare className="mr-2 h-4 w-4" /> Message Owner ({vehicle.owner.name})
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Send a message to {vehicle.owner.name}</DialogTitle>
+                        <DialogDescription>
+                          Provide any information that could help locate the vehicle. Your message will be sent securely.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid w-full gap-1.5">
+                          <Label htmlFor="message">Your message</Label>
+                          <Textarea placeholder="Type your message here." id="message" />
+                        </div>
+                      </div>
+                      <Button type="submit">Send Message</Button>
+                    </DialogContent>
+                  </Dialog>
                 ) : (
                   <Card className="bg-muted/50">
                     <CardContent className="p-4 text-center">
