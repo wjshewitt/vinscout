@@ -29,7 +29,7 @@ function Logo() {
           <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
         </svg>
       </div>
-      <h2 className="text-2xl font-bold tracking-tighter">Vinchaser</h2>
+      <h2 className="text-2xl font-bold tracking-tighter font-mono">Vinchaser</h2>
     </Link>
   )
 }
