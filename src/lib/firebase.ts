@@ -187,6 +187,11 @@ export const submitVehicleReport = async (reportData: object) => {
     }
 }
 
+export const updateVehicleReport = async (reportId: string, dataToUpdate: Partial<VehicleReport>) => {
+    const reportRef = doc(db, 'vehicleReports', reportId);
+    return updateDoc(reportRef, dataToUpdate);
+}
+
 export const deleteVehicleReport = async (reportId: string): Promise<void> => {
     const reportRef = doc(db, 'vehicleReports', reportId);
     

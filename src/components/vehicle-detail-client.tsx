@@ -5,14 +5,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, PoundSterling, ShieldCheck } from 'lucide-react';
+import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, PoundSterling, ShieldCheck, Pencil } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/use-auth';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { VehicleReport, Sighting, Message, createOrGetConversation, sendMessage, getVehicleSightings, submitSighting, deleteVehicleReport, updateVehicleStatus } from '@/lib/firebase';
+import { VehicleReport, Sighting, Message, createOrGetConversation, sendMessage, getVehicleSightings, submitSighting, deleteVehicleReport, updateVehicleStatus, updateVehicleReport } from '@/lib/firebase';
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -24,7 +24,10 @@ import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
-
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) => {
     if (!dateString) return 'N/A';
@@ -107,6 +110,162 @@ function SightingLocationPicker({ onLocationChange }: { onLocationChange: (pos: 
     )
 }
 
+const editReportSchema = z.object({
+  color: z.string().min(2, 'Color is required'),
+  vin: z.string().optional(),
+  features: z.string().optional(),
+  rewardAmount: z.coerce.number().optional(),
+  rewardDetails: z.string().optional(),
+});
+
+type EditReportFormValues = z.infer<typeof editReportSchema>;
+
+function EditReportDialog({ vehicle, onUpdate }: { vehicle: VehicleReport, onUpdate: (data: Partial<VehicleReport>) => void }) {
+    const [isSaving, setIsSaving] = useState(false);
+    const { toast } = useToast();
+    const [isOpen, setIsOpen] = useState(false);
+
+    const form = useForm<EditReportFormValues>({
+        resolver: zodResolver(editReportSchema),
+        defaultValues: {
+            color: vehicle.color || '',
+            vin: vehicle.vin || '',
+            features: vehicle.features || '',
+            rewardAmount: vehicle.rewardAmount || undefined,
+            rewardDetails: vehicle.rewardDetails || '',
+        },
+    });
+    
+    async function onSubmit(data: EditReportFormValues) {
+        setIsSaving(true);
+        try {
+            await updateVehicleReport(vehicle.id, data);
+            onUpdate(data);
+            toast({ title: 'Report Updated', description: 'Your vehicle details have been saved.' });
+            setIsOpen(false);
+        } catch (error) {
+            console.error('Error updating report', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update report.' });
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline"><Pencil className="mr-2 h-4 w-4" />Edit Report</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Edit Vehicle Report</DialogTitle>
+                    <DialogDescription>
+                        Update the details of your report. Core details like make, model, and license plate cannot be changed.
+                    </DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <FormField
+                                control={form.control}
+                                name="color"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Color</FormLabel>
+                                    <FormControl>
+                                    <Input {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="vin"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>VIN (Optional)</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                                />
+                        </div>
+                        <FormField
+                            control={form.control}
+                            name="features"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Distinctive Features (Optional)</FormLabel>
+                                <FormControl>
+                                <Textarea
+                                    placeholder="e.g., Carbon fiber roof, aftermarket wheels, small dent on rear bumper"
+                                    className="resize-none"
+                                    {...field}
+                                />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                         <Separator />
+                        <div className="space-y-4">
+                            <h4 className="font-medium">Reward Information</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="rewardAmount"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Reward Amount (£) (Optional)</FormLabel>
+                                        <div className="relative">
+                                            <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                            <FormControl>
+                                                <Input type="number" {...field} className="pl-10" />
+                                            </FormControl>
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="rewardDetails"
+                                    render={({ field }) => (
+                                    <FormItem className="md:col-span-2">
+                                        <FormLabel>Reward Details (Optional)</FormLabel>
+                                        <FormControl>
+                                        <Textarea
+                                            placeholder="e.g., Reward for information leading to recovery..."
+                                            className="resize-none"
+                                            {...field}
+                                        />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </div>
+
+                         <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline">Cancel</Button>
+                            </DialogClose>
+                            <Button type="submit" disabled={isSaving}>
+                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Changes
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: VehicleReport }) {
   const { user, loading: authLoading } = useAuth();
   const [vehicle, setVehicle] = useState(initialVehicle);
@@ -140,6 +299,10 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
 
   const handleLocationChange = useCallback((loc: { lat: number; lng: number; address: string }) => {
     setSightingLocation(loc);
+  }, []);
+  
+  const handleReportUpdate = useCallback((updatedData: Partial<VehicleReport>) => {
+    setVehicle(prev => ({...prev, ...updatedData}))
   }, []);
 
   const formatDateTime = (dateString: string) => {
@@ -426,6 +589,7 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
             <CardFooter className="border-t bg-muted/30 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
                  <p className="text-sm text-muted-foreground text-center sm:text-left">This is your report. You can manage its status here or delete it permanently.</p>
                  <div className="flex items-center gap-2">
+                    <EditReportDialog vehicle={vehicle} onUpdate={handleReportUpdate} />
                     {vehicle.status === 'Active' ? (
                          <AlertDialog>
                             <AlertDialogTrigger asChild>
