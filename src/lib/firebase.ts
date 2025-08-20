@@ -53,13 +53,14 @@ const googleProvider = new GoogleAuthProvider();
 setPersistence(auth, browserSessionPersistence);
 
 // Helper function to create user profile document
-const createUserProfileDocument = async (user: User, additionalData: object = {}) => {
+const createUserProfileDocument = async (user: User, additionalData: { displayName?: string } = {}) => {
     if (!user) return;
     const userRef = doc(db, 'users', user.uid);
     const snapshot = await getDoc(userRef);
 
     if (!snapshot.exists()) {
-        const { displayName, email, photoURL } = user;
+        const { email, photoURL } = user;
+        const displayName = additionalData.displayName || user.displayName;
         const createdAt = serverTimestamp();
         try {
             await setDoc(userRef, {
@@ -67,7 +68,6 @@ const createUserProfileDocument = async (user: User, additionalData: object = {}
                 email,
                 photoURL,
                 createdAt,
-                ...additionalData,
             });
         } catch (error) {
             console.error('Error creating user profile', error);
@@ -98,13 +98,13 @@ export const logout = async () => {
 
 export const signUpWithEmail = async (name: string, email: string, pass: string): Promise<{user: User | null, error: AuthError | null}> => {
     try {
-        const result = await createUserWithEmailAndPassword(auth, email, pass);
-        // The user object from the result doesn't always have the latest profile info.
-        // We get it from auth.currentUser after the update.
-        await updateProfile(result.user, { displayName: name });
-        if (auth.currentUser) {
-            await createUserProfileDocument(auth.currentUser, { displayName: name });
-        }
+        const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+        const user = userCredential.user;
+        await updateProfile(user, { displayName: name });
+
+        // Pass the name explicitly to ensure it's saved on first creation.
+        await createUserProfileDocument(user, { displayName: name });
+        
         return { user: auth.currentUser, error: null };
     } catch (error) {
         return { user: null, error: error as AuthError };
@@ -184,14 +184,14 @@ const toVehicleReport = (doc: any): VehicleReport => {
         return ts ? ts.toDate().toISOString() : new Date().toISOString();
     };
     
-    const formatDateString = (dateStr: string | null | undefined): string => {
-        if (!dateStr) return new Date().toISOString().split('T')[0];
-        // Handle cases where it might already be a string 'YYYY-MM-DD'
-        try {
-           return new Date(dateStr).toISOString().split('T')[0];
-        } catch(e) {
-           return dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    const formatDateString = (dateInput: string | Date | Timestamp | null | undefined): string => {
+        if (!dateInput) return new Date().toISOString().split('T')[0];
+        if (dateInput instanceof Timestamp) return dateInput.toDate().toISOString().split('T')[0];
+        if (dateInput instanceof Date) return dateInput.toISOString().split('T')[0];
+        if (typeof dateInput === 'string') {
+            return dateInput.includes('T') ? dateInput.split('T')[0] : dateInput;
         }
+        return new Date().toISOString().split('T')[0];
     };
 
     return {
@@ -204,7 +204,7 @@ const toVehicleReport = (doc: any): VehicleReport => {
         vin: data.vin,
         features: data.features,
         location: data.location || '',
-        date: formatDateString(data.date), // Use the robust formatter
+        date: formatDateString(data.date),
         reportedAt: convertTimestampToString(data.reportedAt),
         status: data.status || 'Active',
         reporterId: data.reporterId || '',
@@ -284,8 +284,27 @@ export const listenToUserConversations = (userId: string, callback: (conversatio
         where('participants', 'array-contains', userId),
         orderBy('lastMessageAt', 'desc')
     );
-    return onSnapshot(q, (snapshot) => {
-        const conversations = snapshot.docs.map(toConversation);
+    return onSnapshot(q, async (snapshot) => {
+        const conversationsPromises = snapshot.docs.map(async (doc) => {
+            const convo = toConversation(doc);
+            // Fetch latest participant details on every snapshot
+            for (const pId of convo.participants) {
+                if (!convo.participantDetails[pId]) {
+                    const userDoc = await getDoc(doc(db, 'users', pId));
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        convo.participantDetails[pId] = {
+                            name: userData.displayName || 'Unknown User',
+                            avatar: userData.photoURL || ''
+                        };
+                    } else {
+                         convo.participantDetails[pId] = { name: 'Unknown User', avatar: '' };
+                    }
+                }
+            }
+            return convo;
+        });
+        const conversations = await Promise.all(conversationsPromises);
         callback(conversations);
     }, (error) => {
         console.error("Error listening to conversations:", error);
@@ -354,11 +373,25 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
     }
     
     const ownerDoc = await getDoc(doc(db, 'users', vehicle.reporterId));
-    const ownerData = ownerDoc.data();
-    
-    if (!ownerData) {
-        throw new Error("Could not find the vehicle owner's data.");
+    let ownerData: { displayName: string, photoURL: string } | null = null;
+
+    if (ownerDoc.exists()) {
+        const data = ownerDoc.data();
+        ownerData = {
+            displayName: data.displayName || 'Vehicle Owner',
+            photoURL: data.photoURL || ''
+        };
     }
+
+    if (!ownerData) {
+        // Fallback for users created before profile creation was implemented.
+        // In a real app, you might fetch from Firebase Auth, but that's a server-side/admin-sdk only operation.
+        // For client-side, we can't fetch other user profiles, so we have to handle this gracefully.
+        // For this app, we'll create a placeholder.
+        console.warn(`Could not find user profile for owner ${vehicle.reporterId}. Using placeholder data.`);
+        ownerData = { displayName: 'Vehicle Owner', photoURL: '' };
+    }
+    
     
     // Use the initiator's current profile info
     const initiatorName = initiator.displayName || 'Anonymous User';
@@ -372,7 +405,7 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
         participants: [initiator.uid, vehicle.reporterId],
         participantDetails: {
             [initiator.uid]: { name: initiatorName, avatar: initiatorAvatar },
-            [vehicle.reporterId]: { name: ownerData.displayName || 'Owner', avatar: ownerData.photoURL || '' }
+            [vehicle.reporterId]: { name: ownerData.displayName, avatar: ownerData.photoURL }
         },
         createdAt: serverTimestamp(),
         lastMessage: "",
@@ -386,3 +419,5 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
 
 export { auth, db };
 export type { User, AuthError };
+
+    
