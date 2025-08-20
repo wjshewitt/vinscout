@@ -12,7 +12,7 @@ import { Search, AlertTriangle, Loader2, Car, CheckCircle, Eye } from 'lucide-re
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
 import { useState, useEffect, useMemo } from 'react';
-import { getVehicleReports, VehicleReport } from '@/lib/firebase';
+import { getVehicleReports, VehicleReport, LocationInfo } from '@/lib/firebase';
 import { useDebounce } from 'use-debounce';
 
 export default function Home() {
@@ -42,7 +42,8 @@ export default function Home() {
     return reports.filter(report =>
       report.make.toLowerCase().includes(lowercasedQuery) ||
       report.model.toLowerCase().includes(lowercasedQuery) ||
-      report.location.toLowerCase().includes(lowercasedQuery)
+      report.location.city.toLowerCase().includes(lowercasedQuery) ||
+      report.location.street.toLowerCase().includes(lowercasedQuery)
     );
   }, [reports, debouncedSearchQuery]);
 
@@ -71,40 +72,14 @@ export default function Home() {
     });
   };
   
-  const formatLocation = (location: string, loggedIn: boolean): string => {
+  const formatLocation = (location: LocationInfo, loggedIn: boolean): string => {
     if (!location) return 'Unknown Location';
-
-    const parts = location.split(',').map(p => p.trim());
     
-    if (parts.length < 2) return location;
-
-    // Typically, the city is the second to last part, before the country
-    // e.g., ["Street", "City", "Postcode", "Country"] or ["Street", "City", "Country"]
-    let cityIndex = -1;
-    if (parts.length > 2) {
-      cityIndex = parts.length - 2;
-    } else {
-      cityIndex = parts.length -1;
+    if (loggedIn) {
+        return `${location.street}, ${location.city}`;
     }
     
-    let city = parts[cityIndex-1] || parts[0];
-
-    // Remove postcode from city if it's there
-    const ukPostcodeRegex = /[A-Z]{1,2}[0-9R][0-9A-Z]?\s*[0-9][A-Z]{2}/i;
-    city = city.replace(ukPostcodeRegex, '').trim();
-
-    if (!loggedIn) {
-        return city;
-    }
-
-    const street = parts[0];
-    const streetName = street.replace(/^\d+\s*/, ''); // Remove house number
-    
-    if (streetName.toLowerCase() === city.toLowerCase()) {
-        return city;
-    }
-
-    return `${streetName}, ${city}`;
+    return location.city;
   };
 
   return (

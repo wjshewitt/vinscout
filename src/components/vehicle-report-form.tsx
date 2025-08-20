@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
-import { submitVehicleReport, VehicleReport } from '@/lib/firebase';
+import { submitVehicleReport, VehicleReport, LocationInfo } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
@@ -20,6 +20,14 @@ import { useDebouncedCallback } from 'use-debounce';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import Image from 'next/image';
+
+const locationSchema = z.object({
+  street: z.string().min(1, 'Street is required'),
+  city: z.string().min(1, 'City is required'),
+  postcode: z.string().min(1, 'Postcode is required'),
+  country: z.string().min(1, 'Country is required'),
+  fullAddress: z.string().min(1, 'Full address is required'),
+});
 
 const reportSchema = z.object({
   make: z.string().min(1, 'Make is required'),
@@ -29,7 +37,7 @@ const reportSchema = z.object({
   vin: z.string().optional(),
   licensePlate: z.string().min(2, 'License plate is required'),
   features: z.string().optional(),
-  location: z.string().min(2, "Location is required"),
+  location: locationSchema,
   date: z.string().min(1, "Date is required"),
   additionalInfo: z.string().optional(),
   lat: z.number({ required_error: 'Please select a location on the map.' }),
@@ -45,69 +53,100 @@ type FieldName = keyof ReportFormValues;
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear - i);
 
-const steps: { title: string; fields: FieldName[] }[] = [
+const steps: { title: string; fields: (keyof ReportFormValues)[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
     { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
     { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng'] },
     { title: 'Reward & Photos', fields: ['rewardAmount', 'rewardDetails', 'photos'] },
 ];
 
-function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: number; lng: number; address: string }) => void }) {
+const parseAddressComponents = (components: google.maps.GeocoderAddressComponent[]): Partial<LocationInfo> => {
+    const parsed: Partial<LocationInfo> = {};
+    for (const component of components) {
+        if (component.types.includes('route')) {
+            parsed.street = component.long_name;
+        }
+        if(component.types.includes('street_number') && parsed.street) {
+            parsed.street = `${component.long_name} ${parsed.street}`;
+        }
+        if (component.types.includes('locality') || component.types.includes('postal_town')) {
+            parsed.city = component.long_name;
+        }
+        if (component.types.includes('postal_code')) {
+            parsed.postcode = component.long_name;
+        }
+        if (component.types.includes('country')) {
+            parsed.country = component.long_name;
+        }
+    }
+    return parsed;
+};
+
+
+function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: number; lng: number; locationInfo: LocationInfo }) => void }) {
     const defaultPosition = { lat: 51.5072, lng: -0.1276 }; // Default to London
     const [markerPos, setMarkerPos] = useState<google.maps.LatLngLiteral>(defaultPosition);
     const map = useMap();
     const { toast } = useToast();
     const form = useFormContext<ReportFormValues>();
 
-    const geocodeAddress = useDebouncedCallback((address: string) => {
-        if (!address) return;
+    const geocodeLocation = (location: google.maps.LatLngLiteral, type: 'GEOCODE' | 'REVERSE_GEOCODE') => {
         const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ address }, (results, status) => {
+        const request = type === 'GEOCODE' ? { address: form.getValues('location.fullAddress') } : { location };
+
+        geocoder.geocode(request, (results, status) => {
             if (status === 'OK' && results && results[0]) {
-                const location = results[0].geometry.location;
-                const newPos = { lat: location.lat(), lng: location.lng() };
+                const result = results[0];
+                const newPos = { lat: result.geometry.location.lat(), lng: result.geometry.location.lng() };
+                const locationInfo = {
+                    ...parseAddressComponents(result.address_components),
+                    fullAddress: result.formatted_address
+                } as LocationInfo;
+                
                 setMarkerPos(newPos);
                 if (map) {
                     map.panTo(newPos);
                 }
-                onLocationChange({ ...newPos, address: results[0].formatted_address });
+                onLocationChange({ ...newPos, locationInfo });
+
             } else {
                  toast({
                      variant: 'destructive',
                      title: 'Geocoding Failed',
-                     description: `Could not find a location for the address: ${address}. Please be more specific.`,
+                     description: `Could not find a location. Please try a different address or drag the pin.`,
                  });
             }
         });
+    }
+
+    const debouncedGeocodeAddress = useDebouncedCallback(() => {
+        const address = form.getValues('location.fullAddress');
+        if (address) {
+            geocodeLocation({ lat: 0, lng: 0}, 'GEOCODE'); // lat/lng are ignored
+        }
     }, 1000);
 
     const handleMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
         if (e.latLng) {
             const newPos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
             setMarkerPos(newPos);
-            // Reverse geocode to get address from lat/lng
-            const geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ location: newPos }, (results, status) => {
-                if (status === 'OK' && results && results[0]) {
-                    onLocationChange({ ...newPos, address: results[0].formatted_address });
-                }
-            });
+            geocodeLocation(newPos, 'REVERSE_GEOCODE');
         }
     };
     
-    const locationValue = useWatch<ReportFormValues>({ name: 'location' });
+    const locationValue = useWatch<ReportFormValues>({ name: 'location.fullAddress' });
     useEffect(() => {
         if (locationValue) {
-            geocodeAddress(locationValue);
+            debouncedGeocodeAddress();
         }
-    }, [locationValue, geocodeAddress]);
+    }, [locationValue, debouncedGeocodeAddress]);
 
 
     return (
         <div className="space-y-4">
             <FormField
                 control={form.control}
-                name="location"
+                name="location.fullAddress"
                 render={({ field }) => (
                 <FormItem>
                     <FormLabel>Last Known Location</FormLabel>
@@ -158,7 +197,7 @@ export function VehicleReportForm() {
       licensePlate: '',
       vin: '',
       features: '',
-      location: '',
+      location: { street: '', city: '', postcode: '', country: '', fullAddress: '' },
       date: '',
       additionalInfo: '',
       photos: [],
@@ -260,10 +299,10 @@ export function VehicleReportForm() {
       setCurrentStep(prev => prev - 1);
   };
   
-  const handleLocationChange = useCallback(({ lat, lng, address }: { lat: number; lng: number; address: string }) => {
+  const handleLocationChange = useCallback(({ lat, lng, locationInfo }: { lat: number; lng: number; locationInfo: LocationInfo }) => {
     form.setValue('lat', lat);
     form.setValue('lng', lng);
-    form.setValue('location', address, { shouldValidate: true });
+    form.setValue('location', locationInfo, { shouldValidate: true });
   }, [form]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -722,5 +761,3 @@ export function VehicleReportForm() {
     </Form>
   );
 }
-
-    

@@ -224,6 +224,14 @@ export const updateVehicleStatus = async (reportId: string, status: 'Active' | '
 
 
 // Types
+export interface LocationInfo {
+    street: string;
+    city: string;
+    postcode: string;
+    country: string;
+    fullAddress: string;
+}
+
 export interface VehicleReport {
     id: string;
     make: string;
@@ -233,7 +241,7 @@ export interface VehicleReport {
     licensePlate: string;
     vin?: string;
     features?: string;
-    location: string;
+    location: LocationInfo;
     date: string;
     reportedAt: string;
     status: 'Active' | 'Recovered';
@@ -279,7 +287,7 @@ export interface Sighting {
     sighterName: string;
     sighterAvatar: string;
     message: string;
-    location: string;
+    location: LocationInfo;
     lat: number;
     lng: number;
     sightedAt: string;
@@ -324,6 +332,15 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         }
         return new Date().toISOString().split('T')[0];
     };
+    
+    // Backward compatibility for old string-based location
+    let location: LocationInfo;
+    if (typeof data.location === 'string') {
+        location = { fullAddress: data.location, street: '', city: data.location, postcode: '', country: '' };
+    } else {
+        location = data.location || { fullAddress: '', street: '', city: 'Unknown', postcode: '', country: '' };
+    }
+
 
     return {
         id: docSnap.id,
@@ -334,7 +351,7 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         licensePlate: data.licensePlate || '',
         vin: data.vin,
         features: data.features,
-        location: data.location || '',
+        location,
         date: formatDateString(data.date),
         reportedAt: convertTimestampToString(data.reportedAt),
         status: data.status || 'Active',
@@ -350,9 +367,19 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
 
 const toSighting = (docSnap: any): Sighting => {
     const data = docSnap.data();
+    
+    // Backward compatibility for old string-based location
+    let location: LocationInfo;
+    if (typeof data.location === 'string') {
+        location = { fullAddress: data.location, street: '', city: data.location, postcode: '', country: '' };
+    } else {
+        location = data.location || { fullAddress: '', street: '', city: 'Unknown', postcode: '', country: '' };
+    }
+
     return {
         id: docSnap.id,
         ...data,
+        location,
         sightedAt: data.sightedAt ? data.sightedAt.toDate().toISOString() : new Date().toISOString(),
     } as Sighting;
 };
@@ -454,7 +481,7 @@ export const getVehicleSightings = async (vehicleId: string): Promise<Sighting[]
 export const submitSighting = async (
     vehicleId: string, 
     sighter: User, 
-    sightingData: { message: string, location: string, lat: number, lng: number }
+    sightingData: { message: string, location: LocationInfo, lat: number, lng: number }
 ): Promise<string> => {
     
     const vehicleRef = doc(db, 'vehicleReports', vehicleId);
@@ -928,5 +955,3 @@ export const deleteUserGeofence = async (userId: string, locationName: string) =
 
 export { auth, db };
 export type { User, AuthError };
-
-    

@@ -54,7 +54,7 @@ export function VehicleInfoPanel({ vehicle, onClose }: VehicleInfoPanelProps) {
                    <div className="space-y-2 text-sm">
                      <div className="flex items-center gap-2">
                         <MapPinIcon className="h-4 w-4 text-primary" />
-                        <span className="text-muted-foreground">Last seen: {vehicle.location}</span>
+                        <span className="text-muted-foreground">Last seen: {vehicle.location.fullAddress}</span>
                      </div>
                      <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-primary" />
@@ -84,5 +84,3 @@ export function VehicleInfoPanel({ vehicle, onClose }: VehicleInfoPanelProps) {
     </div>
   );
 }
-
-    

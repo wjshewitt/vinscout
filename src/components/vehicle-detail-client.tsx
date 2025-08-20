@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { VehicleReport, Sighting, Message, createOrGetConversation, sendMessage, getVehicleSightings, submitSighting, deleteVehicleReport, updateVehicleStatus, updateVehicleReport } from '@/lib/firebase';
+import { VehicleReport, Sighting, Message, LocationInfo, createOrGetConversation, sendMessage, getVehicleSightings, submitSighting, deleteVehicleReport, updateVehicleStatus, updateVehicleReport } from '@/lib/firebase';
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -47,45 +47,73 @@ const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) 
 };
 
 
-function SightingLocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: number; lng: number; address: string }) => void }) {
+const parseAddressComponentsSighting = (components: google.maps.GeocoderAddressComponent[]): Partial<LocationInfo> => {
+    const parsed: Partial<LocationInfo> = {};
+    for (const component of components) {
+        if (component.types.includes('route')) {
+            parsed.street = component.long_name;
+        }
+        if(component.types.includes('street_number') && parsed.street) {
+            parsed.street = `${component.long_name} ${parsed.street}`;
+        }
+        if (component.types.includes('locality') || component.types.includes('postal_town')) {
+            parsed.city = component.long_name;
+        }
+        if (component.types.includes('postal_code')) {
+            parsed.postcode = component.long_name;
+        }
+        if (component.types.includes('country')) {
+            parsed.country = component.long_name;
+        }
+    }
+    return parsed;
+};
+
+function SightingLocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: number; lng: number; locationInfo: LocationInfo }) => void }) {
     const { toast } = useToast();
     const map = useMap();
     const [searchAddress, setSearchAddress] = useState('');
     const [markerPos, setMarkerPos] = useState<google.maps.LatLngLiteral>({ lat: 51.5072, lng: -0.1276 });
 
-    const geocodeAddress = useDebouncedCallback((address: string) => {
-        if (!address) return;
+    const geocodeLocation = (location: google.maps.LatLngLiteral | string) => {
         const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ address }, (results, status) => {
+        const request = typeof location === 'string' ? { address: location } : { location };
+        
+        geocoder.geocode(request, (results, status) => {
             if (status === 'OK' && results && results[0]) {
-                const location = results[0].geometry.location;
-                const newPos = { lat: location.lat(), lng: location.lng() };
+                const result = results[0];
+                const newPos = { lat: result.geometry.location.lat(), lng: result.geometry.location.lng() };
+                const locationInfo = {
+                    ...parseAddressComponentsSighting(result.address_components),
+                    fullAddress: result.formatted_address,
+                } as LocationInfo;
+
                 setMarkerPos(newPos);
-                if (map) {
-                    map.panTo(newPos);
-                }
-                onLocationChange({ ...newPos, address: results[0].formatted_address });
+                if (map) map.panTo(newPos);
+                if (typeof location !== 'string') setSearchAddress(result.formatted_address);
+
+                onLocationChange({ ...newPos, locationInfo });
             } else {
                  toast({
                      variant: 'destructive',
                      title: 'Geocoding Failed',
-                     description: `Could not find a location for the address: ${address}. Please be more specific.`,
+                     description: `Could not find a location. Please be more specific.`,
                  });
             }
         });
+    };
+    
+    const debouncedGeocodeAddress = useDebouncedCallback((address: string) => {
+        if (address) {
+            geocodeLocation(address);
+        }
     }, 1000);
 
     const handleMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
         if (e.latLng) {
             const newPos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
             setMarkerPos(newPos);
-            const geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ location: newPos }, (results, status) => {
-                if (status === 'OK' && results && results[0]) {
-                    setSearchAddress(results[0].formatted_address);
-                    onLocationChange({ ...newPos, address: results[0].formatted_address });
-                }
-            });
+            geocodeLocation(newPos);
         }
     };
     
@@ -96,7 +124,7 @@ function SightingLocationPicker({ onLocationChange }: { onLocationChange: (pos: 
                 value={searchAddress}
                 onChange={(e) => {
                     setSearchAddress(e.target.value);
-                    geocodeAddress(e.target.value);
+                    debouncedGeocodeAddress(e.target.value);
                 }}
             />
             <div className="h-64 w-full rounded-lg overflow-hidden border">
@@ -287,7 +315,7 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
   const isLoggedIn = !!user;
   const isOwner = isLoggedIn && vehicle.reporterId === user.uid;
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const [sightingLocation, setSightingLocation] = useState<{lat: number, lng: number, address: string} | null>(null);
+  const [sightingLocation, setSightingLocation] = useState<{lat: number, lng: number, locationInfo: LocationInfo} | null>(null);
   const [sightings, setSightings] = useState<Sighting[]>([]);
   const [loadingSightings, setLoadingSightings] = useState(true);
 
@@ -304,7 +332,7 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
     }
   }, [vehicle.id]);
 
-  const handleLocationChange = useCallback((loc: { lat: number; lng: number; address: string }) => {
+  const handleLocationChange = useCallback((loc: { lat: number; lng: number; locationInfo: LocationInfo }) => {
     setSightingLocation(loc);
   }, []);
   
@@ -327,7 +355,7 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
     try {
         const conversationId = await createOrGetConversation(vehicle, user);
         
-        let finalSightingLocation: { address: string; lat: number; lng: number; } | undefined = undefined;
+        let finalSightingLocation: Message['sightingLocation'] | undefined = undefined;
 
         if (messageType === 'Sighting') {
             if (!sightingLocation) {
@@ -337,11 +365,15 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
             }
             await submitSighting(vehicle.id, user, { 
                 message, 
-                location: sightingLocation.address, 
+                location: sightingLocation.locationInfo, 
                 lat: sightingLocation.lat, 
                 lng: sightingLocation.lng 
             });
-            finalSightingLocation = sightingLocation;
+            finalSightingLocation = {
+                lat: sightingLocation.lat,
+                lng: sightingLocation.lng,
+                address: sightingLocation.locationInfo.fullAddress
+            };
             // Refetch sightings to update the page
             setSightings(await getVehicleSightings(vehicle.id));
         }
@@ -522,9 +554,9 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
               <div>
                 <h3 className="text-lg font-semibold mb-2">Last Known Information</h3>
                 <p className="text-sm"><strong>Date of Theft:</strong> {formatDate(vehicle.date)}</p>
-                <p className="text-sm"><strong>Original Location:</strong> {vehicle.location}</p>
+                <p className="text-sm"><strong>Original Location:</strong> {vehicle.location.fullAddress}</p>
                 {mostRecentSighting && (
-                    <p className="text-sm text-primary"><strong>Last Sighting:</strong> {mostRecentSighting.location}</p>
+                    <p className="text-sm text-primary"><strong>Last Sighting:</strong> {mostRecentSighting.location.fullAddress}</p>
                 )}
                 <p className="text-sm mt-2"><strong>Details:</strong> {vehicle.features || 'No additional details provided.'}</p>
               </div>
@@ -692,7 +724,7 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                 <CardTitle>Sighting Map</CardTitle>
                 <CardDescription>
                     {mostRecentSighting 
-                        ? `This car was stolen from ${vehicle.location}. It has been most recently sighted near ${mostRecentSighting.location}.`
+                        ? `This car was stolen from ${vehicle.location.fullAddress}. It has been most recently sighted near ${mostRecentSighting.location.fullAddress}.`
                         : `This map shows the original location where the vehicle was reported stolen.`
                     }
                 </CardDescription>
@@ -729,7 +761,7 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                                 <p className="text-sm text-muted-foreground">{sighting.message}</p>
                                 <div className="mt-2 text-xs text-muted-foreground space-y-1">
                                     <p className="flex items-center gap-2"><User size={14} /> Reported by {sighting.sighterName}</p>
-                                    <p className="flex items-center gap-2"><MapPin size={14} /> Sighted at {sighting.location}</p>
+                                    <p className="flex items-center gap-2"><MapPin size={14} /> Sighted at {sighting.location.fullAddress}</p>
                                     <p className="flex items-center gap-2"><Calendar size={14} /> On {formatDateTime(sighting.sightedAt)}</p>
                                 </div>
                            </div>
@@ -742,5 +774,3 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
     </div>
   );
 }
-
-    
