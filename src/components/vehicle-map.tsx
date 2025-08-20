@@ -63,7 +63,7 @@ const VehicleMap: FC<VehicleMapProps> = ({ vehicles }) => {
             position={{ lat: selectedVehicle.lat, lng: selectedVehicle.lng }}
             onCloseClick={() => setSelectedVehicle(null)}
             pixelOffset={[0,-40]}
-            headerDisabled
+            className="bg-transparent border-none shadow-none"
           >
             <Card className="w-80 bg-background/80 backdrop-blur-sm border-border text-foreground">
               <CardHeader className="p-4">
