@@ -106,13 +106,13 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
                     ...parseAddressComponents(result.address_components),
                     fullAddress: result.formatted_address
                 } as LocationInfo;
-                
+                 
                 setMarkerPos(newPos);
                 if (map) {
                     map.panTo(newPos);
                     map.setZoom(15);
                 }
-                
+                 
                 onLocationChange({ ...newPos, locationInfo });
                 if (type === 'REVERSE_GEOCODE') {
                     setSearchAddress(result.formatted_address);
@@ -140,7 +140,7 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
             geocodeLocation(newPos, 'REVERSE_GEOCODE');
         }
     };
-    
+     
     useEffect(() => {
       const initialLocation = form.getValues('location');
       if (initialLocation?.fullAddress) {
@@ -166,7 +166,7 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
                     className="h-12 rounded-lg pl-10"
                 />
             </div>
-            
+             
             <div className="h-64 w-full rounded-lg overflow-hidden border">
                 <Map
                     defaultCenter={markerPos}
@@ -181,7 +181,7 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
                     </AdvancedMarker>
                 </Map>
             </div>
-            
+             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <FormField
                     control={form.control}
@@ -298,7 +298,7 @@ export function VehicleReportForm() {
     control: form.control,
     name: 'make',
   });
-  
+   
   const currentPhotos = useWatch({
     control: form.control,
     name: 'photos',
@@ -326,7 +326,7 @@ export function VehicleReportForm() {
     };
     fetchMakes();
   }, [toast]);
-  
+   
   useEffect(() => {
     const savedFormData = localStorage.getItem('vehicleReportForm');
     if (savedFormData) {
@@ -381,7 +381,7 @@ export function VehicleReportForm() {
   const handlePrevStep = () => {
       setCurrentStep(prev => prev - 1);
   };
-  
+   
   const handleLocationChange = useCallback(({ lat, lng, locationInfo }: { lat: number; lng: number; locationInfo: LocationInfo }) => {
     form.setValue('lat', lat);
     form.setValue('lng', lng);
@@ -404,7 +404,7 @@ export function VehicleReportForm() {
         const file = files[i];
         newImagePromises.push(compressImage(file));
     }
-    
+     
     Promise.all(newImagePromises).then(newImages => {
         const updatedPhotos = [...(form.getValues('photos') || []), ...newImages];
         form.setValue('photos', updatedPhotos, { shouldValidate: true });
@@ -417,7 +417,7 @@ export function VehicleReportForm() {
         setIsUploading(false);
     });
   };
-  
+   
   const removeImage = (indexToRemove: number) => {
     const updatedPhotos = (form.getValues('photos') || []).filter((_, index) => index !== indexToRemove);
     form.setValue('photos', updatedPhotos, { shouldValidate: true });
@@ -435,7 +435,7 @@ export function VehicleReportForm() {
         router.push('/login');
         return;
     }
-    
+     
     setIsSubmitting(true);
 
     try {
@@ -448,7 +448,7 @@ export function VehicleReportForm() {
             setIsSubmitting(false);
             return;
         }
-    
+     
         const reportId = await submitVehicleReport(data as Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'reporterId' | 'sightingsCount'>);
 
         if (reportId) {
@@ -481,7 +481,7 @@ export function VehicleReportForm() {
         </div>
     );
   }
-  
+   
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -495,8 +495,8 @@ export function VehicleReportForm() {
                             <FormItem className="flex flex-col">
                                 <FormLabel>Make</FormLabel>
                                 <Popover open={isMakePopoverOpen} onOpenChange={setIsMakePopoverOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
+                                    <FormControl>
+                                        <PopoverTrigger asChild>
                                             <Button
                                                 variant="outline"
                                                 role="combobox"
@@ -510,8 +510,8 @@ export function VehicleReportForm() {
                                                     : "Select Make"}
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
+                                        </PopoverTrigger>
+                                    </FormControl>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
                                             <CommandInput placeholder="Search make..." />
@@ -555,8 +555,8 @@ export function VehicleReportForm() {
                             <FormItem className="flex flex-col">
                                 <FormLabel>Model</FormLabel>
                                 <Popover open={isModelPopoverOpen} onOpenChange={setIsModelPopoverOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
+                                    <FormControl>
+                                        <PopoverTrigger asChild>
                                             <Button
                                                 variant="outline"
                                                 role="combobox"
@@ -569,13 +569,13 @@ export function VehicleReportForm() {
                                                 {field.value || "Select or Type Model"}
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
+                                        </PopoverTrigger>
+                                    </FormControl>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
                                             <CommandInput 
                                                 placeholder="Search or type model..."
-                                                onValueChange={field.onChange}
+                                                onValueChange={(value) => form.setValue("model", value)}
                                                 value={field.value}
                                             />
                                             <CommandEmpty>No model found. You can type a custom one.</CommandEmpty>
@@ -705,7 +705,7 @@ export function VehicleReportForm() {
                     <APIProvider apiKey={apiKey}>
                         <LocationPicker onLocationChange={handleLocationChange} />
                     </APIProvider>
-                    
+                     
                     <FormField
                         control={form.control}
                         name="date"
@@ -719,128 +719,83 @@ export function VehicleReportForm() {
                         </FormItem>
                         )}
                     />
-                     <div className="sm:col-span-2">
-                        <FormField
-                            control={form.control}
-                            name="additionalInfo"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Additional Information (Optional)</FormLabel>
-                                <FormControl>
-                                <Textarea
-                                    placeholder="Provide any other details that might be helpful"
-                                    className="resize-none min-h-[100px] rounded-lg"
-                                    {...field}
-                                    value={field.value ?? ''}
-                                />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    </div>
                 </div>
             )}
-
+            
             {currentStep === 3 && (
-                 <div className="space-y-6">
-                    <div className="flex items-center space-x-2">
-                        <Switch id="reward-switch" checked={showReward} onCheckedChange={setShowReward} />
-                        <Label htmlFor="reward-switch">Offer a Reward?</Label>
-                    </div>
-
-                    {showReward && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 border rounded-lg">
-                            <FormField
-                                control={form.control}
-                                name="rewardAmount"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Reward Amount (£) (Optional)</FormLabel>
-                                    <div className="relative">
-                                        <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                        <FormControl>
-                                            <Input type="number" placeholder="e.g., 500" {...field} value={field.value ?? ''} className="h-12 rounded-lg pl-10" />
-                                        </FormControl>
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="rewardDetails"
-                                render={({ field }) => (
-                                <FormItem className="sm:col-span-2">
-                                    <FormLabel>Reward Details</FormLabel>
-                                    <FormControl>
-                                    <Textarea
-                                        placeholder="e.g., Reward for information leading to recovery. Higher reward for direct finding."
-                                        className="resize-none min-h-[100px] rounded-lg"
-                                        {...field}
-                                        value={field.value ?? ''}
-                                    />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
+                 <div className="grid grid-cols-1 gap-x-8 gap-y-6">
+                    <div>
+                        <div className="flex items-center space-x-2 mb-4">
+                            <Switch id="reward-switch" checked={showReward} onCheckedChange={setShowReward} />
+                            <Label htmlFor="reward-switch">Offer a reward?</Label>
                         </div>
-                    )}
-
-
-                    <div className="sm:col-span-2">
-                        <FormField
-                            control={form.control}
-                            name="photos"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Vehicle Photos (Optional)</FormLabel>
-                                        <div className="relative flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-input bg-background p-8 transition-colors hover:border-primary">
-                                        <div className="text-center">
-                                            {isUploading ? (
-                                                <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-                                            ) : (
-                                                <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                                            )}
-                                            <p className="mt-4 text-sm text-muted-foreground">
-                                                <span className="font-semibold text-primary">Click to upload</span> or drag and drop
-                                            </p>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                PNG, JPG up to 10MB each.
-                                            </p>
+                        {showReward && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
+                                <FormField
+                                    control={form.control}
+                                    name="rewardAmount"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Reward Amount (£)</FormLabel>
+                                        <div className="relative">
+                                            <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                            <FormControl>
+                                                <Input type="number" {...field} value={field.value ?? ''} className="pl-10 h-12 rounded-lg" />
+                                            </FormControl>
                                         </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="rewardDetails"
+                                    render={({ field }) => (
+                                    <FormItem className="md:col-span-2">
+                                        <FormLabel>Reward Details</FormLabel>
                                         <FormControl>
-                                            <Input 
-                                                id="photos" 
-                                                type="file" 
-                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                                                multiple 
-                                                onChange={handleFileChange}
-                                                accept="image/png, image/jpeg"
-                                                disabled={isUploading}
-                                            />
-                                        </FormControl>
-                                        </div>
-                                    <FormMessage />
-                                </FormItem>
-                             )}
-                        />
-                         {imagePreviews.length > 0 && (
-                            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                {imagePreviews.map((src, index) => (
-                                    <div key={index} className="relative group aspect-video">
-                                        <Image
-                                            src={src}
-                                            alt={`Preview ${index + 1}`}
-                                            fill
-                                            className="rounded-md object-cover"
+                                        <Textarea
+                                            placeholder="e.g., Reward for information leading to recovery..."
+                                            className="resize-none min-h-[100px] rounded-lg"
+                                            {...field}
+                                            value={field.value ?? ''}
                                         />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            </div>
+                        )}
+                    </div>
+                     <div>
+                        <FormLabel>Upload Photos (Optional)</FormLabel>
+                        <div className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10">
+                            <div className="text-center">
+                                <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+                                <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
+                                <Label
+                                    htmlFor="file-upload"
+                                    className="relative cursor-pointer rounded-md bg-background font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary/80"
+                                >
+                                    <span>{isUploading ? 'Processing...' : 'Upload files'}</span>
+                                    <Input id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept="image/*" disabled={isUploading} />
+                                </Label>
+                                <p className="pl-1">or drag and drop</p>
+                                </div>
+                                <p className="text-xs leading-5 text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
+                            </div>
+                        </div>
+                         {imagePreviews.length > 0 && (
+                            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {imagePreviews.map((src, index) => (
+                                    <div key={index} className="relative group">
+                                        <Image src={src} alt={`Preview ${index}`} width={150} height={150} className="rounded-lg object-cover aspect-square" />
                                         <Button
                                             type="button"
                                             variant="destructive"
                                             size="icon"
-                                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                                             onClick={() => removeImage(index)}
                                         >
                                             <X className="h-4 w-4" />
@@ -853,32 +808,29 @@ export function VehicleReportForm() {
                  </div>
             )}
         </div>
-
-        <div className="flex justify-between items-center pt-4 border-t">
-            <div>
-              {currentStep > 0 && (
-                  <Button type="button" variant="outline" onClick={handlePrevStep}>
-                      <ChevronLeft className="mr-2 h-4 w-4" /> Back
-                  </Button>
-              )}
-            </div>
-             <div className="flex-1 text-center text-sm font-medium text-muted-foreground">
-                Step {currentStep + 1} of {steps.length}
-            </div>
-            <div>
-              {currentStep < steps.length - 1 && (
-                  <Button type="button" onClick={handleNextStep}>
-                      Next <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-              )}
-              {currentStep === steps.length - 1 && (
-                  <Button type="submit" size="lg" className="w-full h-12 text-base font-bold shadow-lg shadow-primary/30 transition-all duration-300 hover:scale-105" disabled={authLoading || isSubmitting}>
-                    {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting...</> : (authLoading ? 'Authenticating...' : 'Alert the Network')}
-                  </Button>
-              )}
-            </div>
+        
+        <div className="flex justify-between items-center pt-8 border-t">
+          <div>
+            {currentStep > 0 && (
+              <Button type="button" variant="outline" onClick={handlePrevStep}>
+                <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">Step {currentStep + 1} of {steps.length}</span>
+            {currentStep < steps.length - 1 ? (
+              <Button type="button" onClick={handleNextStep}>
+                Next <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            ) : (
+              <Button type="submit" disabled={isSubmitting || authLoading}>
+                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {isSubmitting ? 'Submitting...' : 'Submit Report'}
+              </Button>
+            )}
+          </div>
         </div>
-
       </form>
     </Form>
   );
