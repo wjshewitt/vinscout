@@ -37,7 +37,8 @@ import {
     arrayUnion,
     arrayRemove,
     runTransaction,
-    collectionGroup
+    collectionGroup,
+    FieldValue
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 
@@ -78,6 +79,7 @@ const createUserProfileDocument = async (user: User, details: { displayName?: st
                 photoURL,
                 createdAt,
                 blockedUsers: [],
+                geofences: [],
             });
         } catch (error) {
             console.error('Error creating user profile', error);
@@ -192,6 +194,13 @@ export interface Message {
     senderId: string;
     text: string;
     createdAt: string;
+}
+
+export interface GeofenceLocation {
+    name: string;
+    address: string;
+    lat: number;
+    lng: number;
 }
 
 const toVehicleReport = (docSnap: any): VehicleReport => {
@@ -474,15 +483,14 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
     let ownerData: { displayName: string, photoURL: string };
 
     if (!ownerDoc.exists()) {
-       // This is a fallback. The owner should have a user profile, but if not, create a basic one.
-       // This can happen if the owner user was created before the profile creation logic was added.
         await setDoc(ownerRef, {
            uid: vehicle.reporterId,
            displayName: 'Vehicle Owner',
            email: 'N/A',
            photoURL: '',
            createdAt: serverTimestamp(),
-           blockedUsers: []
+           blockedUsers: [],
+           geofences: [],
        });
        ownerDoc = await getDoc(ownerRef); // Re-fetch
     }
@@ -494,7 +502,6 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
             photoURL: data.photoURL || ''
         };
     } else {
-        // This should theoretically never be reached now due to the fallback creation.
         throw new Error("Could not find or create the vehicle owner's data.");
     }
 
@@ -538,9 +545,7 @@ async function ensureUserDocExists(userId: string) {
     const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
     if (!userSnap.exists()) {
-        // If the user document doesn't exist, create a basic one.
-        // This can happen for older accounts. We might not have all details.
-        const authUser = auth.currentUser; // Check if the current user is the one we are modifying
+        const authUser = auth.currentUser;
         const details = (authUser && authUser.uid === userId) 
             ? { displayName: authUser.displayName, email: authUser.email, photoURL: authUser.photoURL } 
             : { displayName: 'User', email: 'N/A', photoURL: ''};
@@ -552,6 +557,7 @@ async function ensureUserDocExists(userId: string) {
             photoURL: details.photoURL,
             createdAt: serverTimestamp(),
             blockedUsers: [],
+            geofences: [],
         });
     }
 }
@@ -585,6 +591,45 @@ export async function checkIfUserIsBlocked(blockerId: string, blockedId: string)
     }
     return false;
 }
+
+// --- Geofence Functions ---
+
+export const getUserGeofences = async (userId: string): Promise<GeofenceLocation[]> => {
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+        return userSnap.data().geofences || [];
+    }
+    return [];
+};
+
+export const saveUserGeofence = async (userId: string, location: GeofenceLocation) => {
+    const userRef = doc(db, 'users', userId);
+    await ensureUserDocExists(userId); // Ensure document exists before updating
+
+    // We need to remove any old geofence with the same name before adding the new one
+    await runTransaction(db, async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        const geofences = userDoc.data()?.geofences || [];
+        const filteredGeofences = geofences.filter((g: GeofenceLocation) => g.name !== location.name);
+        transaction.update(userRef, {
+            geofences: [...filteredGeofences, location]
+        });
+    });
+};
+
+
+export const deleteUserGeofence = async (userId: string, locationName: string) => {
+    const userRef = doc(db, 'users', userId);
+    await ensureUserDocExists(userId);
+
+    await runTransaction(db, async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        const geofences = userDoc.data()?.geofences || [];
+        const updatedGeofences = geofences.filter((g: GeofenceLocation) => g.name !== locationName);
+        transaction.update(userRef, { geofences: updatedGeofences });
+    });
+};
 
 
 export { auth, db };
