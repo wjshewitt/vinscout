@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, useWatch, useFormContext } from 'react-hook-form';
@@ -274,6 +275,7 @@ export function VehicleReportForm() {
   
   const [isMakePopoverOpen, setIsMakePopoverOpen] = useState(false);
   const [isModelPopoverOpen, setIsModelPopoverOpen] = useState(false);
+  const [isYearPopoverOpen, setIsYearPopoverOpen] = useState(false);
 
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
@@ -492,20 +494,21 @@ export function VehicleReportForm() {
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Make</FormLabel>
-                                <FormControl>
                                   <Popover open={isMakePopoverOpen} onOpenChange={setIsMakePopoverOpen}>
                                     <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className={cn(
-                                                "w-full justify-between h-12 rounded-lg",
-                                                !field.value && "text-muted-foreground"
-                                            )}
-                                        >
-                                            {field.value || "Select Make"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
+                                        <FormControl>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "w-full justify-between h-12 rounded-lg",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value || "Select Make"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
@@ -541,7 +544,6 @@ export function VehicleReportForm() {
                                         </Command>
                                     </PopoverContent>
                                   </Popover>
-                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
@@ -552,21 +554,22 @@ export function VehicleReportForm() {
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Model</FormLabel>
-                                <FormControl>
                                   <Popover open={isModelPopoverOpen} onOpenChange={setIsModelPopoverOpen}>
                                       <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            disabled={!selectedMake}
-                                            className={cn(
-                                                "w-full justify-between h-12 rounded-lg",
-                                                !field.value && "text-muted-foreground"
-                                            )}
-                                        >
-                                            {field.value || "Select or Type Model"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
+                                        <FormControl>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                disabled={!selectedMake}
+                                                className={cn(
+                                                    "w-full justify-between h-12 rounded-lg",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value || "Select or Type Model"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
                                       </PopoverTrigger>
                                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                           <Command
@@ -608,7 +611,6 @@ export function VehicleReportForm() {
                                           </Command>
                                       </PopoverContent>
                                   </Popover>
-                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
@@ -617,22 +619,57 @@ export function VehicleReportForm() {
                         control={form.control}
                         name="year"
                         render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Year</FormLabel>
-                            <Select onValueChange={(value) => field.onChange(parseInt(value, 10))} value={field.value?.toString()}>
-                            <FormControl>
-                                <SelectTrigger className="h-12 rounded-lg">
-                                <SelectValue placeholder="Select Year" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {years.map((year) => (
-                                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                                ))}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Year</FormLabel>
+                                <Popover open={isYearPopoverOpen} onOpenChange={setIsYearPopoverOpen}>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "w-full justify-between h-12 rounded-lg",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value || "Select Year"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search year..." />
+                                            <CommandEmpty>No year found.</CommandEmpty>
+                                            <CommandList>
+                                                <CommandGroup>
+                                                    {years.map((year) => (
+                                                        <CommandItem
+                                                            value={year.toString()}
+                                                            key={year}
+                                                            onSelect={() => {
+                                                                form.setValue("year", year);
+                                                                setIsYearPopoverOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    year === field.value
+                                                                        ? "opacity-100"
+                                                                        : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {year}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                            </FormItem>
                         )}
                     />
                  </div>
@@ -838,3 +875,5 @@ export function VehicleReportForm() {
     </Form>
   );
 }
+
+    
