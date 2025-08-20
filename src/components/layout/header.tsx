@@ -40,6 +40,7 @@ export function Header() {
   const navLinks = [
     { href: '/', label: 'Home' },
     { href: '/map', label: 'Live Map' },
+    { href: '/about', label: 'About' },
     { href: '/community', label: 'Community' },
   ];
 
