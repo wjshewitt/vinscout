@@ -13,11 +13,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
 import { useState, useEffect, useMemo } from 'react';
 import { getVehicleReports, VehicleReport } from '@/lib/firebase';
+import { useDebounce } from 'use-debounce';
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
   const [reports, setReports] = useState<VehicleReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -31,7 +34,19 @@ export default function Home() {
 
   const isLoggedIn = !!user;
 
-  const recentVehicles = reports.slice(0, 3);
+  const filteredReports = useMemo(() => {
+    if (!debouncedSearchQuery) {
+      return reports;
+    }
+    const lowercasedQuery = debouncedSearchQuery.toLowerCase();
+    return reports.filter(report =>
+      report.make.toLowerCase().includes(lowercasedQuery) ||
+      report.model.toLowerCase().includes(lowercasedQuery) ||
+      report.location.toLowerCase().includes(lowercasedQuery)
+    );
+  }, [reports, debouncedSearchQuery]);
+
+  const recentVehicles = useMemo(() => filteredReports.slice(0, 3), [filteredReports]);
   
   const stats = useMemo(() => {
     if (loading) return { active: 0, recovered: 0, sightings: 0 };
@@ -149,7 +164,12 @@ export default function Home() {
         <CardHeader>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input placeholder="Search by Make, Model, Location..." className="pl-10" />
+            <Input 
+              placeholder="Search by Make, Model, Location..." 
+              className="pl-10" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -168,8 +188,8 @@ export default function Home() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {reports.length > 0 ? (
-                  reports.map((vehicle) => (
+                {filteredReports.length > 0 ? (
+                  filteredReports.map((vehicle) => (
                     <TableRow key={vehicle.id}>
                       <TableCell>
                         <div className="flex items-center gap-4">
@@ -195,7 +215,7 @@ export default function Home() {
                 ) : (
                     <TableRow>
                         <TableCell colSpan={4} className="text-center py-20 text-muted-foreground">
-                            No vehicle reports found.
+                            No vehicle reports found matching your search.
                         </TableCell>
                     </TableRow>
                 )}
