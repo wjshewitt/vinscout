@@ -212,9 +212,10 @@ export function VehicleReportForm() {
         try {
             const response = await fetch(`/api/vehicles?make=${encodeURIComponent(make)}`);
             const data = await response.json();
-            setModels(data.models);
+            setModels(data.models || []);
         } catch (error) {
             console.error('Failed to fetch vehicle models:', error);
+            setModels([]);
             toast({
                 variant: 'destructive',
                 title: 'Error',
@@ -630,5 +631,3 @@ export function VehicleReportForm() {
     </Form>
   );
 }
-
-    
