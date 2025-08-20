@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -6,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { Loader2, MapPin, Search, Trash2, Minus, Plus, Redo2 } from 'lucide-react';
+import { Loader2, MapPin, Search, Trash2, Minus, Plus, Redo2, Mail, MessageSquare, Phone } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { APIProvider, Map, AdvancedMarker, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import { useDebouncedCallback } from 'use-debounce';
@@ -176,6 +177,7 @@ function MapComponent({
 
 function AddLocationDialog({ onSave, onOpenChange }: { onSave: (location: GeofenceLocation) => Promise<void>, onOpenChange: (open: boolean) => void }) {
   const map = useMap();
+  const { toast } = useToast();
   const [name, setName] =useState('');
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number, lng: number, address: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -228,13 +230,13 @@ function AddLocationDialog({ onSave, onOpenChange }: { onSave: (location: Geofen
         } else if (shapeType === 'polygon' && shape instanceof google.maps.Polygon) {
             const path = shape.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
             if (path.length < 3) {
-                 useToast().toast({ variant: 'destructive', title: 'Invalid Polygon', description: 'Please draw a valid shape with at least 3 points.' });
+                 toast({ variant: 'destructive', title: 'Invalid Polygon', description: 'Please draw a valid shape with at least 3 points.' });
                  setIsSaving(false);
                  return;
             }
             geofenceData.path = path;
         } else {
-             useToast().toast({ variant: 'destructive', title: 'Invalid Shape', description: 'Please define a radius or draw a polygon.' });
+             toast({ variant: 'destructive', title: 'Invalid Shape', description: 'Please define a radius or draw a polygon.' });
              setIsSaving(false);
              return;
         }
@@ -327,7 +329,12 @@ export default function NotificationsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [locations, setLocations] = useState<GeofenceLocation[]>([]);
-  const [settings, setSettings] = useState<UserNotificationSettings>({ nationalAlerts: false, localAlerts: true });
+  const [settings, setSettings] = useState<UserNotificationSettings>({ 
+      nationalAlerts: false, 
+      localAlerts: true,
+      notificationChannels: { email: true, sms: false, whatsapp: false },
+      phoneNumber: ''
+  });
   const [loading, setLoading] = useState(true);
   const [isAddLocationDialogOpen, setIsAddLocationDialogOpen] = useState(false);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -352,7 +359,7 @@ export default function NotificationsPage() {
     const newSettings = { ...settings, ...changedSettings };
     setSettings(newSettings); // Optimistic update
     try {
-        await saveNotificationSettings(user.uid, newSettings);
+        await saveNotificationSettings(user.uid, changedSettings); // Only send the changed part
         toast({
             title: "Settings Saved",
             description: "Your notification preferences have been updated.",
@@ -400,11 +407,20 @@ export default function NotificationsPage() {
      }
   };
 
+  const handleChannelChange = (channel: 'email' | 'sms' | 'whatsapp', value: boolean) => {
+      const newChannels = { ...settings.notificationChannels, [channel]: value };
+      handleSettingsChange({ notificationChannels: newChannels });
+  };
+  
+  const handlePhoneNumberChange = useDebouncedCallback((value: string) => {
+    handleSettingsChange({ phoneNumber: value });
+  }, 500);
+
   return (
     <div className="container mx-auto py-12 max-w-4xl">
         <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-tight">Notification Settings</h1>
-            <p className="mt-2 text-muted-foreground">Choose how you want to be notified about stolen vehicle reports.</p>
+            <p className="mt-2 text-muted-foreground">Choose how and where you want to be notified about stolen vehicle reports.</p>
         </div>
         
         {loading || !apiKey ? (
@@ -416,7 +432,7 @@ export default function NotificationsPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Alert Preferences</CardTitle>
-                        <CardDescription>Select the types of alerts you would like to receive.</CardDescription>
+                        <CardDescription>Select the types of alerts you would like to receive and how you get them.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                          <div className="flex items-center justify-between space-x-4 rounded-lg border p-4">
@@ -441,6 +457,59 @@ export default function NotificationsPage() {
                                 onCheckedChange={(checked) => handleSettingsChange({ localAlerts: checked })}
                             />
                         </div>
+                         <Separator />
+                         <div>
+                            <h4 className="text-base font-medium mb-4">Notification Channels</h4>
+                            <div className="space-y-4">
+                               <div className="flex items-center justify-between space-x-4">
+                                  <Label htmlFor="email-channel" className="flex items-center gap-3 text-sm font-medium">
+                                    <Mail className="w-5 h-5 text-muted-foreground"/>
+                                    <span>Email Notifications</span>
+                                  </Label>
+                                  <Switch
+                                      id="email-channel"
+                                      checked={settings.notificationChannels?.email}
+                                      onCheckedChange={(checked) => handleChannelChange('email', checked)}
+                                  />
+                              </div>
+                               <div className="flex items-center justify-between space-x-4">
+                                  <Label htmlFor="sms-channel" className="flex items-center gap-3 text-sm font-medium">
+                                    <MessageSquare className="w-5 h-5 text-muted-foreground"/>
+                                    <span>SMS Notifications</span>
+                                  </Label>
+                                  <Switch
+                                      id="sms-channel"
+                                      checked={settings.notificationChannels?.sms}
+                                      onCheckedChange={(checked) => handleChannelChange('sms', checked)}
+                                  />
+                              </div>
+                               <div className="flex items-center justify-between space-x-4">
+                                  <Label htmlFor="whatsapp-channel" className="flex items-center gap-3 text-sm font-medium">
+                                    <Phone className="w-5 h-5 text-muted-foreground"/>
+                                    <span>WhatsApp Notifications</span>
+                                  </Label>
+                                  <Switch
+                                      id="whatsapp-channel"
+                                      checked={settings.notificationChannels?.whatsapp}
+                                      onCheckedChange={(checked) => handleChannelChange('whatsapp', checked)}
+                                  />
+                              </div>
+                               {(settings.notificationChannels?.sms || settings.notificationChannels?.whatsapp) && (
+                                 <div className="pt-2">
+                                     <Label htmlFor="phone-number">Phone Number</Label>
+                                     <Input 
+                                         id="phone-number"
+                                         type="tel"
+                                         placeholder="Enter phone number with country code"
+                                         defaultValue={settings.phoneNumber}
+                                         onChange={(e) => handlePhoneNumberChange(e.target.value)}
+                                         className="mt-2"
+                                     />
+                                     <p className="text-xs text-muted-foreground mt-2">Used for SMS and/or WhatsApp notifications. Carrier charges may apply.</p>
+                                 </div>
+                               )}
+                            </div>
+                         </div>
                     </CardContent>
                 </Card>
 
@@ -493,7 +562,7 @@ export default function NotificationsPage() {
                         </div>
                          <Dialog open={isAddLocationDialogOpen} onOpenChange={setIsAddLocationDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button className="mt-6 w-full" variant="outline">Add New Location</Button>
+                                <Button className="mt-6 w-full" variant="outline" disabled={!settings.localAlerts}>Add New Location</Button>
                             </DialogTrigger>
                             <APIProvider apiKey={apiKey}>
                                 <AddLocationDialog onSave={handleSaveLocation} onOpenChange={setIsAddLocationDialogOpen} />
@@ -506,4 +575,5 @@ export default function NotificationsPage() {
     </div>
   );
 }
+
 

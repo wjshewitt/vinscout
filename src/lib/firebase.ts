@@ -83,6 +83,12 @@ const createUserProfileDocument = async (user: User, details: { displayName?: st
                 notificationSettings: {
                     nationalAlerts: false,
                     localAlerts: true,
+                    notificationChannels: {
+                        email: true,
+                        sms: false,
+                        whatsapp: false,
+                    },
+                    phoneNumber: ''
                 }
             });
         } catch (error) {
@@ -114,11 +120,6 @@ export const logout = async () => {
 
 export const signUpWithEmail = async (name: string, email: string, pass: string): Promise<{user: User | null, error: AuthError | null}> => {
     try {
-        const existingUser = await fetch(`/api/user-exists?email=${encodeURIComponent(email)}`).then(res => res.json());
-        if(existingUser.exists) {
-            return { user: null, error: { code: 'auth/email-already-in-use' } as AuthError };
-        }
-        
         const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
         const user = userCredential.user;
         await updateProfile(user, { displayName: name });
@@ -213,6 +214,12 @@ export interface GeofenceLocation {
 export interface UserNotificationSettings {
   nationalAlerts: boolean;
   localAlerts: boolean;
+  notificationChannels?: {
+    email: boolean;
+    sms: boolean;
+    whatsapp: boolean;
+  };
+  phoneNumber?: string;
 }
 
 const toVehicleReport = (docSnap: any): VehicleReport => {
@@ -321,7 +328,7 @@ export const listenToUnreadCount = (userId: string, callback: (count: number) =>
         where('participants', 'array-contains', userId)
     );
 
-    return onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
         let totalUnread = 0;
         snapshot.forEach(docSnap => {
             const convo = toConversation(docSnap);
@@ -336,6 +343,8 @@ export const listenToUnreadCount = (userId: string, callback: (count: number) =>
     }, (error) => {
         console.error("Error listening to unread count:", error);
     });
+    
+    return unsubscribe;
 };
 
 // Listen to a user's conversations
@@ -410,7 +419,10 @@ export const listenToMessages = (
                     });
                 }
             } else {
-                // If the user is not viewing, show a toast. This is now handled in the Header.
+                 toast({
+                    title: "New Message",
+                    description: `You have a new message.`,
+                });
             }
         }
     }, (error) => {
@@ -498,30 +510,29 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
     let ownerDoc = await getDoc(ownerRef);
     let ownerData: { displayName: string, photoURL: string };
 
+    // Fallback logic to create a user document if one doesn't exist for the owner.
     if (!ownerDoc.exists()) {
-       // Fallback: This should ideally not happen if createUserProfileDocument is robust.
        try {
-           const authUser = (await getAuth().getUser(vehicle.reporterId)).providerData[0];
-           if (authUser) {
-               await createUserProfileDocument({ uid: vehicle.reporterId, ...authUser } as User, { displayName: authUser.displayName });
-               ownerDoc = await getDoc(ownerRef);
-           } else {
-               throw new Error("Could not find the vehicle owner's data in auth.");
-           }
+           console.warn(`User document for owner ${vehicle.reporterId} not found. Attempting to create one.`);
+           await ensureUserDocExists(vehicle.reporterId);
+           ownerDoc = await getDoc(ownerRef); // Re-fetch the doc
+           if (!ownerDoc.exists()) throw new Error("Could not create owner document.");
+           
+           const data = ownerDoc.data();
+           ownerData = {
+               displayName: data?.displayName || 'Vehicle Owner',
+               photoURL: data?.photoURL || ''
+           };
        } catch (e) {
-         console.error("Auth lookup failed for owner", e);
+         console.error("Auth lookup and creation failed for owner", e);
          throw new Error("Could not find the vehicle owner's data.");
        }
-    }
-    
-    if (ownerDoc.exists()) {
+    } else {
         const data = ownerDoc.data();
         ownerData = {
             displayName: data.displayName || 'Vehicle Owner',
             photoURL: data.photoURL || ''
         };
-    } else {
-        throw new Error("Could not find or create the vehicle owner's data.");
     }
 
     const initiatorName = initiator.displayName || 'Anonymous User';
@@ -569,7 +580,7 @@ async function ensureUserDocExists(userId: string) {
             const authUser = auth.currentUser;
             const details = (authUser && authUser.uid === userId) 
                 ? { displayName: authUser.displayName, email: authUser.email, photoURL: authUser.photoURL } 
-                : {};
+                : { displayName: 'User', email: 'N/A', photoURL: '' };
 
             await createUserProfileDocument({ uid: userId, ...details } as User, { displayName: details.displayName });
         } catch (error) {
@@ -586,6 +597,8 @@ async function ensureUserDocExists(userId: string) {
                 notificationSettings: {
                     nationalAlerts: false,
                     localAlerts: true,
+                    notificationChannels: { email: true, sms: false, whatsapp: false },
+                    phoneNumber: ''
                 }
             });
         }
@@ -628,18 +641,33 @@ export const getNotificationSettings = async (userId: string): Promise<UserNotif
     const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
     if (userSnap.exists() && userSnap.data().notificationSettings) {
-        return userSnap.data().notificationSettings;
+        const settings = userSnap.data().notificationSettings;
+        // Provide default values for new fields if they don't exist
+        return {
+            nationalAlerts: settings.nationalAlerts ?? false,
+            localAlerts: settings.localAlerts ?? true,
+            notificationChannels: settings.notificationChannels ?? { email: true, sms: false, whatsapp: false },
+            phoneNumber: settings.phoneNumber ?? ''
+        };
     }
     // Return default settings if none are found
-    return { nationalAlerts: false, localAlerts: true };
+    return { 
+        nationalAlerts: false, 
+        localAlerts: true,
+        notificationChannels: { email: true, sms: false, whatsapp: false },
+        phoneNumber: ''
+    };
 };
 
-export const saveNotificationSettings = async (userId: string, settings: UserNotificationSettings) => {
+export const saveNotificationSettings = async (userId: string, settings: Partial<UserNotificationSettings>) => {
     await ensureUserDocExists(userId);
     const userRef = doc(db, 'users', userId);
-    return updateDoc(userRef, {
-        notificationSettings: settings
-    });
+    // Use dot notation to update nested objects
+    const updateData: { [key: string]: any } = {};
+    for (const [key, value] of Object.entries(settings)) {
+        updateData[`notificationSettings.${key}`] = value;
+    }
+    return updateDoc(userRef, updateData);
 };
 
 export const getUserGeofences = async (userId: string): Promise<GeofenceLocation[]> => {
