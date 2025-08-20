@@ -75,7 +75,7 @@ export default function MyVehiclesPage() {
                 {reports.map((vehicle) => (
                   <TableRow key={vehicle.id}>
                     <TableCell className="font-medium">{vehicle.make} {vehicle.model} ({vehicle.year})</TableCell>
-                    <TableCell>{vehicle.licensePlate}</TableCell>
+                    <TableCell className="font-mono">{vehicle.licensePlate}</TableCell>
                     <TableCell>{formatDate(vehicle.reportedAt)}</TableCell>
                     <TableCell>
                       <Badge variant={vehicle.status === 'Active' ? 'default' : 'secondary'}>
