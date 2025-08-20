@@ -2,20 +2,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Button } from '../ui/button';
-
-declare global {
-  interface Window {
-    kofiToggleOverlay: () => void;
-  }
-}
 
 export function Footer() {
-  const handleSupportClick = () => {
-    if (window.kofiToggleOverlay) {
-      window.kofiToggleOverlay();
-    }
-  };
 
   return (
     <footer className="bg-background border-t border-border mt-auto">
@@ -25,9 +13,7 @@ export function Footer() {
           <Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
           <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
           <a href="mailto:hewittjswill@gmail.com" className="hover:text-foreground transition-colors">Contact Us</a>
-          <Button onClick={handleSupportClick} size="sm">
-            Support Me
-          </Button>
+          <button id="kofi-button" className="kofi-button-class">Support Me</button>
         </div>
       </div>
     </footer>

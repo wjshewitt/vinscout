@@ -8,36 +8,51 @@ declare global {
   interface Window {
     kofiWidgetOverlay: {
       draw: (username: string, config: any) => void;
-      toggle: () => void;
+      setConfig: (configName: string, config: any) => void;
+      getButton: (username: string, config: any) => Node | null;
     };
-    kofiToggleOverlay: () => void;
   }
 }
 
 export function KofiWidget() {
+
   useEffect(() => {
-    // Define the toggle function and attach it to the window
-    window.kofiToggleOverlay = () => {
-      if (window.kofiWidgetOverlay) {
-        window.kofiWidgetOverlay.toggle();
-      }
+    // This effect runs only on the client side after the component mounts
+    const kofiButton = document.getElementById('kofi-button');
+
+    const initializeKofi = () => {
+       if (window.kofiWidgetOverlay) {
+          window.kofiWidgetOverlay.setConfig('Overlay', {
+            'widgetToken': 'autofind'
+          });
+
+          if (kofiButton) {
+            kofiButton.addEventListener('click', () => {
+              window.kofiWidgetOverlay.draw('autofind', {
+                  'type': 'donation-panel',
+                  'panel.template': 'modern',
+                  'panel.goal.show': 'true'
+              });
+            });
+          }
+       }
     };
+    
+    // Check if script is already loaded
+    if(document.querySelector('script[src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"]')) {
+        initializeKofi();
+    } else {
+        const script = document.createElement('script');
+        script.src = 'https://storage.ko-fi.com/cdn/scripts/overlay-widget.js';
+        script.onload = initializeKofi;
+        document.head.appendChild(script);
+    }
+    
+    return () => {
+      // Cleanup if needed, though for a persistent button it's usually not necessary
+    };
+
   }, []);
 
-  return (
-    <Script
-      src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"
-      strategy="afterInteractive"
-      onLoad={() => {
-        if (window.kofiWidgetOverlay) {
-          window.kofiWidgetOverlay.draw('autofind', {
-            'type': 'button', // Use 'button' type to just load the logic without rendering a button
-            'text': 'Support Me',
-            'backgroundColor': '#00b9fe',
-            'textColor': '#fff'
-          });
-        }
-      }}
-    />
-  );
+  return null; // This component doesn't render anything itself
 }
