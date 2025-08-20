@@ -4,7 +4,7 @@
 import VehicleMap from "@/components/vehicle-map";
 import { VehicleInfoPanel } from "@/components/vehicle-info-panel";
 import { useState, useEffect } from "react";
-import { getVehicleReports, VehicleReport } from "@/lib/firebase";
+import { listenToVehicleReports, VehicleReport } from "@/lib/firebase";
 import { Loader2 } from "lucide-react";
 
 export default function MapPage() {
@@ -13,13 +13,14 @@ export default function MapPage() {
     const [selectedVehicle, setSelectedVehicle] = useState<VehicleReport | null>(null);
 
     useEffect(() => {
-        const fetchReports = async () => {
-            setLoading(true);
-            const fetchedReports = await getVehicleReports();
+        setLoading(true);
+        const unsubscribe = listenToVehicleReports((fetchedReports) => {
             setReports(fetchedReports.filter(r => r.lat && r.lng));
             setLoading(false);
-        };
-        fetchReports();
+        });
+
+        // Cleanup subscription on unmount
+        return () => unsubscribe();
     }, []);
 
     const handleVehicleSelect = (vehicle: VehicleReport | null) => {

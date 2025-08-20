@@ -318,6 +318,25 @@ export const getVehicleReports = async (): Promise<VehicleReport[]> => {
     }
 };
 
+// Listen to all vehicle reports in real-time
+export const listenToVehicleReports = (callback: (reports: VehicleReport[]) => void): Unsubscribe => {
+    const q = query(collection(db, "vehicleReports"), orderBy("reportedAt", "desc"));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const reports = querySnapshot.docs.map(toVehicleReport);
+        callback(reports);
+    }, (error) => {
+        console.error("Error listening to vehicle reports: ", error);
+        toast({
+            variant: "destructive",
+            title: "Map Error",
+            description: "Could not load live vehicle data. Please refresh the page.",
+        });
+    });
+
+    return unsubscribe;
+};
+
 // Fetch a single vehicle report by ID
 export const getVehicleReportById = async (id: string): Promise<VehicleReport | null> => {
     try {
