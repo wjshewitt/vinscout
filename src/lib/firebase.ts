@@ -205,6 +205,9 @@ export interface GeofenceLocation {
     address: string;
     lat: number;
     lng: number;
+    type: 'radius' | 'polygon';
+    radius?: number; // in meters
+    path?: { lat: number, lng: number }[];
 }
 
 export interface UserNotificationSettings {
@@ -407,13 +410,7 @@ export const listenToMessages = (
                     });
                 }
             } else {
-                // If the user is not viewing, show a toast.
-                const senderDoc = await getDoc(doc(db, 'users', lastMessage.senderId));
-                const senderName = senderDoc.exists() ? senderDoc.data().displayName : 'Someone';
-                toast({
-                    title: `New Message from ${senderName}`,
-                    description: lastMessage.text,
-                });
+                // If the user is not viewing, show a toast. This is now handled in the Header.
             }
         }
     }, (error) => {
@@ -503,12 +500,17 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
 
     if (!ownerDoc.exists()) {
        // Fallback: This should ideally not happen if createUserProfileDocument is robust.
-       const authUser = (await getAuth().getUser(vehicle.reporterId)).providerData[0];
-       if (authUser) {
-           await createUserProfileDocument({ uid: vehicle.reporterId, ...authUser } as User);
-           ownerDoc = await getDoc(ownerRef);
-       } else {
-           throw new Error("Could not find the vehicle owner's data.");
+       try {
+           const authUser = (await getAuth().getUser(vehicle.reporterId)).providerData[0];
+           if (authUser) {
+               await createUserProfileDocument({ uid: vehicle.reporterId, ...authUser } as User, { displayName: authUser.displayName });
+               ownerDoc = await getDoc(ownerRef);
+           } else {
+               throw new Error("Could not find the vehicle owner's data in auth.");
+           }
+       } catch (e) {
+         console.error("Auth lookup failed for owner", e);
+         throw new Error("Could not find the vehicle owner's data.");
        }
     }
     
@@ -559,27 +561,34 @@ export async function deleteConversation(conversationId: string, userId: string)
 
 
 async function ensureUserDocExists(userId: string) {
+    if (!userId) return;
     const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
     if (!userSnap.exists()) {
-        const authUser = auth.currentUser;
-        const details = (authUser && authUser.uid === userId) 
-            ? { displayName: authUser.displayName, email: authUser.email, photoURL: authUser.photoURL } 
-            : { displayName: 'User', email: 'N/A', photoURL: ''};
+        try {
+            const authUser = auth.currentUser;
+            const details = (authUser && authUser.uid === userId) 
+                ? { displayName: authUser.displayName, email: authUser.email, photoURL: authUser.photoURL } 
+                : {};
 
-        await setDoc(userRef, {
-            uid: userId,
-            displayName: details.displayName,
-            email: details.email,
-            photoURL: details.photoURL,
-            createdAt: serverTimestamp(),
-            blockedUsers: [],
-            geofences: [],
-            notificationSettings: {
-                nationalAlerts: false,
-                localAlerts: true,
-            }
-        });
+            await createUserProfileDocument({ uid: userId, ...details } as User, { displayName: details.displayName });
+        } catch (error) {
+             console.error(`Failed to create doc for user ${userId}`, error);
+             // Create a minimal doc to prevent future failures
+             await setDoc(userRef, {
+                uid: userId,
+                displayName: 'User',
+                email: 'N/A',
+                photoURL: '',
+                createdAt: serverTimestamp(),
+                blockedUsers: [],
+                geofences: [],
+                notificationSettings: {
+                    nationalAlerts: false,
+                    localAlerts: true,
+                }
+            });
+        }
     }
 }
 

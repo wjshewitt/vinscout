@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { Loader2, MapPin, Search, Trash2 } from 'lucide-react';
+import { Loader2, MapPin, Search, Trash2, Minus, Plus, Redo2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, AdvancedMarker, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import { useDebouncedCallback } from 'use-debounce';
 import {
   AlertDialog,
@@ -26,13 +26,68 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Slider } from '@/components/ui/slider';
 
 
-function MapComponent({ onLocationSelect }: { onLocationSelect: (location: { lat: number, lng: number, address: string }) => void }) {
+function MapComponent({ 
+    onLocationSelect, 
+    initialPosition, 
+    shape, 
+    onShapeChange,
+    shapeType
+}: { 
+    onLocationSelect: (location: { lat: number, lng: number, address: string }) => void, 
+    initialPosition?: { lat: number, lng: number },
+    shape: google.maps.Circle | google.maps.Polygon | null,
+    onShapeChange: (shape: google.maps.Circle | google.maps.Polygon | null) => void,
+    shapeType: 'radius' | 'polygon'
+}) {
   const map = useMap();
+  const drawing = useMapsLibrary('drawing');
   const { toast } = useToast();
-  const [markerPos, setMarkerPos] = useState({ lat: 51.5072, lng: -0.1276 }); // Default to London
+  const [markerPos, setMarkerPos] = useState(initialPosition || { lat: 51.5072, lng: -0.1276 });
   const [searchAddress, setSearchAddress] = useState("");
+  const [drawingManager, setDrawingManager] = useState<google.maps.drawing.DrawingManager | null>(null);
+
+  useEffect(() => {
+    if(!map || !drawing) return;
+
+    const manager = new google.maps.drawing.DrawingManager({
+        map,
+        drawingControl: false,
+        polygonOptions: {
+            fillColor: "hsl(var(--primary))",
+            fillOpacity: 0.3,
+            strokeColor: "hsl(var(--primary))",
+            strokeWeight: 2,
+            editable: true,
+        },
+    });
+
+    setDrawingManager(manager);
+
+    google.maps.event.addListener(manager, 'polygoncomplete', (polygon: google.maps.Polygon) => {
+        onShapeChange(polygon);
+        manager.setDrawingMode(null);
+    });
+
+    return () => {
+        google.maps.event.clearInstanceListeners(manager);
+        manager.setMap(null);
+    };
+
+  }, [map, drawing, onShapeChange]);
+  
+  useEffect(() => {
+    if (drawingManager) {
+        if(shapeType === 'polygon'){
+            drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+        } else {
+            drawingManager.setDrawingMode(null);
+        }
+    }
+  }, [shapeType, drawingManager]);
 
   const geocodeAddress = useDebouncedCallback((address: string) => {
     if (!address) return;
@@ -70,6 +125,14 @@ function MapComponent({ onLocationSelect }: { onLocationSelect: (location: { lat
       });
     }
   };
+  
+  const handleClearDrawing = () => {
+    shape?.setMap(null);
+    onShapeChange(null);
+    if (drawingManager) {
+        drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+    }
+  };
 
   return (
       <div className="relative h-96 overflow-hidden rounded-lg">
@@ -101,31 +164,95 @@ function MapComponent({ onLocationSelect }: { onLocationSelect: (location: { lat
                   />
               </div>
           </div>
+          {shapeType === 'polygon' && shape && (
+            <Button size="icon" className="absolute bottom-4 right-4 z-10" onClick={handleClearDrawing}>
+                <Redo2 className="h-4 w-4" />
+            </Button>
+          )}
       </div>
   );
 }
 
 
 function AddLocationDialog({ onSave, onOpenChange }: { onSave: (location: GeofenceLocation) => Promise<void>, onOpenChange: (open: boolean) => void }) {
-  const [name, setName] = useState('');
+  const map = useMap();
+  const [name, setName] =useState('');
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number, lng: number, address: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const [shapeType, setShapeType] = useState<'radius' | 'polygon'>('radius');
+  const [radius, setRadius] = useState(1000); // meters
+  const [shape, setShape] = useState<google.maps.Circle | google.maps.Polygon | null>(null);
+  const [center, setCenter] = useState({ lat: 51.5072, lng: -0.1276 });
+
+   useEffect(() => {
+    if (selectedLocation) {
+      setCenter({ lat: selectedLocation.lat, lng: selectedLocation.lng });
+    }
+  }, [selectedLocation]);
+  
+  useEffect(() => {
+    shape?.setMap(null); // Clear previous shape
+    
+    if(!map || shapeType === 'polygon') return;
+    
+    const newShape = new google.maps.Circle({
+        center,
+        radius,
+        fillColor: "hsl(var(--primary))",
+        fillOpacity: 0.3,
+        strokeColor: "hsl(var(--primary))",
+        strokeWeight: 2,
+        map,
+    });
+    setShape(newShape);
+    
+    return () => { newShape.setMap(null) };
+  }, [map, center, radius, shapeType]);
 
   if (!apiKey) return null;
 
   const handleSave = async () => {
     if (name && selectedLocation) {
         setIsSaving(true);
+        let geofenceData: GeofenceLocation = {
+            name,
+            address: selectedLocation.address,
+            lat: selectedLocation.lat,
+            lng: selectedLocation.lng,
+            type: shapeType,
+        };
+
+        if (shapeType === 'radius') {
+            geofenceData.radius = radius;
+        } else if (shapeType === 'polygon' && shape instanceof google.maps.Polygon) {
+            const path = shape.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
+            if (path.length < 3) {
+                 useToast().toast({ variant: 'destructive', title: 'Invalid Polygon', description: 'Please draw a valid shape with at least 3 points.' });
+                 setIsSaving(false);
+                 return;
+            }
+            geofenceData.path = path;
+        } else {
+             useToast().toast({ variant: 'destructive', title: 'Invalid Shape', description: 'Please define a radius or draw a polygon.' });
+             setIsSaving(false);
+             return;
+        }
+
         try {
-            await onSave({ name, ...selectedLocation });
-            onOpenChange(false); // Close dialog on success
+            await onSave(geofenceData);
+            onOpenChange(false);
         } catch (error) {
-            // Error toast is handled in the parent component
+             // Error toast is handled in the parent component
         } finally {
             setIsSaving(false);
         }
     }
+  };
+  
+  const handleLocationUpdate = (loc: { lat: number, lng: number, address: string }) => {
+    setSelectedLocation(loc);
+    setCenter({lat: loc.lat, lng: loc.lng});
   };
 
   return (
@@ -133,7 +260,7 @@ function AddLocationDialog({ onSave, onOpenChange }: { onSave: (location: Geofen
         <DialogHeader className="p-6 pb-0">
             <DialogTitle>Add New Geofence</DialogTitle>
             <DialogDescription>
-                Search for an address and give it a name. Local alerts will be sent for vehicles reported in this area.
+                Define an area to receive local alerts. Choose a location and then define the area using a radius or by drawing a polygon.
             </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
@@ -149,18 +276,44 @@ function AddLocationDialog({ onSave, onOpenChange }: { onSave: (location: Geofen
                      <p className="text-muted-foreground text-sm">{selectedLocation?.address || 'Search or drag the pin on the map'}</p>
                    </CardContent>
                 </Card>
+
+                <Tabs value={shapeType} onValueChange={(v) => setShapeType(v as 'radius' | 'polygon')} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="radius">Radius</TabsTrigger>
+                        <TabsTrigger value="polygon">Polygon</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="radius" className="space-y-4 pt-4">
+                        <Label>Radius: {(radius / 1000).toFixed(2)} km</Label>
+                        <Slider
+                            value={[radius]}
+                            onValueChange={([val]) => setRadius(val)}
+                            min={100}
+                            max={50000}
+                            step={100}
+                        />
+                         <p className="text-xs text-muted-foreground">Define a circular area around the pin.</p>
+                    </TabsContent>
+                    <TabsContent value="polygon" className="pt-4">
+                        <p className="text-sm text-muted-foreground">Click on the map to start drawing a custom shape. Click the first point to close the shape.</p>
+                    </TabsContent>
+                </Tabs>
+
            </div>
            <div>
-            <APIProvider apiKey={apiKey}>
-                <MapComponent onLocationSelect={setSelectedLocation} />
-            </APIProvider>
+            <MapComponent 
+                onLocationSelect={handleLocationUpdate} 
+                initialPosition={center}
+                shape={shape}
+                onShapeChange={setShape}
+                shapeType={shapeType}
+            />
            </div>
         </div>
         <DialogFooter className="p-6 pt-0">
             <DialogClose asChild>
                 <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button onClick={handleSave} disabled={!name || !selectedLocation || isSaving}>
+            <Button onClick={handleSave} disabled={!name || !selectedLocation || isSaving || (shapeType === 'polygon' && !shape)}>
                 {isSaving ? <Loader2 className="animate-spin mr-2" /> : null}
                 Save Geofence
             </Button>
@@ -177,6 +330,7 @@ export default function NotificationsPage() {
   const [settings, setSettings] = useState<UserNotificationSettings>({ nationalAlerts: false, localAlerts: true });
   const [loading, setLoading] = useState(true);
   const [isAddLocationDialogOpen, setIsAddLocationDialogOpen] = useState(false);
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
     if (user) {
@@ -214,9 +368,11 @@ export default function NotificationsPage() {
     try {
         await saveUserGeofence(user.uid, location);
         setLocations(prev => {
-            const existing = prev.find(l => l.name === location.name);
-            if (existing) {
-                return prev.map(l => l.name === location.name ? location : l);
+            const existingIndex = prev.findIndex(l => l.name === location.name);
+            if (existingIndex > -1) {
+                const updated = [...prev];
+                updated[existingIndex] = location;
+                return updated;
             }
             return [...prev, location];
         });
@@ -244,7 +400,6 @@ export default function NotificationsPage() {
      }
   };
 
-
   return (
     <div className="container mx-auto py-12 max-w-4xl">
         <div className="mb-8">
@@ -252,9 +407,9 @@ export default function NotificationsPage() {
             <p className="mt-2 text-muted-foreground">Choose how you want to be notified about stolen vehicle reports.</p>
         </div>
         
-        {loading ? (
+        {loading || !apiKey ? (
              <div className="flex justify-center items-center py-20">
-               <Loader2 className="animate-spin text-primary" size={32} />
+               { !apiKey ? <p className="text-destructive">Map API Key is missing.</p> : <Loader2 className="animate-spin text-primary" size={32} /> }
             </div>
         ) : (
             <div className="space-y-12">
@@ -305,6 +460,10 @@ export default function NotificationsPage() {
                                             <div>
                                                 <h4 className="font-medium">{loc.name}</h4>
                                                 <p className="text-sm text-muted-foreground">{loc.address}</p>
+                                                 <p className="text-xs text-muted-foreground/80 mt-1">
+                                                    {loc.type === 'radius' && `Radius: ${(loc.radius! / 1000).toFixed(1)}km`}
+                                                    {loc.type === 'polygon' && `Polygon Area`}
+                                                </p>
                                             </div>
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
@@ -336,7 +495,9 @@ export default function NotificationsPage() {
                             <DialogTrigger asChild>
                                 <Button className="mt-6 w-full" variant="outline">Add New Location</Button>
                             </DialogTrigger>
-                            <AddLocationDialog onSave={handleSaveLocation} onOpenChange={setIsAddLocationDialogOpen} />
+                            <APIProvider apiKey={apiKey}>
+                                <AddLocationDialog onSave={handleSaveLocation} onOpenChange={setIsAddLocationDialogOpen} />
+                            </APIProvider>
                         </Dialog>
                     </CardContent>
                 </Card>
