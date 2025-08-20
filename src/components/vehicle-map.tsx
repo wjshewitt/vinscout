@@ -64,7 +64,6 @@ const VehicleMap: FC<VehicleMapProps> = ({ vehicles, onVehicleSelect, selectedVe
              <Pin 
                 background={getPinColor(vehicle)}
                 borderColor={getPinColor(vehicle)}
-                glyph={<Car className={cn("text-background", selectedVehicleId === vehicle.id && 'text-primary-foreground')}/>}
             />
           </AdvancedMarker>
         ))}
