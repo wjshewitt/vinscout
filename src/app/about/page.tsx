@@ -50,11 +50,11 @@ export default function AboutPage() {
         </CardContent>
       </Card>
 
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle className="text-xl font-bold">Important Safety Disclaimer</AlertTitle>
-        <AlertDescription className="mt-2 text-base">
-          Your safety is our top priority. <span className="font-bold">Never approach a stolen vehicle or individuals you suspect may be involved.</span> Do not attempt to recover a vehicle yourself. If you see a crime being committed or believe you have found a stolen vehicle, contact your local law enforcement immediately and let them handle the situation.
+      <Alert variant="destructive" className="bg-destructive/10 border-destructive/30 text-destructive-foreground">
+        <AlertTriangle className="h-4 w-4 text-destructive" />
+        <AlertTitle className="text-xl font-bold text-destructive">Important Safety Disclaimer</AlertTitle>
+        <AlertDescription className="mt-2 text-base text-destructive-foreground/90">
+          Your safety is our top priority. <span className="font-bold">Never approach a stolen vehicle or individuals you suspect may be involved.</span> Do not attempt to recover a vehicle yourself. If you see a crime being committed, we advise contacting your local law enforcement immediately and letting them handle the situation.
         </AlertDescription>
       </Alert>
     </div>
