@@ -28,6 +28,17 @@ export default function MessagesPage() {
   const [showBlockDialog, setShowBlockDialog] = useState(false);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isPageActive, setIsPageActive] = useState(true);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsPageActive(document.visibilityState === 'visible');
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
   
   useEffect(() => {
     if (user) {
@@ -58,10 +69,10 @@ export default function MessagesPage() {
       if (otherParticipantId) {
         checkIfUserIsBlocked(user.uid, otherParticipantId).then(setIsBlocked);
       }
-      const unsubscribe = listenToMessages(selectedConversation.id, setMessages, user.uid, selectedConversation.id);
+      const unsubscribe = listenToMessages(selectedConversation.id, setMessages, user.uid, isPageActive);
       return () => unsubscribe();
     }
-  }, [selectedConversation, user]);
+  }, [selectedConversation, user, isPageActive]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -225,7 +236,7 @@ export default function MessagesPage() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => setShowDeleteDialog(true)} className="text-destructive">
+                            <DropdownMenuItem onSelect={() => setShowDeleteDialog(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 <span>Delete Conversation</span>
                             </DropdownMenuItem>
@@ -326,7 +337,7 @@ export default function MessagesPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleBlockUser}>{isBlocked ? 'Unblock' : 'Block'}</AlertDialogAction>
+                <AlertDialogAction onClick={handleBlockUser} className={cn(isBlocked && 'bg-primary hover:bg-primary/90')}>{isBlocked ? 'Unblock' : 'Block'}</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>

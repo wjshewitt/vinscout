@@ -41,6 +41,7 @@ import {
     FieldValue
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
+import _ from 'lodash';
 
 const firebaseConfig = {
   "projectId": "vigilante-garage",
@@ -214,12 +215,12 @@ export interface GeofenceLocation {
 export interface UserNotificationSettings {
   nationalAlerts: boolean;
   localAlerts: boolean;
-  notificationChannels?: {
+  notificationChannels: {
     email: boolean;
     sms: boolean;
     whatsapp: boolean;
   };
-  phoneNumber?: string;
+  phoneNumber: string;
 }
 
 const toVehicleReport = (docSnap: any): VehicleReport => {
@@ -418,11 +419,6 @@ export const listenToMessages = (
                         [`unread.${currentUserId}`]: 0
                     });
                 }
-            } else {
-                 toast({
-                    title: "New Message",
-                    description: `You have a new message.`,
-                });
             }
         }
     }, (error) => {
@@ -637,37 +633,29 @@ export async function checkIfUserIsBlocked(blockerId: string, blockedId: string)
 
 // --- Geofence and Notification Settings Functions ---
 
+const defaultSettings: UserNotificationSettings = {
+    nationalAlerts: false,
+    localAlerts: true,
+    notificationChannels: { email: true, sms: false, whatsapp: false },
+    phoneNumber: ''
+};
+
 export const getNotificationSettings = async (userId: string): Promise<UserNotificationSettings> => {
     const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
     if (userSnap.exists() && userSnap.data().notificationSettings) {
-        const settings = userSnap.data().notificationSettings;
-        // Provide default values for new fields if they don't exist
-        return {
-            nationalAlerts: settings.nationalAlerts ?? false,
-            localAlerts: settings.localAlerts ?? true,
-            notificationChannels: settings.notificationChannels ?? { email: true, sms: false, whatsapp: false },
-            phoneNumber: settings.phoneNumber ?? ''
-        };
+        // Deep merge with defaults to ensure all keys are present
+        return _.merge({}, defaultSettings, userSnap.data().notificationSettings);
     }
-    // Return default settings if none are found
-    return { 
-        nationalAlerts: false, 
-        localAlerts: true,
-        notificationChannels: { email: true, sms: false, whatsapp: false },
-        phoneNumber: ''
-    };
+    return defaultSettings;
 };
 
-export const saveNotificationSettings = async (userId: string, settings: Partial<UserNotificationSettings>) => {
+export const saveNotificationSettings = async (userId: string, settings: UserNotificationSettings) => {
     await ensureUserDocExists(userId);
     const userRef = doc(db, 'users', userId);
-    // Use dot notation to update nested objects
-    const updateData: { [key: string]: any } = {};
-    for (const [key, value] of Object.entries(settings)) {
-        updateData[`notificationSettings.${key}`] = value;
-    }
-    return updateDoc(userRef, updateData);
+    return updateDoc(userRef, {
+        notificationSettings: settings
+    });
 };
 
 export const getUserGeofences = async (userId: string): Promise<GeofenceLocation[]> => {
@@ -712,3 +700,4 @@ export { auth, db };
 export type { User, AuthError };
 
     
+
