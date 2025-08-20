@@ -43,7 +43,8 @@ export default function Home() {
       report.make.toLowerCase().includes(lowercasedQuery) ||
       report.model.toLowerCase().includes(lowercasedQuery) ||
       (report.location?.city && report.location.city.toLowerCase().includes(lowercasedQuery)) ||
-      (report.location?.street && report.location.street.toLowerCase().includes(lowercasedQuery))
+      (report.location?.street && report.location.street.toLowerCase().includes(lowercasedQuery)) ||
+      report.licensePlate.toLowerCase().replace(/\s/g, '').includes(lowercasedQuery.replace(/\s/g, ''))
     );
   }, [reports, debouncedSearchQuery]);
 
@@ -176,7 +177,7 @@ export default function Home() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input 
-              placeholder="Search by Make, Model, Location..." 
+              placeholder="Search by Make, Model, License Plate, or Location..." 
               className="pl-10" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -193,6 +194,7 @@ export default function Home() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[40%]">Vehicle</TableHead>
+                  <TableHead>License Plate</TableHead>
                   <TableHead>Last Seen Location</TableHead>
                   <TableHead>Date Stolen</TableHead>
                   <TableHead className="text-right"></TableHead>
@@ -214,6 +216,7 @@ export default function Home() {
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell><span className="license-plate">{vehicle.licensePlate}</span></TableCell>
                       <TableCell>{formatLocation(vehicle.location, isLoggedIn)}</TableCell>
                       <TableCell>{formatDate(vehicle.date)}</TableCell>
                       <TableCell className="text-right">
@@ -225,7 +228,7 @@ export default function Home() {
                   ))
                 ) : (
                     <TableRow>
-                        <TableCell colSpan={4} className="text-center py-20 text-muted-foreground">
+                        <TableCell colSpan={5} className="text-center py-20 text-muted-foreground">
                             No vehicle reports found matching your search.
                         </TableCell>
                     </TableRow>

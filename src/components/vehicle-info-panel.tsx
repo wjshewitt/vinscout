@@ -62,9 +62,9 @@ export function VehicleInfoPanel({ vehicle, onClose }: VehicleInfoPanelProps) {
                      </div>
                    </div>
 
-                    <div className="rounded-lg bg-card p-4">
-                        <p className="font-semibold">License Plate</p>
-                        <p className="font-mono text-lg text-primary">{vehicle.licensePlate}</p>
+                    <div className="rounded-lg bg-card p-4 text-center">
+                        <p className="font-semibold text-sm text-muted-foreground">License Plate</p>
+                        <p className="license-plate mt-1">{vehicle.licensePlate}</p>
                     </div>
 
                     {vehicle.features && (

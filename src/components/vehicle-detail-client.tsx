@@ -290,7 +290,7 @@ function EditReportDialog({ vehicle, onUpdate }: { vehicle: VehicleReport, onUpd
                                 <Button type="button" variant="outline">Cancel</Button>
                             </DialogClose>
                             <Button type="submit" disabled={isSaving}>
-                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 Save Changes
                             </Button>
                         </DialogFooter>
@@ -522,7 +522,7 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                   <span>Model:</span> <span className="text-muted-foreground">{vehicle.model}</span>
                   <span>Year:</span> <span className="text-muted-foreground">{vehicle.year}</span>
                   <span>Color:</span> <span className="text-muted-foreground">{vehicle.color}</span>
-                  <span>License Plate:</span> <span className="font-mono text-muted-foreground">{vehicle.licensePlate}</span>
+                  <span>License Plate:</span> <span className="license-plate">{vehicle.licensePlate}</span>
                   {vehicle.vin && <><span>VIN:</span> <span className="font-mono text-muted-foreground">{vehicle.vin}</span></>}
                 </div>
               </div>
