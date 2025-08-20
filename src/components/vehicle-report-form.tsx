@@ -237,6 +237,27 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
     );
 }
 
+// Helper function to compress images client-side
+const compressImage = (file: File, quality = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = document.createElement('img');
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx?.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+        };
+        reader.onerror = error => reject(error);
+    });
+};
+
 export function VehicleReportForm() {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
@@ -381,18 +402,19 @@ export function VehicleReportForm() {
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (file.size > 10 * 1024 * 1024) { // 10MB limit
-             toast({ variant: 'destructive', title: 'File too large', description: `${file.name} is larger than 10MB.` });
-             continue;
+            toast({ title: 'Compressing Image', description: `${file.name} is large and will be compressed.` });
+            newImagePromises.push(compressImage(file));
+        } else {
+             const promise = new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    resolve(reader.result as string);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+            newImagePromises.push(promise);
         }
-        const promise = new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                resolve(reader.result as string);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-        newImagePromises.push(promise);
     }
     
     Promise.all(newImagePromises).then(newImages => {
