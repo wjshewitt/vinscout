@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { MessageSquare, Bell, Car, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { listenToUnreadCount, getUserVehicleReports } from '@/lib/firebase';
+import { listenToConversations, getUserVehicleReports } from '@/lib/firebase';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -19,8 +19,9 @@ export default function DashboardPage() {
     if (user) {
       setLoading(true);
 
-      const unsubscribeUnread = listenToUnreadCount(user.uid, (count) => {
-        setUnreadCount(count);
+      const unsubscribeConversations = listenToConversations(user.uid, (convos) => {
+        const totalUnread = convos.reduce((acc, convo) => acc + (convo.unread?.[user.uid] || 0), 0);
+        setUnreadCount(totalUnread);
       });
 
       const fetchReports = async () => {
@@ -32,7 +33,7 @@ export default function DashboardPage() {
       fetchReports();
 
       return () => {
-        unsubscribeUnread();
+        unsubscribeConversations();
       };
     } else {
       setLoading(false);

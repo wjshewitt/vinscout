@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Search, Send, Paperclip, MoreVertical, Car, MessageSquare, Loader2, Trash2, ShieldBan, MapPin } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { listenToUserConversations, Conversation, listenToMessages, Message, sendMessage, deleteConversation, blockUser, unblockUser, checkIfUserIsBlocked } from '@/lib/firebase';
+import { listenToConversations, Conversation, listenToMessages, Message, sendMessage, deleteConversation, blockUser, unblockUser, checkIfUserIsBlocked } from '@/lib/firebase';
 import { formatDistanceToNow } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -43,7 +43,7 @@ export default function MessagesPage() {
   useEffect(() => {
     if (user) {
       setLoading(true);
-      const unsubscribe = listenToUserConversations(user.uid, (loadedConversations) => {
+      const unsubscribe = listenToConversations(user.uid, (loadedConversations) => {
         setConversations(loadedConversations);
         
         const urlConvoId = searchParams.get('conversationId');

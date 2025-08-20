@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from '@/hooks/use-auth';
-import { logout, listenToUnreadConversations, Conversation } from '@/lib/firebase';
+import { logout, listenToConversations, Conversation } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { useEffect, useState } from 'react';
@@ -192,8 +192,11 @@ function NotificationMenu() {
 
     useEffect(() => {
       if (user) {
-        const unsubscribe = listenToUnreadConversations(user.uid, (conversations) => {
-          setUnreadConversations(conversations);
+        const unsubscribe = listenToConversations(user.uid, (conversations) => {
+          const unread = conversations.filter(c => c.unread?.[user.uid] && c.unread[user.uid] > 0);
+          // Sort by last message time on the client
+          unread.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+          setUnreadConversations(unread);
         });
         return () => unsubscribe();
       }

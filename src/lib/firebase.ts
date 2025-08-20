@@ -375,7 +375,13 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         if (!dateInput) return new Date().toISOString().split('T')[0];
         // Handle Firestore Timestamps or string dates
         const d = (dateInput.toDate && typeof dateInput.toDate === 'function') ? dateInput.toDate() : new Date(dateInput);
-        if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+        if (isNaN(d.getTime())) {
+            // Check if it's already in YYYY-MM-DD format
+            if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+                return dateInput;
+            }
+            return new Date().toISOString().split('T')[0];
+        }
         // Return in 'YYYY-MM-DD' format
         return d.toISOString().split('T')[0];
     };
@@ -568,92 +574,19 @@ export const submitSighting = async (
 
 // --- Messaging Functions ---
 
-export const listenToUnreadCount = (userId: string, callback: (count: number) => void): Unsubscribe => {
+// Unified conversation listener
+const participantDetailsCache = new Map<string, { name: string; avatar: string; }>();
+
+export const listenToConversations = (userId: string, callback: (conversations: Conversation[]) => void): Unsubscribe => {
     const q = query(
         collection(db, 'conversations'), 
-        where('participants', 'array-contains', userId)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        let totalUnread = 0;
-        snapshot.forEach(docSnap => {
-            const convo = toConversation(docSnap);
-            // Only count if the convo hasn't been deleted by the user
-            if (!(convo.deletedFor?.includes(userId))) {
-                if (convo.unread && convo.unread[userId]) {
-                    totalUnread += convo.unread[userId];
-                }
-            }
-        });
-        callback(totalUnread);
-    }, (error) => {
-        console.error("Error listening to unread count:", error);
-    });
-    
-    return unsubscribe;
-};
-
-// Listen to conversations with unread messages for the notification menu
-export const listenToUnreadConversations = (userId: string, callback: (conversations: Conversation[]) => void): Unsubscribe => {
-    const q = query(
-        collection(db, 'conversations'),
         where('participants', 'array-contains', userId),
         orderBy('lastMessageAt', 'desc')
     );
 
     return onSnapshot(q, async (snapshot) => {
         const conversationsPromises = snapshot.docs.map(async (conversationDoc) => {
-            let convo = toConversation(conversationDoc);
-
-            if (convo.deletedFor?.includes(userId)) {
-                return null;
-            }
-            
-            // Filter for unread messages on the client
-            if (!convo.unread?.[userId] || convo.unread[userId] === 0) {
-                return null;
-            }
-
-            if (!convo.participantDetails) {
-              convo.participantDetails = {};
-            }
-
-            for (const pId of convo.participants) {
-                if (!convo.participantDetails[pId]) {
-                    const userDoc = await getDoc(doc(db, 'users', pId));
-                    if (userDoc.exists()) {
-                        const userData = userDoc.data();
-                        convo.participantDetails[pId] = {
-                            name: userData.displayName || 'Unknown User',
-                            avatar: userData.photoURL || ''
-                        };
-                    } else {
-                         convo.participantDetails[pId] = { name: 'Unknown User', avatar: '' };
-                    }
-                }
-            }
-            return convo;
-        });
-
-        const conversations = (await Promise.all(conversationsPromises)).filter(Boolean) as Conversation[];
-        // Sort by last message time on the client
-        conversations.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
-        callback(conversations);
-    }, (error) => {
-        console.error("Error listening to unread conversations:", error);
-    });
-};
-
-// Listen to a user's conversations
-export const listenToUserConversations = (userId: string, callback: (conversations: Conversation[]) => void): Unsubscribe => {
-    const q = query(
-        collection(db, 'conversations'), 
-        where('participants', 'array-contains', userId),
-        orderBy('lastMessageAt', 'desc')
-    );
-    return onSnapshot(q, async (snapshot) => {
-        const conversationsPromises = snapshot.docs.map(async (conversationDoc) => {
-            let convo = toConversation(conversationDoc);
+            const convo = toConversation(conversationDoc);
             
             // Filter out conversations marked as deleted for the current user
             if (convo.deletedFor?.includes(userId)) {
@@ -665,17 +598,23 @@ export const listenToUserConversations = (userId: string, callback: (conversatio
             }
 
             for (const pId of convo.participants) {
-                if (!convo.participantDetails[pId]) {
+                if (!convo.participantDetails[pId] && !participantDetailsCache.has(pId)) {
                     const userDoc = await getDoc(doc(db, 'users', pId));
                     if (userDoc.exists()) {
                         const userData = userDoc.data();
-                        convo.participantDetails[pId] = {
+                        const details = {
                             name: userData.displayName || 'Unknown User',
                             avatar: userData.photoURL || ''
                         };
+                        participantDetailsCache.set(pId, details);
+                        convo.participantDetails[pId] = details;
                     } else {
-                         convo.participantDetails[pId] = { name: 'Unknown User', avatar: '' };
+                         const details = { name: 'Unknown User', avatar: '' };
+                         participantDetailsCache.set(pId, details);
+                         convo.participantDetails[pId] = details;
                     }
+                } else if(participantDetailsCache.has(pId)) {
+                     convo.participantDetails[pId] = participantDetailsCache.get(pId)!;
                 }
             }
             return convo;
@@ -687,6 +626,7 @@ export const listenToUserConversations = (userId: string, callback: (conversatio
         console.error("Error listening to conversations:", error);
     });
 };
+
 
 // Listen to messages in a conversation
 export const listenToMessages = (
