@@ -151,7 +151,7 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
                 <FormItem>
                     <FormLabel>Last Known Location</FormLabel>
                      <FormControl>
-                        <Input placeholder="e.g., 123 Main St, Anytown, USA" {...field} className="h-12 rounded-lg" />
+                        <Input placeholder="e.g., 123 Main St, Anytown, USA" {...field} value={field.value ?? ''} className="h-12 rounded-lg" />
                      </FormControl>
                     <FormMessage />
                 </FormItem>
@@ -639,7 +639,7 @@ export function VehicleReportForm() {
                                     <div className="relative">
                                         <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                                         <FormControl>
-                                            <Input type="number" placeholder="e.g., 500" {...field} className="h-12 rounded-lg pl-10" />
+                                            <Input type="number" placeholder="e.g., 500" {...field} value={field.value ?? ''} className="h-12 rounded-lg pl-10" />
                                         </FormControl>
                                     </div>
                                     <FormMessage />
@@ -657,6 +657,7 @@ export function VehicleReportForm() {
                                         placeholder="e.g., Reward for information leading to recovery. Higher reward for direct finding."
                                         className="resize-none min-h-[100px] rounded-lg"
                                         {...field}
+                                        value={field.value ?? ''}
                                     />
                                     </FormControl>
                                     <FormMessage />
