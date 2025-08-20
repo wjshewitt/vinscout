@@ -31,8 +31,8 @@ export default function RootLayout({
           <Footer />
           <Toaster />
         </Providers>
-        <Script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js' />
-        <Script id="kofi-widget">
+        <Script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js' strategy="afterInteractive" />
+        <Script id="kofi-widget" strategy="afterInteractive">
           {`
             kofiWidgetOverlay.draw('autofind', {
               'type': 'floating-chat',
