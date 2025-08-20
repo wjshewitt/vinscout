@@ -28,7 +28,6 @@ export default function MessagesPage() {
       const unsubscribe = listenToUserConversations(user.uid, (loadedConversations) => {
         setConversations(loadedConversations);
         
-        // If a conversationId is in the URL, select it
         const urlConvoId = searchParams.get('conversationId');
         if (urlConvoId && !selectedConversation) {
             const convoToSelect = loadedConversations.find(c => c.id === urlConvoId);
@@ -36,7 +35,6 @@ export default function MessagesPage() {
                 setSelectedConversation(convoToSelect);
             }
         } else if (!selectedConversation && loadedConversations.length > 0) {
-          // Otherwise, select the first conversation
           setSelectedConversation(loadedConversations[0]);
         }
         setLoading(false);
@@ -48,11 +46,11 @@ export default function MessagesPage() {
   }, [user, authLoading, searchParams, selectedConversation]);
 
   useEffect(() => {
-    if (selectedConversation) {
-      const unsubscribe = listenToMessages(selectedConversation.id, setMessages);
+    if (selectedConversation && user) {
+      const unsubscribe = listenToMessages(selectedConversation.id, setMessages, user.uid, selectedConversation.id);
       return () => unsubscribe();
     }
-  }, [selectedConversation]);
+  }, [selectedConversation, user]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -101,6 +99,7 @@ export default function MessagesPage() {
           {conversations.map((convo) => {
             const otherParticipantId = convo.participants.find(p => p !== user?.uid);
             const otherParticipant = otherParticipantId ? convo.participantDetails[otherParticipantId] : { name: 'Unknown', avatar: ''};
+            const unreadCount = user ? convo.unread[user.uid] || 0 : 0;
             
             return (
                 <button
@@ -122,6 +121,11 @@ export default function MessagesPage() {
                     </div>
                     <div className="flex justify-between items-start">
                     <p className="text-muted-foreground text-sm truncate mt-1">{convo.lastMessage}</p>
+                     {unreadCount > 0 && (
+                        <span className="flex items-center justify-center bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 ml-2">
+                            {unreadCount}
+                        </span>
+                    )}
                     </div>
                 </div>
                 </button>
@@ -169,8 +173,8 @@ export default function MessagesPage() {
                             isYou ? 'bg-primary text-primary-foreground' : 'bg-card'
                             )}
                         >
-                            <p className={cn("text-sm font-medium mb-1", isYou ? 'text-blue-200' : 'text-muted-foreground')}>{senderDetails?.name}</p>
-                            <p className="text-base text-foreground">{message.text}</p>
+                            <p className={cn("text-sm font-medium mb-1", isYou ? 'text-blue-200' : 'text-primary')}>{senderDetails?.name}</p>
+                            <p className="text-base">{message.text}</p>
                         </div>
                         {isYou && (
                             <Avatar className="w-10 h-10">

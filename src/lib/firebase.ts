@@ -30,8 +30,10 @@ import {
     onSnapshot,
     Unsubscribe,
     writeBatch,
-    setDoc
+    setDoc,
+    increment
 } from 'firebase/firestore';
+import { toast } from '@/hooks/use-toast';
 
 const firebaseConfig = {
   "projectId": "vigilante-garage",
@@ -53,14 +55,14 @@ const googleProvider = new GoogleAuthProvider();
 setPersistence(auth, browserSessionPersistence);
 
 // Helper function to create user profile document
-const createUserProfileDocument = async (user: User, additionalData: { displayName?: string } = {}) => {
+const createUserProfileDocument = async (user: User, details: { displayName?: string } = {}) => {
     if (!user) return;
     const userRef = doc(db, 'users', user.uid);
     const snapshot = await getDoc(userRef);
 
     if (!snapshot.exists()) {
         const { email, photoURL } = user;
-        const displayName = additionalData.displayName || user.displayName;
+        const displayName = details.displayName || user.displayName;
         const createdAt = serverTimestamp();
         try {
             await setDoc(userRef, {
@@ -101,8 +103,6 @@ export const signUpWithEmail = async (name: string, email: string, pass: string)
         const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
         const user = userCredential.user;
         await updateProfile(user, { displayName: name });
-
-        // Pass the name explicitly to ensure it's saved on first creation.
         await createUserProfileDocument(user, { displayName: name });
         
         return { user: auth.currentUser, error: null };
@@ -287,19 +287,16 @@ export const listenToUserConversations = (userId: string, callback: (conversatio
     return onSnapshot(q, async (snapshot) => {
         const conversationsPromises = snapshot.docs.map(async (doc) => {
             const convo = toConversation(doc);
-            // Fetch latest participant details on every snapshot
             for (const pId of convo.participants) {
-                if (!convo.participantDetails[pId]) {
-                    const userDoc = await getDoc(doc(db, 'users', pId));
-                    if (userDoc.exists()) {
-                        const userData = userDoc.data();
-                        convo.participantDetails[pId] = {
-                            name: userData.displayName || 'Unknown User',
-                            avatar: userData.photoURL || ''
-                        };
-                    } else {
-                         convo.participantDetails[pId] = { name: 'Unknown User', avatar: '' };
-                    }
+                const userDoc = await getDoc(doc(db, 'users', pId));
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    convo.participantDetails[pId] = {
+                        name: userData.displayName || 'Unknown User',
+                        avatar: userData.photoURL || ''
+                    };
+                } else {
+                     convo.participantDetails[pId] = { name: 'Unknown User', avatar: '' };
                 }
             }
             return convo;
@@ -312,24 +309,56 @@ export const listenToUserConversations = (userId: string, callback: (conversatio
 };
 
 // Listen to messages in a conversation
-export const listenToMessages = (conversationId: string, callback: (messages: Message[]) => void): Unsubscribe => {
+export const listenToMessages = (
+    conversationId: string, 
+    callback: (messages: Message[]) => void,
+    currentUserId: string,
+    currentConversationId: string | null
+): Unsubscribe => {
     const q = query(
         collection(db, 'conversations', conversationId, 'messages'),
         orderBy('createdAt', 'asc')
     );
-    return onSnapshot(q, (snapshot) => {
+
+    let isFirstLoad = true;
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
         const messages = snapshot.docs.map(toMessage);
         callback(messages);
+
+        if (isFirstLoad) {
+            isFirstLoad = false;
+        } else if (messages.length > 0) {
+            const lastMessage = messages[messages.length - 1];
+            // If the message is not from the current user and we are not in the conversation, show toast
+            if (lastMessage.senderId !== currentUserId && conversationId !== currentConversationId) {
+                 const senderDoc = await getDoc(doc(db, 'users', lastMessage.senderId));
+                 const senderName = senderDoc.exists() ? senderDoc.data().displayName : 'Someone';
+                 toast({
+                    title: `New message from ${senderName}`,
+                    description: lastMessage.text,
+                 });
+            }
+        }
+        
+        // Reset unread count for current user when they view the conversation
+        if (conversationId === currentConversationId) {
+            const conversationRef = doc(db, 'conversations', conversationId);
+            await updateDoc(conversationRef, {
+                [`unread.${currentUserId}`]: 0
+            });
+        }
     }, (error) => {
         console.error("Error listening to messages:", error);
     });
+    
+    return unsubscribe;
 };
 
 // Send a message
 export const sendMessage = async (conversationId: string, text: string, sender: User) => {
     const batch = writeBatch(db);
     
-    // Add new message
     const messageRef = doc(collection(db, 'conversations', conversationId, 'messages'));
     batch.set(messageRef, {
         conversationId,
@@ -338,14 +367,24 @@ export const sendMessage = async (conversationId: string, text: string, sender: 
         createdAt: serverTimestamp(),
     });
 
-    // Update conversation's last message
     const conversationRef = doc(db, 'conversations', conversationId);
-    batch.update(conversationRef, {
-        lastMessage: text,
-        lastMessageAt: serverTimestamp()
-        // Here you would also update the unread counts for other participants
-    });
+    
+    const convoDoc = await getDoc(conversationRef);
+    if(convoDoc.exists()) {
+        const otherParticipantId = convoDoc.data().participants.find((p: string) => p !== sender.uid);
+        
+        const updateData: any = {
+            lastMessage: text,
+            lastMessageAt: serverTimestamp(),
+        };
 
+        if (otherParticipantId) {
+           updateData[`unread.${otherParticipantId}`] = increment(1);
+        }
+
+        batch.update(conversationRef, updateData);
+    }
+    
     await batch.commit();
 }
 
@@ -357,7 +396,6 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
     }
     
     const conversationsRef = collection(db, 'conversations');
-    // A query to find a conversation involving BOTH the initiator and the vehicle owner FOR THIS SPECIFIC vehicle
     const q = query(conversationsRef, 
         where('vehicleId', '==', vehicle.id),
         where('participants', 'array-contains', initiator.uid)
@@ -365,7 +403,6 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
 
     const snapshot = await getDocs(q);
     
-    // Since the query only checks for the initiator and vehicle, we need to check if the other participant is the owner
     const existingConversation = snapshot.docs.find(doc => doc.data().participants.includes(vehicle.reporterId));
 
     if (existingConversation) {
@@ -373,7 +410,7 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
     }
     
     const ownerDoc = await getDoc(doc(db, 'users', vehicle.reporterId));
-    let ownerData: { displayName: string, photoURL: string } | null = null;
+    let ownerData: { displayName: string, photoURL: string };
 
     if (ownerDoc.exists()) {
         const data = ownerDoc.data();
@@ -381,23 +418,13 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
             displayName: data.displayName || 'Vehicle Owner',
             photoURL: data.photoURL || ''
         };
-    }
-
-    if (!ownerData) {
-        // Fallback for users created before profile creation was implemented.
-        // In a real app, you might fetch from Firebase Auth, but that's a server-side/admin-sdk only operation.
-        // For client-side, we can't fetch other user profiles, so we have to handle this gracefully.
-        // For this app, we'll create a placeholder.
-        console.warn(`Could not find user profile for owner ${vehicle.reporterId}. Using placeholder data.`);
-        ownerData = { displayName: 'Vehicle Owner', photoURL: '' };
+    } else {
+       throw new Error("Could not find the vehicle owner's data.");
     }
     
-    
-    // Use the initiator's current profile info
     const initiatorName = initiator.displayName || 'Anonymous User';
     const initiatorAvatar = initiator.photoURL || '';
 
-    // Create a new conversation
     const newConversationRef = doc(conversationsRef);
     const newConversationData = {
         vehicleId: vehicle.id,
@@ -410,6 +437,7 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
         createdAt: serverTimestamp(),
         lastMessage: "",
         lastMessageAt: serverTimestamp(),
+        unread: { [initiator.uid]: 0, [vehicle.reporterId]: 0 },
     }
     
     await setDoc(newConversationRef, newConversationData);
