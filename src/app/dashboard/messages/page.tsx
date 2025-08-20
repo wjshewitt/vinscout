@@ -99,7 +99,7 @@ export default function MessagesPage() {
           {conversations.map((convo) => {
             const otherParticipantId = convo.participants.find(p => p !== user?.uid);
             const otherParticipant = otherParticipantId ? convo.participantDetails[otherParticipantId] : { name: 'Unknown', avatar: ''};
-            const unreadCount = user ? convo.unread[user.uid] || 0 : 0;
+            const unreadCount = user && convo.unread ? convo.unread[user.uid] || 0 : 0;
             
             return (
                 <button
