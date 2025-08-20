@@ -273,6 +273,8 @@ export function VehicleReportForm() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isMakePopoverOpen, setIsMakePopoverOpen] = useState(false);
+  const [isModelPopoverOpen, setIsModelPopoverOpen] = useState(false);
 
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
@@ -492,7 +494,7 @@ export function VehicleReportForm() {
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Make</FormLabel>
-                                <Popover>
+                                <Popover open={isMakePopoverOpen} onOpenChange={setIsMakePopoverOpen}>
                                     <PopoverTrigger asChild>
                                         <FormControl>
                                             <Button
@@ -523,6 +525,7 @@ export function VehicleReportForm() {
                                                             onSelect={() => {
                                                                 form.setValue("make", make)
                                                                 handleMakeChange(make)
+                                                                setIsMakePopoverOpen(false)
                                                             }}
                                                         >
                                                             <Check
@@ -551,7 +554,7 @@ export function VehicleReportForm() {
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Model</FormLabel>
-                                <Popover>
+                                <Popover open={isModelPopoverOpen} onOpenChange={setIsModelPopoverOpen}>
                                     <PopoverTrigger asChild>
                                         <FormControl>
                                             <Button
@@ -583,6 +586,7 @@ export function VehicleReportForm() {
                                                             key={model}
                                                             onSelect={() => {
                                                                 form.setValue("model", model)
+                                                                setIsModelPopoverOpen(false)
                                                             }}
                                                         >
                                                             <Check
