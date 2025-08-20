@@ -42,7 +42,7 @@ const reportSchema = z.object({
   additionalInfo: z.string().optional(),
   lat: z.number({ required_error: 'Please select a location on the map.' }),
   lng: z.number({ required_error: 'Please select a location on the map.' }),
-  photos: z.array(z.string()).min(1, "At least one photo is required."),
+  photos: z.array(z.string()).optional(),
   rewardAmount: z.coerce.number().optional(),
   rewardDetails: z.string().optional(),
 });
@@ -751,7 +751,7 @@ export function VehicleReportForm() {
                             name="photos"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Vehicle Photos</FormLabel>
+                                    <FormLabel>Vehicle Photos (Optional)</FormLabel>
                                         <div className="relative flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-input bg-background p-8 transition-colors hover:border-primary">
                                         <div className="text-center">
                                             {isUploading ? (
