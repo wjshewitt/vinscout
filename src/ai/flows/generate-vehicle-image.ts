@@ -32,7 +32,7 @@ const generateVehicleImageFlow = ai.defineFlow(
     try {
         const { media } = await ai.generate({
             model: 'googleai/gemini-2.0-flash-preview-image-generation',
-            prompt: `A high-quality, professional photograph of a ${color} ${year} ${make} ${model}. The car is clean and parked on a neutral, well-lit city street during the day. Front quarter view.`,
+            prompt: `A high-quality JPEG photograph of a ${color} ${year} ${make} ${model}. The car is clean and parked on a neutral, well-lit city street during the day. Front quarter view.`,
             config: {
               responseModalities: ['TEXT', 'IMAGE'],
             },
