@@ -451,7 +451,6 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
   const mostRecentSighting = sightings?.[0];
   const hasReward = vehicle.rewardAmount || vehicle.rewardDetails;
   
-  const mainPhoto = vehicle.photos?.[0] || 'https://placehold.co/800x600.png';
   const hasPhotos = vehicle.photos && vehicle.photos.length > 0;
 
   return (
@@ -505,7 +504,7 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                ) : (
                 <div className="aspect-video w-full mb-4 relative">
                     <Image
-                    src={mainPhoto}
+                    src="https://placehold.co/800x600.png"
                     alt={`${vehicle.make} ${vehicle.model}`}
                     width={800}
                     height={600}

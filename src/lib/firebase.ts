@@ -333,13 +333,7 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         return new Date().toISOString().split('T')[0];
     };
     
-    // Backward compatibility for old string-based location
-    let location: LocationInfo;
-    if (typeof data.location === 'string') {
-        location = { fullAddress: data.location, street: '', city: data.location, postcode: '', country: '' };
-    } else {
-        location = data.location || { fullAddress: '', street: '', city: 'Unknown', postcode: '', country: '' };
-    }
+    const location: LocationInfo = data.location || { fullAddress: 'Unknown Location', street: '', city: 'Unknown', postcode: '', country: '' };
 
 
     return {
@@ -368,13 +362,7 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
 const toSighting = (docSnap: any): Sighting => {
     const data = docSnap.data();
     
-    // Backward compatibility for old string-based location
-    let location: LocationInfo;
-    if (typeof data.location === 'string') {
-        location = { fullAddress: data.location, street: '', city: data.location, postcode: '', country: '' };
-    } else {
-        location = data.location || { fullAddress: '', street: '', city: 'Unknown', postcode: '', country: '' };
-    }
+    const location: LocationInfo = data.location || { fullAddress: 'Unknown Location', street: '', city: 'Unknown', postcode: '', country: '' };
 
     return {
         id: docSnap.id,

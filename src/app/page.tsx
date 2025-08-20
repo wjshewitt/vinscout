@@ -42,8 +42,8 @@ export default function Home() {
     return reports.filter(report =>
       report.make.toLowerCase().includes(lowercasedQuery) ||
       report.model.toLowerCase().includes(lowercasedQuery) ||
-      report.location.city.toLowerCase().includes(lowercasedQuery) ||
-      report.location.street.toLowerCase().includes(lowercasedQuery)
+      (report.location?.city && report.location.city.toLowerCase().includes(lowercasedQuery)) ||
+      (report.location?.street && report.location.street.toLowerCase().includes(lowercasedQuery))
     );
   }, [reports, debouncedSearchQuery]);
 
