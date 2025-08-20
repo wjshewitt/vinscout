@@ -35,8 +35,6 @@ export default function Home() {
     
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Invalid Date';
-    // To avoid timezone issues, we can treat the date as UTC.
-    // '2024-05-20' becomes '2024-05-20T00:00:00.000Z'
     const safeDateString = dateString.includes('T') ? dateString : `${dateString}T00:00:00.000Z`;
     const date = new Date(safeDateString);
     if (isNaN(date.getTime())) {
@@ -46,7 +44,7 @@ export default function Home() {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-      timeZone: 'UTC' // Specify UTC to ensure consistency
+      timeZone: 'UTC'
     });
   };
 
@@ -76,7 +74,7 @@ export default function Home() {
                   </div>
                   <CardHeader>
                     <CardTitle>{vehicle.make} {vehicle.model}</CardTitle>
-                    <CardDescription>{vehicle.year} - Last seen in {vehicle.lastSeen || vehicle.location}</CardDescription>
+                    <CardDescription>{vehicle.year} - Last seen in {vehicle.location}</CardDescription>
                   </CardHeader>
                 </Link>
               </Card>
@@ -88,7 +86,7 @@ export default function Home() {
       </div>
 
       {!authLoading && !isLoggedIn && (
-        <Card className="mb-12 bg-blue-900/20 border-blue-500/30">
+        <Card className="mb-12 bg-primary/10 border-primary/20">
           <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               <AlertTriangle className="h-8 w-8 text-primary" />
@@ -97,6 +95,9 @@ export default function Home() {
                 <p className="text-muted-foreground">Sign up to report a stolen vehicle or notify an owner of a sighting.</p>
               </div>
             </div>
+             <Button asChild>
+                <Link href="/signup">Sign Up Now</Link>
+              </Button>
           </CardContent>
         </Card>
       )}

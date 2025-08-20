@@ -8,16 +8,16 @@ import { MessageSquare, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { VehicleReport } from '@/lib/firebase';
+import { VehicleReport, createOrGetConversation, sendMessage } from '@/lib/firebase';
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
-// This function now safely formats a date string (like '2024-05-20' or an ISO string)
-// without being affected by server/client timezone differences.
 const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) => {
     if (!dateString) return 'N/A';
-    // Add 'T00:00:00.000Z' to date-only strings to treat them as UTC midnight
     const safeDateString = dateString.includes('T') ? dateString : `${dateString}T00:00:00.000Z`;
     const date = new Date(safeDateString);
     if (isNaN(date.getTime())) {
@@ -29,6 +29,11 @@ const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) 
 
 export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
   const { user, loading: authLoading } = useAuth();
+  const [message, setMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
   const isLoggedIn = !!user;
 
   const formatReportedAt = (date: string) => {
@@ -38,6 +43,35 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
    const formatTheftDate = (date: string) => {
      return formatDateUTC(date, { year: 'numeric', month: 'long', day: 'numeric' });
   };
+  
+  const handleSendMessage = async () => {
+    if (!user || !message.trim()) return;
+    setIsSending(true);
+    try {
+        const conversationId = await createOrGetConversation(vehicle, user);
+        await sendMessage(conversationId, message, user);
+        
+        toast({
+            title: "Message Sent!",
+            description: "Your message has been sent to the vehicle owner.",
+        });
+        
+        setIsDialogOpen(false);
+        setMessage('');
+        // Navigate to the messages page to see the conversation
+        router.push(`/dashboard/messages?conversationId=${conversationId}`);
+        
+    } catch (error) {
+        console.error("Failed to send message:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to send message. Please try again.",
+        });
+    } finally {
+        setIsSending(false);
+    }
+  }
 
   return (
     <div className="container mx-auto py-12">
@@ -97,7 +131,7 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
                 {authLoading ? (
                   <Loader2 className="animate-spin text-primary" />
                 ) : isLoggedIn && vehicle.reporterId !== user.uid ? (
-                  <Dialog>
+                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                       <Button size="lg" className="w-full">
                         <MessageSquare className="mr-2 h-4 w-4" /> Message Owner
@@ -113,10 +147,15 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
                       <div className="grid gap-4 py-4">
                         <div className="grid w-full gap-1.5">
                           <Label htmlFor="message">Your message</Label>
-                          <Textarea placeholder="Type your message here." id="message" />
+                          <Textarea placeholder="Type your message here." id="message" value={message} onChange={(e) => setMessage(e.target.value)} />
                         </div>
                       </div>
-                      <Button type="submit">Send Message</Button>
+                      <DialogFooter>
+                        <Button type="submit" onClick={handleSendMessage} disabled={isSending || !message.trim()}>
+                            {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Send Message
+                        </Button>
+                      </DialogFooter>
                     </DialogContent>
                   </Dialog>
                 ) : isLoggedIn && vehicle.reporterId === user.uid ? (

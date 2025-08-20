@@ -1,7 +1,8 @@
+
 'use client';
 
 import Link from 'next/link';
-import { Bell, Menu, Search } from 'lucide-react';
+import { Bell, Menu, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
@@ -12,10 +13,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
 import { logout } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
 function Logo() {
   return (
@@ -25,7 +26,7 @@ function Logo() {
           <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
         </svg>
       </div>
-      <h2 className="text-2xl font-bold tracking-tighter">AutoFind</h2>
+      <h2 className="text-2xl font-bold tracking-tighter">Vigilante Garage</h2>
     </Link>
   )
 }
@@ -41,6 +42,11 @@ export function Header() {
     { href: '/community', label: 'Community' },
   ];
 
+  const loggedInNavLinks = [
+    ...navLinks,
+    { href: '/dashboard/messages', label: 'Messages' },
+  ]
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 px-4 md:px-10 py-3 backdrop-blur">
       <div className="container flex h-14 max-w-7xl items-center justify-between mx-auto">
@@ -49,7 +55,7 @@ export function Header() {
         </div>
         
         <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
+            {(isLoggedIn ? loggedInNavLinks : navLinks).map((link) => (
               <Link key={link.href} href={link.href} className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                 {link.label}
               </Link>
@@ -60,10 +66,7 @@ export function Header() {
           <div className="hidden md:flex items-center gap-4">
             {loading ? null : isLoggedIn ? (
               <>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <Bell className="h-5 w-5" />
-                  <span className="sr-only">Notifications</span>
-                </Button>
+                <NotificationMenu />
                 <UserMenu />
               </>
             ) : (
@@ -87,7 +90,7 @@ export function Header() {
             <SheetContent side="right">
               <nav className="grid gap-6 text-lg font-medium mt-8">
                 <Logo />
-                {navLinks.map((link) => (
+                {(isLoggedIn ? loggedInNavLinks : navLinks).map((link) => (
                   <Link key={link.href} href={link.href} className="text-muted-foreground transition-colors hover:text-primary">
                     {link.label}
                   </Link>
@@ -142,7 +145,7 @@ function UserMenu({ isMobile = false }) {
           </div>
         </div>
         <Link href="/dashboard" className="w-full block text-muted-foreground transition-colors hover:text-primary py-2">Dashboard</Link>
-        <Link href="/dashboard/messages" className="w-full block text-muted-foreground transition-colors hover:text-primary py-2">Messages</Link>
+        <Link href="/report" className="w-full block text-muted-foreground transition-colors hover:text-primary py-2">Report Vehicle</Link>
         <Link href="/dashboard/notifications" className="w-full block text-muted-foreground transition-colors hover:text-primary py-2">Settings</Link>
         <Button variant="ghost" className="w-full justify-start px-0" onClick={handleLogout}>Log Out</Button>
       </div>
@@ -152,17 +155,64 @@ function UserMenu({ isMobile = false }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {menuTrigger}
+        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+           <div className="h-10 w-10 rounded-full bg-cover bg-center bg-no-repeat" style={{backgroundImage: `url(${user.photoURL || `https://placehold.co/40x40.png`})`}}></div>
+        </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{user.displayName}</p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user.email}
+            </p>
+          </div>
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild><Link href="/dashboard">Dashboard</Link></DropdownMenuItem>
-        <DropdownMenuItem asChild><Link href="/dashboard/messages">Messages</Link></DropdownMenuItem>
+        <DropdownMenuItem asChild><Link href="/report">Report Vehicle</Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link href="/dashboard/notifications">Settings</Link></DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+
+function NotificationMenu() {
+    const notifications: any[] = []; // Replace with real data
+    const unreadCount = notifications.filter(n => !n.read).length;
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                 <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {unreadCount > 0 && (
+                        <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
+                          {unreadCount}
+                        </span>
+                    )}
+                     {unreadCount === 0 && (
+                        <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs">
+                          0
+                        </span>
+                    )}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0">
+                <div className="p-4 font-medium border-b">Notifications</div>
+                <div className="p-4">
+                    {notifications.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">You have no new notifications.</p>
+                    ) : (
+                        <div className="space-y-2">
+                           {/* Map through notifications here */}
+                        </div>
+                    )}
+                </div>
+            </PopoverContent>
+        </Popover>
+    )
 }
