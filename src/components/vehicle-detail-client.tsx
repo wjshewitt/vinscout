@@ -517,13 +517,17 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold mb-2">Vehicle Details</h3>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  <span>Make:</span> <span className="text-muted-foreground">{vehicle.make}</span>
-                  <span>Model:</span> <span className="text-muted-foreground">{vehicle.model}</span>
-                  <span>Year:</span> <span className="text-muted-foreground">{vehicle.year}</span>
-                  <span>Color:</span> <span className="text-muted-foreground">{vehicle.color}</span>
-                  <span>License Plate:</span> <span className="license-plate">{vehicle.licensePlate}</span>
-                  {vehicle.vin && <><span>VIN:</span> <span className="font-mono text-muted-foreground">{vehicle.vin}</span></>}
+                <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <span>Make:</span> <span className="text-muted-foreground">{vehicle.make}</span>
+                    <span>Model:</span> <span className="text-muted-foreground">{vehicle.model}</span>
+                    <span>Year:</span> <span className="text-muted-foreground">{vehicle.year}</span>
+                    <span>Color:</span> <span className="text-muted-foreground">{vehicle.color}</span>
+                    {vehicle.vin && <><span>VIN:</span> <span className="font-mono text-muted-foreground">{vehicle.vin}</span></>}
+                    </div>
+                    <div>
+                        <span className="license-plate">{vehicle.licensePlate}</span>
+                    </div>
                 </div>
               </div>
               <Separator />

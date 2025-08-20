@@ -194,7 +194,7 @@ export default function Home() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[40%]">Vehicle</TableHead>
-                  <TableHead>License Plate</TableHead>
+                  <TableHead className="text-center">License Plate</TableHead>
                   <TableHead>Last Seen Location</TableHead>
                   <TableHead>Date Stolen</TableHead>
                   <TableHead className="text-right"></TableHead>
@@ -216,7 +216,7 @@ export default function Home() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell><span className="license-plate">{vehicle.licensePlate}</span></TableCell>
+                      <TableCell className="text-center"><span className="license-plate">{vehicle.licensePlate}</span></TableCell>
                       <TableCell>{formatLocation(vehicle.location, isLoggedIn)}</TableCell>
                       <TableCell>{formatDate(vehicle.date)}</TableCell>
                       <TableCell className="text-right">
