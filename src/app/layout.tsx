@@ -7,7 +7,7 @@ import { Providers } from '@/components/layout/providers';
 import { Footer } from '@/components/layout/footer';
 
 export const metadata: Metadata = {
-  title: 'AutoFind',
+  title: 'Vinchaser',
   description: 'Community-based stolen vehicle recovery.',
 };
 

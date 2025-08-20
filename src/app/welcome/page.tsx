@@ -12,7 +12,7 @@ export default function WelcomePage() {
           <div className="mx-auto bg-primary/20 p-4 rounded-full w-fit mb-4">
             <PartyPopper className="h-12 w-12 text-primary" />
           </div>
-          <CardTitle className="text-3xl">Welcome to AutoFind!</CardTitle>
+          <CardTitle className="text-3xl">Welcome to Vinchaser!</CardTitle>
           <CardDescription className="text-lg text-muted-foreground">
             You're all set up and ready to go.
           </CardDescription>
