@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, DollarSign } from 'lucide-react';
+import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { submitVehicleReport } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
@@ -158,6 +158,8 @@ export function VehicleReportForm() {
       location: '',
       date: '',
       additionalInfo: '',
+      rewardAmount: undefined,
+      rewardDetails: '',
     },
   });
 
@@ -189,7 +191,7 @@ export function VehicleReportForm() {
     if (savedFormData) {
         const parsedData = JSON.parse(savedFormData);
         form.reset(parsedData);
-        if (parsedData.rewardAmount > 0) {
+        if (parsedData.rewardAmount > 0 || parsedData.rewardDetails) {
             setShowReward(true);
         }
     }
@@ -327,7 +329,7 @@ export function VehicleReportForm() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Make</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={(v) => { field.onChange(v); handleMakeChange(v); }} value={field.value}>
                             <FormControl>
                                 <SelectTrigger className="h-12 rounded-lg">
                                 <SelectValue placeholder="Select Make" />
@@ -543,9 +545,9 @@ export function VehicleReportForm() {
                                 name="rewardAmount"
                                 render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Reward Amount ($)</FormLabel>
+                                    <FormLabel>Reward Amount (£) (Optional)</FormLabel>
                                     <div className="relative">
-                                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                        <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                                         <FormControl>
                                             <Input type="number" placeholder="e.g., 500" {...field} className="h-12 rounded-lg pl-10" />
                                         </FormControl>
@@ -559,7 +561,7 @@ export function VehicleReportForm() {
                                 name="rewardDetails"
                                 render={({ field }) => (
                                 <FormItem className="sm:col-span-2">
-                                    <FormLabel>Reward Details (Optional)</FormLabel>
+                                    <FormLabel>Reward Details</FormLabel>
                                     <FormControl>
                                     <Textarea
                                         placeholder="e.g., Reward for information leading to recovery. Higher reward for direct finding."
@@ -628,3 +630,5 @@ export function VehicleReportForm() {
     </Form>
   );
 }
+
+    

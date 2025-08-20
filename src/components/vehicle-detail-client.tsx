@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, DollarSign } from 'lucide-react';
+import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, PoundSterling } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -218,6 +218,7 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
   };
   
   const mostRecentSighting = sightings?.[0];
+  const hasReward = vehicle.rewardAmount || vehicle.rewardDetails;
 
   return (
     <div className="container mx-auto py-12 space-y-8">
@@ -275,18 +276,20 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
                 </div>
               </div>
               <Separator />
-               {vehicle.rewardAmount && vehicle.rewardAmount > 0 && (
+               {hasReward && (
                  <>
                     <div>
                         <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
                            <Badge variant="secondary" className="bg-green-700/20 text-green-400 border-green-700/40">
-                             <DollarSign className="h-4 w-4 mr-1" />
+                             <PoundSterling className="h-4 w-4 mr-1" />
                              Reward Offered
                            </Badge>
                         </h3>
                          {isLoggedIn && !isOwner ? (
                              <>
-                                <p className="text-2xl font-bold text-primary">${vehicle.rewardAmount.toLocaleString()}</p>
+                                {vehicle.rewardAmount && vehicle.rewardAmount > 0 && (
+                                    <p className="text-2xl font-bold text-primary">£{vehicle.rewardAmount.toLocaleString()}</p>
+                                )}
                                 {vehicle.rewardDetails && <p className="text-sm text-muted-foreground mt-1">{vehicle.rewardDetails}</p>}
                              </>
                          ) : (
@@ -471,3 +474,5 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
     </div>
   );
 }
+
+    
