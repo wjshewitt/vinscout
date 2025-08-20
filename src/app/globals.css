@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 body {
-  font-family: 'Satoshi', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
 @layer base {
@@ -60,5 +60,8 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-bold;
   }
 }
