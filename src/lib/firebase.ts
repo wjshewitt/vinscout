@@ -167,14 +167,14 @@ export const deleteUserAccount = async () => {
     }
 };
 
-export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'reporterId'>) => {
+export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'reporterId' | 'sightingsCount'>) => {
     if (!auth.currentUser) {
         console.error("No user is signed in to submit a report.");
         return null;
     }
 
     try {
-        const reportPayload = {
+        const reportPayload: Omit<VehicleReport, 'id'> & { reportedAt: FieldValue } = {
             ...reportData,
             reporterId: auth.currentUser.uid,
             reportedAt: serverTimestamp(),
@@ -249,7 +249,7 @@ export interface VehicleReport {
     photos?: string[];
     lat: number;
     lng: number;
-    sightingsCount?: number;
+    sightingsCount: number;
     rewardAmount?: number;
     rewardDetails?: string;
 }

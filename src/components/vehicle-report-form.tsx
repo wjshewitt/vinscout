@@ -397,24 +397,12 @@ export function VehicleReportForm() {
     if (!files) return;
 
     setIsUploading(true);
+    toast({ title: 'Processing Images', description: 'Compressing images for upload...' });
     const newImagePromises: Promise<string>[] = [];
 
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (file.size > 10 * 1024 * 1024) { // 10MB limit
-            toast({ title: 'Compressing Image', description: `${file.name} is large and will be compressed.` });
-            newImagePromises.push(compressImage(file));
-        } else {
-             const promise = new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    resolve(reader.result as string);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-            newImagePromises.push(promise);
-        }
+        newImagePromises.push(compressImage(file));
     }
     
     Promise.all(newImagePromises).then(newImages => {
@@ -422,9 +410,10 @@ export function VehicleReportForm() {
         form.setValue('photos', updatedPhotos, { shouldValidate: true });
         setImagePreviews(updatedPhotos);
         setIsUploading(false);
+        toast({ title: 'Images Ready', description: 'Your photos have been added to the report.' });
     }).catch(error => {
-        console.error("Error reading files:", error);
-        toast({ variant: 'destructive', title: 'Error uploading files', description: 'There was a problem reading your files.' });
+        console.error("Error processing files:", error);
+        toast({ variant: 'destructive', title: 'Error processing files', description: 'There was a problem preparing your images.' });
         setIsUploading(false);
     });
   };
@@ -460,7 +449,7 @@ export function VehicleReportForm() {
             return;
         }
     
-        const reportId = await submitVehicleReport(data as Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'reporterId'>);
+        const reportId = await submitVehicleReport(data as Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'reporterId' | 'sightingsCount'>);
 
         if (reportId) {
             toast({
@@ -637,7 +626,7 @@ export function VehicleReportForm() {
                             <FormItem>
                             <FormLabel>VIN (Optional)</FormLabel>
                             <FormControl>
-                                <Input placeholder="Enter Vehicle Identification Number" {...field} className="h-12 rounded-lg" />
+                                <Input placeholder="Enter Vehicle Identification Number" {...field} value={field.value ?? ''} className="h-12 rounded-lg" />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -656,6 +645,7 @@ export function VehicleReportForm() {
                                 placeholder="e.g., Carbon fiber roof, aftermarket wheels, small dent on rear bumper"
                                 className="resize-none min-h-[100px] rounded-lg"
                                 {...field}
+                                value={field.value ?? ''}
                             />
                             </FormControl>
                             <FormMessage />
@@ -697,6 +687,7 @@ export function VehicleReportForm() {
                                     placeholder="Provide any other details that might be helpful"
                                     className="resize-none min-h-[100px] rounded-lg"
                                     {...field}
+                                    value={field.value ?? ''}
                                 />
                                 </FormControl>
                                 <FormMessage />
