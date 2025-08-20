@@ -85,6 +85,7 @@ const createUserProfileDocument = async (user: User, details: { displayName?: st
                 notificationSettings: {
                     nationalAlerts: false,
                     localAlerts: true,
+                    email: user.email || '',
                     notificationChannels: {
                         email: true,
                         sms: false,
@@ -283,6 +284,7 @@ export interface GeofenceLocation {
 export interface UserNotificationSettings {
   nationalAlerts: boolean;
   localAlerts: boolean;
+  email: string;
   notificationChannels: {
     email: boolean;
     sms: boolean;
@@ -843,6 +845,7 @@ export async function checkIfUserIsBlocked(blockerId: string, blockedId: string)
 const defaultSettings: UserNotificationSettings = {
     nationalAlerts: false,
     localAlerts: true,
+    email: '',
     notificationChannels: { email: true, sms: false, whatsapp: false },
     phoneNumber: ''
 };

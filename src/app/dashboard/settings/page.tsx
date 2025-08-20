@@ -414,8 +414,13 @@ function NotificationSettings() {
         getNotificationSettings(user.uid)
       ]).then(([geofences, notificationSettings]) => {
         setLocations(geofences);
-        setInitialSettings(notificationSettings);
-        setModifiedSettings(notificationSettings);
+        // Ensure email is populated from user object if not set
+        const finalSettings = { ...notificationSettings };
+        if (!finalSettings.email) {
+            finalSettings.email = user.email || '';
+        }
+        setInitialSettings(finalSettings);
+        setModifiedSettings(finalSettings);
       }).finally(() => setLoading(false));
     } else if (!authLoading) {
         setLoading(false);
@@ -491,6 +496,11 @@ function NotificationSettings() {
     handleSettingsChange({ phoneNumber: value });
   };
 
+  const handleEmailChange = (value: string) => {
+    handleSettingsChange({ email: value });
+  };
+
+
    if (loading || !apiKey) {
         return (
             <div className="flex justify-center items-center py-20">
@@ -546,6 +556,20 @@ function NotificationSettings() {
                                     onCheckedChange={(checked) => handleChannelChange('email', checked)}
                                 />
                             </div>
+                            {modifiedSettings.notificationChannels?.email && (
+                                <div className="pt-2 pl-8">
+                                    <Label htmlFor="email-address">Notification Email</Label>
+                                    <Input 
+                                        id="email-address"
+                                        type="email"
+                                        placeholder="Enter email for notifications"
+                                        value={modifiedSettings.email}
+                                        onChange={(e) => handleEmailChange(e.target.value)}
+                                        className="mt-2"
+                                    />
+                                </div>
+                            )}
+
                             <div className="flex items-center justify-between space-x-4">
                                 <Label htmlFor="sms-channel" className="flex items-center gap-3 text-sm font-medium">
                                 <MessageSquare className="w-5 h-5 text-muted-foreground"/>
@@ -569,7 +593,7 @@ function NotificationSettings() {
                                 />
                             </div>
                             {(modifiedSettings.notificationChannels?.sms || modifiedSettings.notificationChannels?.whatsapp) && (
-                                <div className="pt-2">
+                                <div className="pt-2 pl-8">
                                     <Label htmlFor="phone-number">Phone Number</Label>
                                     <Input 
                                         id="phone-number"

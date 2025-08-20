@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PartyPopper } from 'lucide-react';
+import { PartyPopper, BellPlus } from 'lucide-react';
 
 export default function WelcomePage() {
   return (
@@ -14,16 +14,21 @@ export default function WelcomePage() {
           </div>
           <CardTitle className="text-3xl">Welcome to AutoFind!</CardTitle>
           <CardDescription className="text-lg text-muted-foreground">
-            We're thrilled to have you on board.
+            You're all set up and ready to go.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="mb-6">
-            You are now part of a community dedicated to recovering stolen vehicles. You can now report a vehicle, browse active cases, and help others.
+          <p className="mb-8">
+            To get the most out of the community, we highly recommend setting up your notification preferences. This will allow you to receive alerts for stolen vehicles in your area.
           </p>
-          <Button asChild size="lg">
-            <Link href="/dashboard">Go to my Dashboard</Link>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+             <Button asChild size="lg" variant="outline">
+                <Link href="/dashboard">Go to my Dashboard</Link>
+            </Button>
+            <Button asChild size="lg">
+                <Link href="/dashboard/settings"><BellPlus className="mr-2"/>Set Up Notifications</Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

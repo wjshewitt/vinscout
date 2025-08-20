@@ -134,15 +134,14 @@ function UserMenu({ isMobile = false }) {
 
   if (!user) return null;
 
-  const menuTrigger = (
-     <div className="h-10 w-10 rounded-full bg-cover bg-center bg-no-repeat ring-2 ring-primary ring-offset-2 ring-offset-background" style={{backgroundImage: `url(${user.photoURL || `https://placehold.co/40x40.png`})`}}></div>
-  );
-
   if (isMobile) {
     return (
       <div className="border-t pt-4">
         <div className="flex items-center gap-4 mb-4">
-           <div className="h-10 w-10 rounded-full bg-cover bg-center bg-no-repeat" style={{backgroundImage: `url(${user.photoURL || `https://placehold.co/40x40.png`})`}}></div>
+           <Avatar>
+                <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User'} data-ai-hint="person face" />
+                <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+            </Avatar>
           <div>
             <p className="font-semibold">{user.displayName}</p>
             <p className="text-sm text-muted-foreground">{user.email}</p>
@@ -160,7 +159,10 @@ function UserMenu({ isMobile = false }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-           <div className="h-10 w-10 rounded-full bg-cover bg-center bg-no-repeat" style={{backgroundImage: `url(${user.photoURL || `https://placehold.co/40x40.png`})`}}></div>
+           <Avatar>
+                <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User'} data-ai-hint="person face" />
+                <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+            </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
@@ -225,7 +227,7 @@ function NotificationMenu() {
                                    <Link href={`/dashboard/messages?conversationId=${convo.id}`} key={convo.id} className="block p-2 rounded-lg hover:bg-accent">
                                         <div className="flex items-start gap-3">
                                             <Avatar className="h-10 w-10">
-                                                <AvatarImage src={otherParticipant.avatar} alt={otherParticipant.name} />
+                                                <AvatarImage src={otherParticipant.avatar} alt={otherParticipant.name} data-ai-hint="person face" />
                                                 <AvatarFallback>{otherParticipant.name.charAt(0)}</AvatarFallback>
                                             </Avatar>
                                             <div className="flex-1 text-sm">
