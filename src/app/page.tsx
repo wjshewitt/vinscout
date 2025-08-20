@@ -73,11 +73,14 @@ export default function Home() {
     });
   };
   
-  const formatLocation = (location: LocationInfo | undefined): string => {
-    if (!location || !location.fullAddress || location.fullAddress === 'Unknown Location') {
+  const formatLocation = (location: LocationInfo | undefined, type: 'full' | 'city' = 'city'): string => {
+    if (!location || !location.fullAddress) {
       return 'Unknown Location';
     }
-    return location.city || location.fullAddress;
+    if (type === 'full') {
+        return location.fullAddress;
+    }
+    return location.city || location.fullAddress.split(',')[0] || 'Unknown Location';
   };
 
   return (
@@ -130,7 +133,7 @@ export default function Home() {
                   </div>
                   <CardHeader>
                     <CardTitle>{vehicle.make} {vehicle.model}</CardTitle>
-                    <CardDescription>{vehicle.year} - Last seen in {formatLocation(vehicle.location)}</CardDescription>
+                    <CardDescription>{vehicle.year} - Last seen in {formatLocation(vehicle.location, 'full')}</CardDescription>
                   </CardHeader>
                 </Link>
               </Card>
@@ -214,7 +217,7 @@ export default function Home() {
                         </div>
                       </TableCell>
                       <TableCell><span className="font-mono">{vehicle.licensePlate}</span></TableCell>
-                      <TableCell>{formatLocation(vehicle.location)}</TableCell>
+                      <TableCell>{formatLocation(vehicle.location, 'city')}</TableCell>
                       <TableCell>{formatDate(vehicle.date)}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="outline" size="sm" asChild>
