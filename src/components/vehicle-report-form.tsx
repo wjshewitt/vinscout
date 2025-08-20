@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X } from 'lucide-react';
+import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X, Search } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { submitVehicleReport, VehicleReport, LocationInfo } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
@@ -89,10 +89,11 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
     const map = useMap();
     const { toast } = useToast();
     const form = useFormContext<ReportFormValues>();
+    const [searchAddress, setSearchAddress] = useState('');
 
-    const geocodeLocation = (location: google.maps.LatLngLiteral, type: 'GEOCODE' | 'REVERSE_GEOCODE') => {
+    const geocodeLocation = (location: google.maps.LatLngLiteral | string, type: 'GEOCODE' | 'REVERSE_GEOCODE') => {
         const geocoder = new google.maps.Geocoder();
-        const request = type === 'GEOCODE' ? { address: form.getValues('location.fullAddress') } : { location };
+        const request = type === 'GEOCODE' ? { address: location } : { location };
 
         geocoder.geocode(request, (results, status) => {
             if (status === 'OK' && results && results[0]) {
@@ -106,8 +107,13 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
                 setMarkerPos(newPos);
                 if (map) {
                     map.panTo(newPos);
+                    map.setZoom(15);
                 }
+                
                 onLocationChange({ ...newPos, locationInfo });
+                if (type === 'REVERSE_GEOCODE') {
+                    setSearchAddress(result.formatted_address);
+                }
 
             } else {
                  toast({
@@ -119,44 +125,45 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
         });
     }
 
-    const debouncedGeocodeAddress = useDebouncedCallback(() => {
-        const address = form.getValues('location.fullAddress');
+    const debouncedGeocodeAddress = useDebouncedCallback((address: string) => {
         if (address) {
-            geocodeLocation({ lat: 0, lng: 0}, 'GEOCODE'); // lat/lng are ignored
+            geocodeLocation(address, 'GEOCODE');
         }
     }, 1000);
 
     const handleMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
         if (e.latLng) {
             const newPos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
-            setMarkerPos(newPos);
             geocodeLocation(newPos, 'REVERSE_GEOCODE');
         }
     };
     
-    const locationValue = useWatch<ReportFormValues>({ name: 'location.fullAddress' });
     useEffect(() => {
-        if (locationValue) {
-            debouncedGeocodeAddress();
+      const initialLocation = form.getValues('location');
+      if (initialLocation?.fullAddress) {
+        setSearchAddress(initialLocation.fullAddress);
+        if(form.getValues('lat') && form.getValues('lng')) {
+            setMarkerPos({lat: form.getValues('lat'), lng: form.getValues('lng')});
         }
-    }, [locationValue, debouncedGeocodeAddress]);
+      }
+    }, [form]);
 
 
     return (
         <div className="space-y-4">
-            <FormField
-                control={form.control}
-                name="location.fullAddress"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Last Known Location</FormLabel>
-                     <FormControl>
-                        <Input placeholder="e.g., 123 Main St, Anytown, USA" {...field} value={field.value ?? ''} className="h-12 rounded-lg" />
-                     </FormControl>
-                    <FormMessage />
-                </FormItem>
-                )}
-            />
+             <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input 
+                    placeholder="Search for an address or drag the pin" 
+                    value={searchAddress}
+                    onChange={(e) => {
+                        setSearchAddress(e.target.value);
+                        debouncedGeocodeAddress(e.target.value);
+                    }}
+                    className="h-12 rounded-lg pl-10"
+                />
+            </div>
+            
             <div className="h-64 w-full rounded-lg overflow-hidden border">
                 <Map
                     defaultCenter={markerPos}
@@ -164,13 +171,68 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
                     mapId="report_form_map"
                     gestureHandling="greedy"
                     disableDefaultUI={true}
+                    onCenterChanged={(e) => map && setMarkerPos(e.detail.center)}
                 >
                     <AdvancedMarker position={markerPos} draggable={true} onDragEnd={handleMarkerDragEnd}>
                         <MapPin size={32} className="text-primary" />
                     </AdvancedMarker>
                 </Map>
             </div>
-             <p className="text-sm text-muted-foreground">Type an address or drag the pin to the exact location of the theft.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <FormField
+                    control={form.control}
+                    name="location.street"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Street</FormLabel>
+                        <FormControl>
+                            <Input {...field} value={field.value ?? ''} disabled />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="location.city"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl>
+                            <Input {...field} value={field.value ?? ''} disabled />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="location.postcode"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Postcode</FormLabel>
+                        <FormControl>
+                            <Input {...field} value={field.value ?? ''} disabled />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="location.country"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Country</FormLabel>
+                        <FormControl>
+                            <Input {...field} value={field.value ?? ''} disabled />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
         </div>
     );
 }
@@ -201,7 +263,7 @@ export function VehicleReportForm() {
       date: '',
       additionalInfo: '',
       photos: [],
-      rewardAmount: '' as any,
+      rewardAmount: undefined,
       rewardDetails: '',
     },
   });
@@ -302,7 +364,11 @@ export function VehicleReportForm() {
   const handleLocationChange = useCallback(({ lat, lng, locationInfo }: { lat: number; lng: number; locationInfo: LocationInfo }) => {
     form.setValue('lat', lat);
     form.setValue('lng', lng);
-    form.setValue('location', locationInfo, { shouldValidate: true });
+    form.setValue('location.street', locationInfo.street || '');
+    form.setValue('location.city', locationInfo.city || '');
+    form.setValue('location.postcode', locationInfo.postcode || '');
+    form.setValue('location.country', locationInfo.country || '');
+    form.setValue('location.fullAddress', locationInfo.fullAddress || '', { shouldValidate: true });
   }, [form]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -579,12 +645,10 @@ export function VehicleReportForm() {
             )}
 
             {currentStep === 2 && (
-                <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-                    <div className="sm:col-span-2">
-                        <APIProvider apiKey={apiKey}>
-                           <LocationPicker onLocationChange={handleLocationChange} />
-                        </APIProvider>
-                    </div>
+                <div className="grid grid-cols-1 gap-x-8 gap-y-6">
+                    <APIProvider apiKey={apiKey}>
+                        <LocationPicker onLocationChange={handleLocationChange} />
+                    </APIProvider>
                     
                     <FormField
                         control={form.control}
