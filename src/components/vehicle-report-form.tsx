@@ -875,5 +875,4 @@ export function VehicleReportForm() {
     </Form>
   );
 }
-
     
