@@ -60,8 +60,8 @@ export default function Home() {
     
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Invalid Date';
-    const safeDateString = dateString.includes('T') ? dateString : `${dateString}T00:00:00.000Z`;
-    const date = new Date(safeDateString);
+    // Handle both ISO strings and 'YYYY-MM-DD' formats by ensuring it's treated as UTC
+    const date = new Date(dateString.includes('T') ? dateString : `${dateString}T00:00:00.000Z`);
     if (isNaN(date.getTime())) {
       return 'Invalid Date';
     }
@@ -69,7 +69,7 @@ export default function Home() {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-      timeZone: 'UTC'
+      timeZone: 'UTC' // Explicitly use UTC to avoid client/server mismatches
     });
   };
   
@@ -78,7 +78,7 @@ export default function Home() {
         return 'Unknown Location';
     }
     if (type === 'full') {
-        return location.fullAddress || 'Unknown Location';
+        return location.fullAddress || location.city || 'Unknown Location';
     }
     return location.city || location.fullAddress || 'Unknown Location';
   };

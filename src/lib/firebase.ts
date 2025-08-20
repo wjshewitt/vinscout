@@ -1,3 +1,4 @@
+
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { 
@@ -365,19 +366,24 @@ export interface UserNotificationSettings {
 
 const toVehicleReport = (docSnap: any): VehicleReport => {
     const data = docSnap.data();
-    
+
     const convertTimestampToString = (ts: Timestamp | null | undefined): string => {
         return ts ? ts.toDate().toISOString() : new Date().toISOString();
     };
-    
-    const formatDateString = (dateInput: string | Date | Timestamp | null | undefined): string => {
+
+    const formatDateString = (dateInput: any): string => {
         if (!dateInput) return new Date().toISOString().split('T')[0];
-        if (dateInput instanceof Timestamp) return dateInput.toDate().toISOString().split('T')[0];
-        if (dateInput instanceof Date) return dateInput.toISOString().split('T')[0];
-        if (typeof dateInput === 'string') {
-            return dateInput.includes('T') ? dateInput.split('T')[0] : dateInput;
-        }
-        return new Date().toISOString().split('T')[0];
+        const d = (dateInput.toDate && typeof dateInput.toDate === 'function') ? dateInput.toDate() : new Date(dateInput);
+        if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+        return d.toISOString().split('T')[0];
+    };
+
+    const defaultLocation: LocationInfo = {
+        fullAddress: 'Unknown Location',
+        street: '',
+        city: 'Unknown',
+        postcode: '',
+        country: '',
     };
     
     let location: LocationInfo;
@@ -390,15 +396,8 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
             country: data.location.country || '',
         };
     } else {
-        location = {
-            fullAddress: 'Unknown Location',
-            street: '',
-            city: 'Unknown Location',
-            postcode: '',
-            country: '',
-        };
+        location = defaultLocation;
     }
-
 
     return {
         id: docSnap.id,
