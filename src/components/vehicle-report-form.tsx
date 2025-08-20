@@ -158,7 +158,7 @@ export function VehicleReportForm() {
       location: '',
       date: '',
       additionalInfo: '',
-      rewardAmount: undefined,
+      rewardAmount: '' as any,
       rewardDetails: '',
     },
   });
@@ -375,7 +375,7 @@ export function VehicleReportForm() {
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {models.map((model) => (
+                                    {(models || []).map((model) => (
                                     <SelectItem key={model} value={model}>{model}</SelectItem>
                                     ))}
                                 </SelectContent>
