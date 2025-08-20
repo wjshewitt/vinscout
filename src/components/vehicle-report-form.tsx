@@ -37,7 +37,7 @@ type ReportFormValues = z.infer<typeof reportSchema>;
 type FieldName = keyof ReportFormValues;
 
 const currentYear = new Date().getFullYear();
-const years = Array.from({ length: currentYear - 1949 }, (_, i) => currentYear - i);
+const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear - i);
 
 const steps: { title: string; fields: FieldName[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
@@ -136,7 +136,6 @@ export function VehicleReportForm() {
   const router = useRouter();
   const [makes, setMakes] = useState<string[]>([]);
   const [models, setModels] = useState<string[]>([]);
-  const [selectedMake, setSelectedMake] = useState<string>('');
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -155,6 +154,11 @@ export function VehicleReportForm() {
       date: '',
       additionalInfo: '',
     },
+  });
+
+  const selectedMake = useWatch({
+    control: form.control,
+    name: 'make',
   });
 
   useEffect(() => {
@@ -180,9 +184,6 @@ export function VehicleReportForm() {
     if (savedFormData) {
         const parsedData = JSON.parse(savedFormData);
         form.reset(parsedData);
-        if (parsedData.make) {
-            handleMakeChange(parsedData.make, false);
-        }
     }
   }, [form]);
 
@@ -194,28 +195,33 @@ export function VehicleReportForm() {
   }, [form]);
 
 
-  const handleMakeChange = async (make: string, shouldResetModel = true) => {
-    setSelectedMake(make);
-    form.setValue('make', make);
-    if (shouldResetModel) {
+  const handleMakeChange = useCallback(async (make: string) => {
+    if (make !== 'Other') {
         form.setValue('model', '');
+        setModels([]);
+        try {
+            const response = await fetch(`/api/vehicles?make=${encodeURIComponent(make)}`);
+            const data = await response.json();
+            setModels(data.models);
+        } catch (error) {
+            console.error('Failed to fetch vehicle models:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not load vehicle models for the selected make.',
+            });
+        }
+    } else {
+        form.setValue('model', '');
+        setModels([]);
     }
-    setModels([]);
-    if (make) {
-      try {
-        const response = await fetch(`/api/vehicles?make=${encodeURIComponent(make)}`);
-        const data = await response.json();
-        setModels(data.models);
-      } catch (error) {
-        console.error('Failed to fetch vehicle models:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not load vehicle models for the selected make.',
-        });
-      }
+  }, [form, toast]);
+
+  useEffect(() => {
+    if(selectedMake && selectedMake !== 'Other') {
+        handleMakeChange(selectedMake);
     }
-  };
+  }, [selectedMake, handleMakeChange]);
 
   const handleNextStep = async () => {
       const fields = steps[currentStep].fields;
@@ -274,7 +280,6 @@ export function VehicleReportForm() {
               description: 'Your stolen vehicle report has been submitted successfully.',
             });
             form.reset();
-            setSelectedMake('');
             localStorage.removeItem('vehicleReportForm');
             router.push(`/vehicles/${reportId}`);
         } else {
@@ -299,6 +304,8 @@ export function VehicleReportForm() {
         </div>
     );
   }
+  
+  const isMakeOther = selectedMake === 'Other';
 
   return (
     <Form {...form}>
@@ -312,7 +319,7 @@ export function VehicleReportForm() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Make</FormLabel>
-                            <Select onValueChange={(value) => handleMakeChange(value, true)} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                                 <SelectTrigger className="h-12 rounded-lg">
                                 <SelectValue placeholder="Select Make" />
@@ -322,34 +329,66 @@ export function VehicleReportForm() {
                                 {makes.map((make) => (
                                 <SelectItem key={make} value={make}>{make}</SelectItem>
                                 ))}
+                                <SelectItem value="Other">Other</SelectItem>
                             </SelectContent>
                             </Select>
                             <FormMessage />
                         </FormItem>
                         )}
                     />
-                    <FormField
-                        control={form.control}
-                        name="model"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Model</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedMake || models.length === 0}>
-                            <FormControl>
-                                <SelectTrigger className="h-12 rounded-lg">
-                                <SelectValue placeholder="Select Model" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {models.map((model) => (
-                                <SelectItem key={model} value={model}>{model}</SelectItem>
-                                ))}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
+                    {isMakeOther ? (
+                        <FormField
+                            control={form.control}
+                            name="make"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Custom Make</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} placeholder="Enter manufacturer" className="h-12 rounded-lg" />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    ) : (
+                         <FormField
+                            control={form.control}
+                            name="model"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Model</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value} disabled={!selectedMake || models.length === 0}>
+                                <FormControl>
+                                    <SelectTrigger className="h-12 rounded-lg">
+                                    <SelectValue placeholder="Select Model" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {models.map((model) => (
+                                    <SelectItem key={model} value={model}>{model}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    )}
+                    {isMakeOther && (
+                         <FormField
+                            control={form.control}
+                            name="model"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Model</FormLabel>
+                                <FormControl>
+                                    <Input {...field} placeholder="Enter model" className="h-12 rounded-lg" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    )}
                     <FormField
                         control={form.control}
                         name="year"
@@ -535,5 +574,3 @@ export function VehicleReportForm() {
     </Form>
   );
 }
-
-    
