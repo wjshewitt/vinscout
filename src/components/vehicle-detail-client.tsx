@@ -4,13 +4,14 @@
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar } from 'lucide-react';
+import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { VehicleReport, Sighting, Message, createOrGetConversation, sendMessage, getVehicleSightings, submitSighting } from '@/lib/firebase';
+import { VehicleReport, Sighting, Message, createOrGetConversation, sendMessage, getVehicleSightings, submitSighting, deleteVehicleReport } from '@/lib/firebase';
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -19,7 +20,7 @@ import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-m
 import { useDebouncedCallback } from 'use-debounce';
 import VehicleSightingsMap from './vehicle-sightings-map';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
-import { Input } from '@/components/ui/input';
+import { Input } from './ui/input';
 
 
 const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) => {
@@ -107,11 +108,13 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
   const { user, loading: authLoading } = useAuth();
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [messageType, setMessageType] = useState<Message['messageType']>();
   const { toast } = useToast();
   const router = useRouter();
   const isLoggedIn = !!user;
+  const isOwner = isLoggedIn && vehicle.reporterId === user.uid;
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [sightingLocation, setSightingLocation] = useState<{lat: number, lng: number, address: string} | null>(null);
   const [sightings, setSightings] = useState<Sighting[]>([]);
@@ -189,7 +192,28 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
     } finally {
         setIsSending(false);
     }
-  }
+  };
+  
+   const handleDeleteReport = async () => {
+    if (!isOwner) return;
+    setIsDeleting(true);
+    try {
+      await deleteVehicleReport(vehicle.id);
+      toast({
+        title: 'Report Deleted',
+        description: 'Your vehicle report has been permanently deleted.',
+      });
+      router.push('/dashboard/vehicles');
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to delete report. Please try again.',
+      });
+      setIsDeleting(false);
+    }
+  };
   
   const mostRecentSighting = sightings?.[0];
 
@@ -262,82 +286,110 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
               <div>
                 {authLoading ? (
                   <Loader2 className="animate-spin text-primary" />
-                ) : isLoggedIn && vehicle.reporterId !== user.uid ? (
+                ) : !isOwner && (
                   <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button size="lg" className="w-full">
+                      <Button size="lg" className="w-full" disabled={!isLoggedIn}>
                         <MessageSquare className="mr-2 h-4 w-4" /> Message Owner
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-lg">
-                      <DialogHeader>
-                        <DialogTitle>Contact the owner</DialogTitle>
-                        <DialogDescription>
-                          Provide any information that could help locate the vehicle. Your message will be sent securely.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid w-full gap-1.5">
-                          <Label htmlFor="message-type">Reason for contact</Label>
-                          <Select onValueChange={(value) => setMessageType(value as Message['messageType'])} value={messageType}>
-                            <SelectTrigger id="message-type">
-                                <SelectValue placeholder="Select a reason..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Sighting">
-                                    <div className="flex items-center gap-2"><Eye className="h-4 w-4"/> I have seen this vehicle</div>
-                                </SelectItem>
-                                <SelectItem value="Vehicle Found">
-                                    <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4"/> I have found this vehicle</div>
-                                </SelectItem>
-                                <SelectItem value="Question">
-                                    <div className="flex items-center gap-2"><HelpCircle className="h-4 w-4"/> I have a question</div>
-                                </SelectItem>
-                            </SelectContent>
-                           </Select>
-                        </div>
-                        
-                        {messageType === 'Sighting' && apiKey && (
-                            <div className="space-y-2">
-                                <Label>Sighting Location</Label>
-                                <APIProvider apiKey={apiKey}>
-                                    <SightingLocationPicker onLocationChange={handleLocationChange} />
-                                </APIProvider>
+                    {isLoggedIn ? (
+                        <DialogContent className="sm:max-w-lg">
+                        <DialogHeader>
+                            <DialogTitle>Contact the owner</DialogTitle>
+                            <DialogDescription>
+                            Provide any information that could help locate the vehicle. Your message will be sent securely.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid w-full gap-1.5">
+                            <Label htmlFor="message-type">Reason for contact</Label>
+                            <Select onValueChange={(value) => setMessageType(value as Message['messageType'])} value={messageType}>
+                                <SelectTrigger id="message-type">
+                                    <SelectValue placeholder="Select a reason..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Sighting">
+                                        <div className="flex items-center gap-2"><Eye className="h-4 w-4"/> I have seen this vehicle</div>
+                                    </SelectItem>
+                                    <SelectItem value="Vehicle Found">
+                                        <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4"/> I have found this vehicle</div>
+                                    </SelectItem>
+                                    <SelectItem value="Question">
+                                        <div className="flex items-center gap-2"><HelpCircle className="h-4 w-4"/> I have a question</div>
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
                             </div>
-                        )}
-                        
-                        <div className="grid w-full gap-1.5">
-                          <Label htmlFor="message">Your message</Label>
-                          <Textarea placeholder="Type your message here." id="message" value={message} onChange={(e) => setMessage(e.target.value)} />
+                            
+                            {messageType === 'Sighting' && apiKey && (
+                                <div className="space-y-2">
+                                    <Label>Sighting Location</Label>
+                                    <APIProvider apiKey={apiKey}>
+                                        <SightingLocationPicker onLocationChange={handleLocationChange} />
+                                    </APIProvider>
+                                </div>
+                            )}
+                            
+                            <div className="grid w-full gap-1.5">
+                            <Label htmlFor="message">Your message</Label>
+                            <Textarea placeholder="Type your message here." id="message" value={message} onChange={(e) => setMessage(e.target.value)} />
+                            </div>
                         </div>
-                      </div>
-                      <DialogFooter>
-                        <Button type="submit" onClick={handleSendMessage} disabled={isSending || !message.trim() || !messageType}>
-                            {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Send Message
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
+                        <DialogFooter>
+                            <Button type="submit" onClick={handleSendMessage} disabled={isSending || !message.trim() || !messageType}>
+                                {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Send Message
+                            </Button>
+                        </DialogFooter>
+                        </DialogContent>
+                    ) : (
+                        <DialogContent>
+                             <DialogHeader>
+                                <DialogTitle>Login Required</DialogTitle>
+                                <DialogDescription>
+                                    You need to be logged in to contact a vehicle owner.
+                                </DialogDescription>
+                            </DialogHeader>
+                             <DialogFooter>
+                                <Button asChild><Link href="/login">Log In</Link></Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    )}
                   </Dialog>
-                ) : isLoggedIn && vehicle.reporterId === user.uid ? (
-                  <Card className="bg-muted/50">
-                    <CardContent className="p-4 text-center">
-                      <p className="text-sm text-muted-foreground">This is your report.</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card className="bg-muted/50">
-                    <CardContent className="p-4 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        Have information? <Link href="/login" className="font-bold text-primary underline">Log in</Link> to contact the owner.
-                      </p>
-                    </CardContent>
-                  </Card>
                 )}
               </div>
             </div>
           </div>
         </CardContent>
+        {isOwner && (
+            <CardFooter className="border-t bg-muted/30 px-6 py-4 justify-between items-center">
+                 <p className="text-sm text-muted-foreground">This is your report. You can manage it here.</p>
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Report
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete your vehicle report and all associated sightings and messages.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteReport} className="bg-destructive hover:bg-destructive/90" disabled={isDeleting}>
+                                {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Yes, delete it
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </CardFooter>
+        )}
       </Card>
       
       {apiKey && (vehicle.lat || sightings.length > 0) && (

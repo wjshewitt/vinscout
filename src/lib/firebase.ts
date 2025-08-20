@@ -185,6 +185,27 @@ export const submitVehicleReport = async (reportData: object) => {
     }
 }
 
+export const deleteVehicleReport = async (reportId: string): Promise<void> => {
+    const reportRef = doc(db, 'vehicleReports', reportId);
+    
+    // Deleting subcollections in the client is complex. 
+    // A better approach is using a Firebase Cloud Function to handle cascading deletes.
+    // For this client-side implementation, we will delete the main document.
+    // Be aware that sightings subcollection will be orphaned.
+    
+    // First, delete all sightings in the subcollection
+    const sightingsRef = collection(reportRef, "sightings");
+    const sightingsSnapshot = await getDocs(sightingsRef);
+    const batch = writeBatch(db);
+    sightingsSnapshot.docs.forEach((sightingDoc) => {
+        batch.delete(sightingDoc.ref);
+    });
+    await batch.commit();
+    
+    // Then delete the main report document
+    await deleteDoc(reportRef);
+}
+
 // Types
 export interface VehicleReport {
     id: string;
