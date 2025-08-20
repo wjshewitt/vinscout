@@ -27,7 +27,7 @@ export function Footer() {
               <Button>Support Me</Button>
             </DialogTrigger>
             <DialogContent className="p-0 max-w-2xl h-[720px] bg-transparent border-0">
-                <iframe id='kofiframe' src='https://ko-fi.com/autofind/?hidefeed=true&widget=true&embed=true&preview=true' className='h-full w-full rounded-lg' style={{border:'none', background:'#f9f9f9;'}} title='autofind'></iframe>
+                <iframe id='kofiframe' src='https://ko-fi.com/autofind/?hidefeed=true&widget=true&embed=true&preview=true' className='h-full w-full rounded-lg' style={{border:'none', background:'#f9f9f9'}} title='autofind'></iframe>
             </DialogContent>
           </Dialog>
         </div>
