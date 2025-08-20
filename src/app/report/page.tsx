@@ -2,7 +2,7 @@ import { VehicleReportForm } from '@/components/vehicle-report-form';
 
 export default function ReportVehiclePage() {
   return (
-    <main className="flex-1 bg-gradient-to-b from-background to-gray-900">
+    <main className="flex-1">
       <div className="container mx-auto max-w-4xl py-16 px-4">
         <div className="space-y-4 text-center">
           <h1 className="text-5xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-primary">
