@@ -7,10 +7,12 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X, Search } from 'lucide-react';
+import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X, Search, Check, ChevronsUpDown } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { submitVehicleReport, VehicleReport, LocationInfo } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
@@ -20,6 +22,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 const locationSchema = z.object({
   street: z.string().min(1, 'Street is required'),
@@ -342,30 +345,25 @@ export function VehicleReportForm() {
 
 
   const handleMakeChange = useCallback(async (make: string) => {
-    if (make !== 'Other') {
-        form.setValue('model', '');
+    form.setValue('model', '');
+    setModels([]);
+    try {
+        const response = await fetch(`/api/vehicles?make=${encodeURIComponent(make)}`);
+        const data = await response.json();
+        setModels(data.models || []);
+    } catch (error) {
+        console.error('Failed to fetch vehicle models:', error);
         setModels([]);
-        try {
-            const response = await fetch(`/api/vehicles?make=${encodeURIComponent(make)}`);
-            const data = await response.json();
-            setModels(data.models || []);
-        } catch (error) {
-            console.error('Failed to fetch vehicle models:', error);
-            setModels([]);
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Could not load vehicle models for the selected make.',
-            });
-        }
-    } else {
-        form.setValue('model', '');
-        setModels([]);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not load vehicle models for the selected make.',
+        });
     }
   }, [form, toast]);
 
   useEffect(() => {
-    if(selectedMake && selectedMake !== 'Other') {
+    if(selectedMake) {
         handleMakeChange(selectedMake);
     }
   }, [selectedMake, handleMakeChange]);
@@ -482,8 +480,6 @@ export function VehicleReportForm() {
     );
   }
   
-  const isMakeOther = selectedMake === 'Other';
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -494,78 +490,121 @@ export function VehicleReportForm() {
                         control={form.control}
                         name="make"
                         render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Make</FormLabel>
-                            <Select onValueChange={(v) => { field.onChange(v); handleMakeChange(v); }} value={field.value}>
-                            <FormControl>
-                                <SelectTrigger className="h-12 rounded-lg">
-                                <SelectValue placeholder="Select Make" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {makes.map((make) => (
-                                <SelectItem key={make} value={make}>{make}</SelectItem>
-                                ))}
-                                <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Make</FormLabel>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "w-full justify-between h-12 rounded-lg",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value
+                                                    ? makes.find((make) => make === field.value)
+                                                    : "Select Make"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search make..." />
+                                            <CommandEmpty>No make found.</CommandEmpty>
+                                            <CommandList>
+                                                <CommandGroup>
+                                                    {makes.map((make) => (
+                                                        <CommandItem
+                                                            value={make}
+                                                            key={make}
+                                                            onSelect={() => {
+                                                                form.setValue("make", make)
+                                                                handleMakeChange(make)
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    make === field.value
+                                                                        ? "opacity-100"
+                                                                        : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {make}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                            </FormItem>
                         )}
                     />
-                    {isMakeOther ? (
-                        <FormField
-                            control={form.control}
-                            name="make"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Custom Make</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} placeholder="Enter manufacturer" className="h-12 rounded-lg" />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    ) : (
-                         <FormField
-                            control={form.control}
-                            name="model"
-                            render={({ field }) => (
-                            <FormItem>
+                     <FormField
+                        control={form.control}
+                        name="model"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col">
                                 <FormLabel>Model</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value} disabled={!selectedMake || models.length === 0}>
-                                <FormControl>
-                                    <SelectTrigger className="h-12 rounded-lg">
-                                    <SelectValue placeholder="Select Model" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {(models || []).map((model) => (
-                                    <SelectItem key={model} value={model}>{model}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                                </Select>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                disabled={!selectedMake}
+                                                className={cn(
+                                                    "w-full justify-between h-12 rounded-lg",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value || "Select Model"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput 
+                                                placeholder="Search or type model..." 
+                                                onValueChange={(value) => form.setValue("model", value)}
+                                            />
+                                            <CommandEmpty>No model found. You can type a custom one.</CommandEmpty>
+                                            <CommandList>
+                                                <CommandGroup>
+                                                    {models.map((model) => (
+                                                        <CommandItem
+                                                            value={model}
+                                                            key={model}
+                                                            onSelect={() => {
+                                                                form.setValue("model", model)
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    model === field.value
+                                                                        ? "opacity-100"
+                                                                        : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {model}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
                                 <FormMessage />
                             </FormItem>
-                            )}
-                        />
-                    )}
-                    {isMakeOther && (
-                         <FormField
-                            control={form.control}
-                            name="model"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Model</FormLabel>
-                                <FormControl>
-                                    <Input {...field} placeholder="Enter model" className="h-12 rounded-lg" />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    )}
+                        )}
+                    />
                     <FormField
                         control={form.control}
                         name="year"
