@@ -106,7 +106,7 @@ function MapComponent({ onLocationSelect }: { onLocationSelect: (location: { lat
 }
 
 
-function AddLocationDialog({ onSave }: { onSave: (location: GeofenceLocation) => void }) {
+function AddLocationDialog({ onSave, onOpenChange }: { onSave: (location: GeofenceLocation) => Promise<void>, onOpenChange: (open: boolean) => void }) {
   const [name, setName] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number, lng: number, address: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -114,11 +114,17 @@ function AddLocationDialog({ onSave }: { onSave: (location: GeofenceLocation) =>
 
   if (!apiKey) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (name && selectedLocation) {
         setIsSaving(true);
-        onSave({ name, ...selectedLocation });
-        setIsSaving(false);
+        try {
+            await onSave({ name, ...selectedLocation });
+            onOpenChange(false); // Close dialog on success
+        } catch (error) {
+            // Error toast is handled in the parent component
+        } finally {
+            setIsSaving(false);
+        }
     }
   };
 
@@ -170,6 +176,7 @@ export default function NotificationsPage() {
   const [locations, setLocations] = useState<GeofenceLocation[]>([]);
   const [settings, setSettings] = useState<UserNotificationSettings>({ nationalAlerts: false, localAlerts: true });
   const [loading, setLoading] = useState(true);
+  const [isAddLocationDialogOpen, setIsAddLocationDialogOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -219,6 +226,7 @@ export default function NotificationsPage() {
         });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to save location.' });
+        throw error; // Re-throw to be caught in the dialog
     }
   };
 
@@ -324,11 +332,11 @@ export default function NotificationsPage() {
                                 <p className="text-sm text-muted-foreground text-center py-8">No locations saved yet for local alerts.</p>
                             )}
                         </div>
-                         <Dialog>
+                         <Dialog open={isAddLocationDialogOpen} onOpenChange={setIsAddLocationDialogOpen}>
                             <DialogTrigger asChild>
                                 <Button className="mt-6 w-full" variant="outline">Add New Location</Button>
                             </DialogTrigger>
-                            <AddLocationDialog onSave={handleSaveLocation} />
+                            <AddLocationDialog onSave={handleSaveLocation} onOpenChange={setIsAddLocationDialogOpen} />
                         </Dialog>
                     </CardContent>
                 </Card>
@@ -338,4 +346,3 @@ export default function NotificationsPage() {
   );
 }
 
-    
