@@ -447,16 +447,27 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                {(vehicle.photos || []).slice(1, 3).map((photo, index) => (
+                {(vehicle.photos?.slice(1, 3) || []).map((photo, index) => (
                   <Image
                     key={index}
-                    src={photo}
+                    src={photo || 'https://placehold.co/400x300.png'}
                     alt={`${vehicle.make} ${vehicle.model} photo ${index + 2}`}
                     width={400}
                     height={300}
                     className="rounded-lg object-cover"
                     data-ai-hint="car detail"
                   />
+                ))}
+                {(!vehicle.photos || vehicle.photos.length < 3) && [...Array(Math.max(0, 2 - (vehicle.photos?.slice(1,3).length || 0)))].map((_, index) => (
+                    <Image
+                        key={`placeholder-${index}`}
+                        src="https://placehold.co/400x300.png"
+                        alt="Vehicle photo placeholder"
+                        width={400}
+                        height={300}
+                        className="rounded-lg object-cover"
+                        data-ai-hint="car detail"
+                    />
                 ))}
               </div>
             </div>
@@ -719,3 +730,5 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
     </div>
   );
 }
+
+    
