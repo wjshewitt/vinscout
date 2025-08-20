@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Header } from '@/components/layout/header';
 import { Providers } from '@/components/layout/providers';
 import { Footer } from '@/components/layout/footer';
+import Script from 'next/script';
 
 export const metadata: Metadata = {
   title: 'Vinchaser',
@@ -30,6 +31,17 @@ export default function RootLayout({
           <Footer />
           <Toaster />
         </Providers>
+        <Script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js' />
+        <Script id="kofi-widget">
+          {`
+            kofiWidgetOverlay.draw('autofind', {
+              'type': 'floating-chat',
+              'floating-chat.donateButton.text': 'Support me',
+              'floating-chat.donateButton.background-color': '#00b9fe',
+              'floating-chat.donateButton.text-color': '#fff'
+            });
+          `}
+        </Script>
       </body>
     </html>
   );
