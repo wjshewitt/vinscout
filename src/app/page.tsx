@@ -73,14 +73,22 @@ export default function Home() {
     });
   };
   
-  const formatLocation = (location: LocationInfo, loggedIn: boolean): string => {
+  const formatLocation = (location: LocationInfo | undefined, loggedIn: boolean): string => {
     if (!location) return 'Unknown Location';
     
-    if (loggedIn) {
+    if (loggedIn && location.street && location.city) {
         return `${location.street}, ${location.city}`;
     }
     
-    return location.city;
+    if (location.city) {
+        return location.city;
+    }
+
+    if (location.fullAddress) {
+        return location.fullAddress.split(',')[0];
+    }
+    
+    return 'Unknown Location';
   };
 
   return (
@@ -155,7 +163,7 @@ export default function Home() {
               </div>
             </div>
              <Button asChild>
-                <Link href="/signup">Sign Up Now</Link>
+                <Link href="/login">Log In to Help</Link>
               </Button>
           </CardContent>
         </Card>
