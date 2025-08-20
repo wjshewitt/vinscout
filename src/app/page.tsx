@@ -72,21 +72,38 @@ export default function Home() {
   };
   
   const formatLocation = (location: string, loggedIn: boolean): string => {
-    if (!location) return 'Unknown';
-    const parts = location.split(',').map(part => part.trim());
+    if (!location) return 'Unknown Location';
 
-    if (parts.length < 2) return location; 
+    const parts = location.split(',').map(p => p.trim());
+    
+    if (parts.length < 2) return location;
 
-    const city = parts[1]; // e.g., 'London'
+    // Typically, the city is the second to last part, before the country
+    // e.g., ["Street", "City", "Postcode", "Country"] or ["Street", "City", "Country"]
+    let cityIndex = -1;
+    if (parts.length > 2) {
+      cityIndex = parts.length - 2;
+    } else {
+      cityIndex = parts.length -1;
+    }
+    
+    let city = parts[cityIndex-1] || parts[0];
+
+    // Remove postcode from city if it's there
+    const ukPostcodeRegex = /[A-Z]{1,2}[0-9R][0-9A-Z]?\s*[0-9][A-Z]{2}/i;
+    city = city.replace(ukPostcodeRegex, '').trim();
 
     if (!loggedIn) {
         return city;
     }
 
-    const street = parts[0]; // e.g., '6 Christchurch Terrace'
-    // Remove house number from street
-    const streetName = street.replace(/^\d+\s*/, '');
+    const street = parts[0];
+    const streetName = street.replace(/^\d+\s*/, ''); // Remove house number
     
+    if (streetName.toLowerCase() === city.toLowerCase()) {
+        return city;
+    }
+
     return `${streetName}, ${city}`;
   };
 
