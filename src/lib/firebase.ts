@@ -12,7 +12,8 @@ import {
   setPersistence,
   browserSessionPersistence,
   AuthError,
-  User
+  User,
+  UserCredential
 } from 'firebase/auth';
 import { 
     getFirestore, 
@@ -29,7 +30,7 @@ import {
     onSnapshot,
     Unsubscribe,
     writeBatch,
-    or
+    setDoc
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -51,9 +52,34 @@ const googleProvider = new GoogleAuthProvider();
 
 setPersistence(auth, browserSessionPersistence);
 
-const signInWithGoogle = async () => {
+// Helper function to create user profile document
+const createUserProfileDocument = async (user: User, additionalData: object = {}) => {
+    if (!user) return;
+    const userRef = doc(db, 'users', user.uid);
+    const snapshot = await getDoc(userRef);
+
+    if (!snapshot.exists()) {
+        const { displayName, email, photoURL } = user;
+        const createdAt = new Date();
+        try {
+            await setDoc(userRef, {
+                displayName,
+                email,
+                photoURL,
+                createdAt,
+                ...additionalData,
+            });
+        } catch (error) {
+            console.error('Error creating user profile', error);
+        }
+    }
+    return userRef;
+};
+
+export const signInWithGoogle = async (): Promise<UserCredential | null> => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
+    await createUserProfileDocument(result.user);
     return result;
   } catch (error) {
     const authError = error as AuthError;
@@ -62,19 +88,21 @@ const signInWithGoogle = async () => {
   }
 };
 
-const logout = async () => {
+export const logout = async () => {
   try {
     await signOut(auth);
   } catch (error) {
     console.error("Error signing out", error);
   }
-}
+};
 
-const signUpWithEmail = async (name: string, email: string, pass: string) => {
+export const signUpWithEmail = async (name: string, email: string, pass: string): Promise<User | null> => {
     try {
         const result = await createUserWithEmailAndPassword(auth, email, pass);
         if (result.user) {
           await updateProfile(result.user, { displayName: name });
+          // We need to create a user profile document here as well
+          await createUserProfileDocument(result.user, { displayName: name });
         }
         return result.user;
     } catch (error) {
@@ -83,7 +111,7 @@ const signUpWithEmail = async (name: string, email: string, pass: string) => {
     }
 }
 
-const signInWithEmail = async (email: string, pass: string) => {
+export const signInWithEmail = async (email: string, pass: string): Promise<User | null> => {
     try {
         const result = await signInWithEmailAndPassword(auth, email, pass);
         return result.user;
@@ -93,7 +121,7 @@ const signInWithEmail = async (email: string, pass: string) => {
     }
 }
 
-const submitVehicleReport = async (reportData: object) => {
+export const submitVehicleReport = async (reportData: object) => {
     if (!auth.currentUser) {
         console.error("No user is signed in to submit a report.");
         return null;
@@ -158,8 +186,9 @@ const toVehicleReport = (doc: any): VehicleReport => {
     };
     
     const formatDateString = (dateStr: string | null | undefined): string => {
-        if (!dateStr) return '';
-        return dateStr.split('T')[0];
+        if (!dateStr) return new Date().toISOString().split('T')[0];
+        // Handle cases where it might already be a string 'YYYY-MM-DD'
+        return dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
     };
 
     return {
@@ -172,7 +201,7 @@ const toVehicleReport = (doc: any): VehicleReport => {
         vin: data.vin,
         features: data.features,
         location: data.location || '',
-        date: formatDateString(data.date),
+        date: formatDateString(data.date), // Use the robust formatter
         reportedAt: convertTimestampToString(data.reportedAt),
         status: data.status || 'Active',
         reporterId: data.reporterId || '',
@@ -321,13 +350,7 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
     const ownerData = ownerDoc.data();
     
     if (!ownerData) {
-        // This is a workaround to get the display name for the user.
-        // A better solution is to store user profiles in a 'users' collection.
-        const vehicleOwnerUser = {
-            displayName: "Owner",
-            photoURL: ""
-        }
-        console.warn("Owner data not found. This should be a user profile in Firestore.")
+        throw new Error("Could not find the vehicle owner's data.");
     }
 
     // Create a new conversation
@@ -337,8 +360,8 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
         vehicleSummary: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
         participants: [initiator.uid, vehicle.reporterId],
         participantDetails: {
-            [initiator.uid]: { name: initiator.displayName, avatar: initiator.photoURL },
-            [vehicle.reporterId]: { name: 'Owner', avatar: '' } // Placeholder
+            [initiator.uid]: { name: initiator.displayName || 'User', avatar: initiator.photoURL || '' },
+            [vehicle.reporterId]: { name: ownerData.displayName || 'Owner', avatar: ownerData.photoURL || '' }
         },
         createdAt: serverTimestamp(),
         lastMessage: "",
@@ -350,4 +373,7 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
 }
 
 
-export { auth, db, signInWithGoogle, logout, signUpWithEmail, signInWithEmail, submitVehicleReport };
+export { auth, db };
+export type { User };
+
+    
