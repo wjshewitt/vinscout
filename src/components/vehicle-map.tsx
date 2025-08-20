@@ -47,6 +47,7 @@ const VehicleMap: FC<VehicleMapProps> = ({ vehicles }) => {
         mapTypeControl={false}
         className="w-full h-full"
         gestureHandling={'greedy'}
+        onClick={() => setSelectedVehicle(null)}
       >
         {vehicles.map((vehicle) => (
           <AdvancedMarker
@@ -63,9 +64,9 @@ const VehicleMap: FC<VehicleMapProps> = ({ vehicles }) => {
             position={{ lat: selectedVehicle.lat, lng: selectedVehicle.lng }}
             onCloseClick={() => setSelectedVehicle(null)}
             pixelOffset={[0,-40]}
-            className="bg-transparent border-none shadow-none"
+            disableAutoPan={true}
           >
-            <Card className="w-80 bg-background/80 backdrop-blur-sm border-border text-foreground">
+            <Card className="w-80 bg-background/90 backdrop-blur-sm border-border text-foreground shadow-lg">
               <CardHeader className="p-4">
                 <CardTitle>{selectedVehicle.make} {selectedVehicle.model} ({selectedVehicle.year})</CardTitle>
                 <CardDescription>License Plate: {selectedVehicle.licensePlate}</CardDescription>
