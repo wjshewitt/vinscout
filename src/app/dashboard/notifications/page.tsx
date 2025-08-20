@@ -21,8 +21,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { getUserGeofences, saveUserGeofence, deleteUserGeofence, GeofenceLocation } from '@/lib/firebase';
+import { getUserGeofences, saveUserGeofence, deleteUserGeofence, GeofenceLocation, getNotificationSettings, saveNotificationSettings, UserNotificationSettings } from '@/lib/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 
 
 function MapComponent({ onLocationSelect }: { onLocationSelect: (location: { lat: number, lng: number, address: string }) => void }) {
@@ -69,7 +72,7 @@ function MapComponent({ onLocationSelect }: { onLocationSelect: (location: { lat
   };
 
   return (
-      <div className="relative h-[40rem] overflow-hidden rounded-lg">
+      <div className="relative h-96 overflow-hidden rounded-lg">
           <Map
             defaultCenter={markerPos}
             defaultZoom={12}
@@ -124,7 +127,7 @@ function AddLocationDialog({ onSave }: { onSave: (location: GeofenceLocation) =>
         <DialogHeader className="p-6 pb-0">
             <DialogTitle>Add New Geofence</DialogTitle>
             <DialogDescription>
-                Search for an address and give it a name to save it as a geofence.
+                Search for an address and give it a name. Local alerts will be sent for vehicles reported in this area.
             </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
@@ -165,18 +168,39 @@ export default function NotificationsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [locations, setLocations] = useState<GeofenceLocation[]>([]);
+  const [settings, setSettings] = useState<UserNotificationSettings>({ nationalAlerts: false, localAlerts: true });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
       setLoading(true);
-      getUserGeofences(user.uid)
-        .then(setLocations)
-        .finally(() => setLoading(false));
+      Promise.all([
+        getUserGeofences(user.uid),
+        getNotificationSettings(user.uid)
+      ]).then(([geofences, notificationSettings]) => {
+        setLocations(geofences);
+        setSettings(notificationSettings);
+      }).finally(() => setLoading(false));
     } else if (!authLoading) {
         setLoading(false);
     }
   }, [user, authLoading]);
+
+  const handleSettingsChange = async (changedSettings: Partial<UserNotificationSettings>) => {
+    if (!user) return;
+    const newSettings = { ...settings, ...changedSettings };
+    setSettings(newSettings); // Optimistic update
+    try {
+        await saveNotificationSettings(user.uid, newSettings);
+        toast({
+            title: "Settings Saved",
+            description: "Your notification preferences have been updated.",
+        });
+    } catch (error) {
+        setSettings(settings); // Revert on error
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to save settings.' });
+    }
+  };
 
   const handleSaveLocation = async (location: GeofenceLocation) => {
     if (!user) return;
@@ -214,23 +238,58 @@ export default function NotificationsPage() {
 
 
   return (
-    <div className="container mx-auto py-12 max-w-6xl">
+    <div className="container mx-auto py-12 max-w-4xl">
         <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight">Geofence Management</h1>
-            <p className="mt-2 text-muted-foreground">Define areas to receive alerts about stolen vehicles in your specified locations.</p>
+            <h1 className="text-3xl font-bold tracking-tight">Notification Settings</h1>
+            <p className="mt-2 text-muted-foreground">Choose how you want to be notified about stolen vehicle reports.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="md:col-span-1">
-                <CardHeader>
-                    <CardTitle>Saved Locations</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {loading ? (
-                        <div className="flex justify-center items-center h-40">
-                            <Loader2 className="animate-spin text-primary" />
+        
+        {loading ? (
+             <div className="flex justify-center items-center py-20">
+               <Loader2 className="animate-spin text-primary" size={32} />
+            </div>
+        ) : (
+            <div className="space-y-12">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Alert Preferences</CardTitle>
+                        <CardDescription>Select the types of alerts you would like to receive.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                         <div className="flex items-center justify-between space-x-4 rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="national-alerts" className="text-base font-medium">National Alerts</Label>
+                                <p className="text-sm text-muted-foreground">Receive notifications for any vehicle reported stolen, regardless of location.</p>
+                            </div>
+                            <Switch
+                                id="national-alerts"
+                                checked={settings.nationalAlerts}
+                                onCheckedChange={(checked) => handleSettingsChange({ nationalAlerts: checked })}
+                            />
                         </div>
-                    ) : (
-                        <div className="space-y-4">
+                        <div className="flex items-center justify-between space-x-4 rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="local-alerts" className="text-base font-medium">Local Alerts</Label>
+                                 <p className="text-sm text-muted-foreground">Only receive notifications for vehicles reported in your saved locations below.</p>
+                            </div>
+                            <Switch
+                                id="local-alerts"
+                                checked={settings.localAlerts}
+                                onCheckedChange={(checked) => handleSettingsChange({ localAlerts: checked })}
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Separator />
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Local Alert Areas</CardTitle>
+                        <CardDescription>Manage the geofenced locations for your local alerts. You will only receive local alerts if the option above is enabled.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                         <div className="space-y-4">
                             {locations.length > 0 ? (
                                 locations.map(loc => (
                                     <div key={loc.name} className="rounded-lg border bg-card p-4">
@@ -249,7 +308,7 @@ export default function NotificationsPage() {
                                                     <AlertDialogHeader>
                                                         <AlertDialogTitle>Delete "{loc.name}"?</AlertDialogTitle>
                                                         <AlertDialogDescription>
-                                                            Are you sure you want to delete this geofence? You will no longer receive notifications for this area.
+                                                            Are you sure you want to delete this geofence? You will no longer receive local notifications for this area.
                                                         </AlertDialogDescription>
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
@@ -262,41 +321,21 @@ export default function NotificationsPage() {
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-sm text-muted-foreground text-center py-8">No locations saved yet.</p>
+                                <p className="text-sm text-muted-foreground text-center py-8">No locations saved yet for local alerts.</p>
                             )}
                         </div>
-                    )}
-                     <Dialog>
-                        <DialogTrigger asChild>
-                            <Button className="mt-6 w-full">Add New Location</Button>
-                        </DialogTrigger>
-                        <AddLocationDialog onSave={handleSaveLocation} />
-                    </Dialog>
-                </CardContent>
-            </Card>
-
-            <div className="md:col-span-2">
-              <Card className="h-[46rem] overflow-hidden">
-                <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}>
-                   <Map
-                      defaultCenter={{ lat: 54.5, lng: -2.5 }}
-                      defaultZoom={5}
-                      mapId="geofence_overview_map"
-                      gestureHandling="none"
-                      streetViewControl={false}
-                      mapTypeControl={false}
-                      fullscreenControl={false}
-                   >
-                     {locations.map(loc => (
-                        <AdvancedMarker key={loc.name} position={loc}>
-                          <MapPin className="text-primary/70" />
-                        </AdvancedMarker>
-                     ))}
-                   </Map>
-                </APIProvider>
-              </Card>
+                         <Dialog>
+                            <DialogTrigger asChild>
+                                <Button className="mt-6 w-full" variant="outline">Add New Location</Button>
+                            </DialogTrigger>
+                            <AddLocationDialog onSave={handleSaveLocation} />
+                        </Dialog>
+                    </CardContent>
+                </Card>
             </div>
-        </div>
+        )}
     </div>
   );
 }
+
+    

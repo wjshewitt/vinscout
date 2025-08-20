@@ -80,6 +80,10 @@ const createUserProfileDocument = async (user: User, details: { displayName?: st
                 createdAt,
                 blockedUsers: [],
                 geofences: [],
+                notificationSettings: {
+                    nationalAlerts: false,
+                    localAlerts: true,
+                }
             });
         } catch (error) {
             console.error('Error creating user profile', error);
@@ -201,6 +205,11 @@ export interface GeofenceLocation {
     address: string;
     lat: number;
     lng: number;
+}
+
+export interface UserNotificationSettings {
+  nationalAlerts: boolean;
+  localAlerts: boolean;
 }
 
 const toVehicleReport = (docSnap: any): VehicleReport => {
@@ -375,6 +384,7 @@ export const listenToMessages = (
     conversationId: string, 
     callback: (messages: Message[]) => void,
     currentUserId: string,
+    isPageActive: boolean
 ): Unsubscribe => {
     const q = query(
         collection(db, 'conversations', conversationId, 'messages'),
@@ -386,14 +396,23 @@ export const listenToMessages = (
         callback(messages);
 
         const lastMessage = messages[messages.length - 1];
-        // If the user is viewing the convo and there are messages, reset their unread count.
-        // Don't reset if they are the sender of the last message.
         if (lastMessage && lastMessage.senderId !== currentUserId) {
-            const conversationRef = doc(db, 'conversations', conversationId);
-            const convoDoc = await getDoc(conversationRef);
-            if (convoDoc.exists() && convoDoc.data().unread?.[currentUserId] > 0) {
-                await updateDoc(conversationRef, {
-                    [`unread.${currentUserId}`]: 0
+            // If the user is actively viewing the conversation, reset their unread count.
+            if(isPageActive) {
+                const conversationRef = doc(db, 'conversations', conversationId);
+                const convoDoc = await getDoc(conversationRef);
+                if (convoDoc.exists() && convoDoc.data().unread?.[currentUserId] > 0) {
+                    await updateDoc(conversationRef, {
+                        [`unread.${currentUserId}`]: 0
+                    });
+                }
+            } else {
+                // If the user is not viewing, show a toast.
+                const senderDoc = await getDoc(doc(db, 'users', lastMessage.senderId));
+                const senderName = senderDoc.exists() ? senderDoc.data().displayName : 'Someone';
+                toast({
+                    title: `New Message from ${senderName}`,
+                    description: lastMessage.text,
                 });
             }
         }
@@ -483,16 +502,14 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
     let ownerData: { displayName: string, photoURL: string };
 
     if (!ownerDoc.exists()) {
-        await setDoc(ownerRef, {
-           uid: vehicle.reporterId,
-           displayName: 'Vehicle Owner',
-           email: 'N/A',
-           photoURL: '',
-           createdAt: serverTimestamp(),
-           blockedUsers: [],
-           geofences: [],
-       });
-       ownerDoc = await getDoc(ownerRef); // Re-fetch
+       // Fallback: This should ideally not happen if createUserProfileDocument is robust.
+       const authUser = (await getAuth().getUser(vehicle.reporterId)).providerData[0];
+       if (authUser) {
+           await createUserProfileDocument({ uid: vehicle.reporterId, ...authUser } as User);
+           ownerDoc = await getDoc(ownerRef);
+       } else {
+           throw new Error("Could not find the vehicle owner's data.");
+       }
     }
     
     if (ownerDoc.exists()) {
@@ -558,6 +575,10 @@ async function ensureUserDocExists(userId: string) {
             createdAt: serverTimestamp(),
             blockedUsers: [],
             geofences: [],
+            notificationSettings: {
+                nationalAlerts: false,
+                localAlerts: true,
+            }
         });
     }
 }
@@ -592,7 +613,25 @@ export async function checkIfUserIsBlocked(blockerId: string, blockedId: string)
     return false;
 }
 
-// --- Geofence Functions ---
+// --- Geofence and Notification Settings Functions ---
+
+export const getNotificationSettings = async (userId: string): Promise<UserNotificationSettings> => {
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists() && userSnap.data().notificationSettings) {
+        return userSnap.data().notificationSettings;
+    }
+    // Return default settings if none are found
+    return { nationalAlerts: false, localAlerts: true };
+};
+
+export const saveNotificationSettings = async (userId: string, settings: UserNotificationSettings) => {
+    await ensureUserDocExists(userId);
+    const userRef = doc(db, 'users', userId);
+    return updateDoc(userRef, {
+        notificationSettings: settings
+    });
+};
 
 export const getUserGeofences = async (userId: string): Promise<GeofenceLocation[]> => {
     const userRef = doc(db, 'users', userId);
