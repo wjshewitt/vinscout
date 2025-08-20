@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { KofiWidget } from '../kofi-widget';
+import { Button } from '../ui/button';
 
 export function Footer() {
   return (
@@ -13,7 +13,9 @@ export function Footer() {
           <Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
           <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
           <a href="mailto:hewittjswill@gmail.com" className="hover:text-foreground transition-colors">Contact Us</a>
-          <KofiWidget />
+          <Button asChild size="sm">
+            <Link href="https://ko-fi.com/autofind">Support Me</Link>
+          </Button>
         </div>
       </div>
     </footer>
