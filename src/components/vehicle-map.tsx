@@ -5,6 +5,7 @@ import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps
 import type { FC } from 'react';
 import { VehicleReport } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
+import { Car } from 'lucide-react';
 
 interface VehicleMapProps {
   vehicles: VehicleReport[];
@@ -31,6 +32,16 @@ const VehicleMap: FC<VehicleMapProps> = ({ vehicles, onVehicleSelect, selectedVe
     }
   };
 
+  const getPinColor = (vehicle: VehicleReport) => {
+      if (selectedVehicleId === vehicle.id) {
+          return 'hsl(var(--primary))'; // Selected color
+      }
+      if (vehicle.status === 'Recovered') {
+          return 'hsl(var(--secondary-foreground))'; // Recovered color
+      }
+      return 'hsl(var(--muted-foreground))'; // Active color
+  };
+
   return (
     <APIProvider apiKey={apiKey}>
       <Map
@@ -51,9 +62,9 @@ const VehicleMap: FC<VehicleMapProps> = ({ vehicles, onVehicleSelect, selectedVe
             onClick={() => handleMarkerClick(vehicle)}
           >
              <Pin 
-                background={selectedVehicleId === vehicle.id ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'} 
-                glyphColor={selectedVehicleId === vehicle.id ? 'hsl(var(--primary-foreground))' : 'hsl(var(--background))'} 
-                borderColor={selectedVehicleId === vehicle.id ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'} 
+                background={getPinColor(vehicle)}
+                borderColor={getPinColor(vehicle)}
+                glyph={<Car className={cn("text-background", selectedVehicleId === vehicle.id && 'text-primary-foreground')}/>}
             />
           </AdvancedMarker>
         ))}
