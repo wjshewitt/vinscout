@@ -60,7 +60,7 @@ const createUserProfileDocument = async (user: User, additionalData: object = {}
 
     if (!snapshot.exists()) {
         const { displayName, email, photoURL } = user;
-        const createdAt = new Date();
+        const createdAt = serverTimestamp();
         try {
             await setDoc(userRef, {
                 displayName,
@@ -96,28 +96,27 @@ export const logout = async () => {
   }
 };
 
-export const signUpWithEmail = async (name: string, email: string, pass: string): Promise<User | null> => {
+export const signUpWithEmail = async (name: string, email: string, pass: string): Promise<{user: User | null, error: AuthError | null}> => {
     try {
         const result = await createUserWithEmailAndPassword(auth, email, pass);
-        if (result.user) {
-          await updateProfile(result.user, { displayName: name });
-          // We need to create a user profile document here as well
-          await createUserProfileDocument(result.user, { displayName: name });
+        // The user object from the result doesn't always have the latest profile info.
+        // We get it from auth.currentUser after the update.
+        await updateProfile(result.user, { displayName: name });
+        if (auth.currentUser) {
+            await createUserProfileDocument(auth.currentUser, { displayName: name });
         }
-        return result.user;
+        return { user: auth.currentUser, error: null };
     } catch (error) {
-        console.error("Error signing up with email", error);
-        return null;
+        return { user: null, error: error as AuthError };
     }
 }
 
-export const signInWithEmail = async (email: string, pass: string): Promise<User | null> => {
+export const signInWithEmail = async (email: string, pass: string): Promise<{user: User | null, error: AuthError | null}> => {
     try {
         const result = await signInWithEmailAndPassword(auth, email, pass);
-        return result.user;
+        return { user: result.user, error: null };
     } catch (error) {
-        console.error("Error signing in with email", error);
-        return null;
+        return { user: null, error: error as AuthError };
     }
 }
 
@@ -188,7 +187,11 @@ const toVehicleReport = (doc: any): VehicleReport => {
     const formatDateString = (dateStr: string | null | undefined): string => {
         if (!dateStr) return new Date().toISOString().split('T')[0];
         // Handle cases where it might already be a string 'YYYY-MM-DD'
-        return dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+        try {
+           return new Date(dateStr).toISOString().split('T')[0];
+        } catch(e) {
+           return dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+        }
     };
 
     return {
@@ -335,15 +338,19 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
     }
     
     const conversationsRef = collection(db, 'conversations');
+    // A query to find a conversation involving BOTH the initiator and the vehicle owner FOR THIS SPECIFIC vehicle
     const q = query(conversationsRef, 
         where('vehicleId', '==', vehicle.id),
         where('participants', 'array-contains', initiator.uid)
     );
 
     const snapshot = await getDocs(q);
-    if (!snapshot.empty) {
-        // Conversation already exists
-        return snapshot.docs[0].id;
+    
+    // Since the query only checks for the initiator and vehicle, we need to check if the other participant is the owner
+    const existingConversation = snapshot.docs.find(doc => doc.data().participants.includes(vehicle.reporterId));
+
+    if (existingConversation) {
+        return existingConversation.id;
     }
     
     const ownerDoc = await getDoc(doc(db, 'users', vehicle.reporterId));
@@ -352,6 +359,10 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
     if (!ownerData) {
         throw new Error("Could not find the vehicle owner's data.");
     }
+    
+    // Use the initiator's current profile info
+    const initiatorName = initiator.displayName || 'Anonymous User';
+    const initiatorAvatar = initiator.photoURL || '';
 
     // Create a new conversation
     const newConversationRef = doc(conversationsRef);
@@ -360,7 +371,7 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
         vehicleSummary: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
         participants: [initiator.uid, vehicle.reporterId],
         participantDetails: {
-            [initiator.uid]: { name: initiator.displayName || 'User', avatar: initiator.photoURL || '' },
+            [initiator.uid]: { name: initiatorName, avatar: initiatorAvatar },
             [vehicle.reporterId]: { name: ownerData.displayName || 'Owner', avatar: ownerData.photoURL || '' }
         },
         createdAt: serverTimestamp(),
@@ -374,6 +385,4 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
 
 
 export { auth, db };
-export type { User };
-
-    
+export type { User, AuthError };

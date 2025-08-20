@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { signInWithGoogle, signInWithEmail } from '@/lib/firebase';
+import { signInWithGoogle, signInWithEmail, AuthError } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { getAdditionalUserInfo } from 'firebase/auth';
@@ -31,14 +31,18 @@ export function LoginForm() {
   });
 
   async function onSubmit(data: LoginFormValues) {
-    const user = await signInWithEmail(data.email, data.password);
-    if (user) {
+    const result = await signInWithEmail(data.email, data.password);
+    if (result.user) {
       router.push('/dashboard');
-    } else {
-      toast({
+    } else if (result.error) {
+       let description = 'An unknown error occurred. Please try again.';
+       if (result.error.code === 'auth/invalid-credential' || result.error.code === 'auth/wrong-password' || result.error.code === 'auth/user-not-found') {
+        description = 'Invalid email or password. Please check your credentials and try again.';
+       }
+       toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description: 'Please check your email and password.',
+        description: description,
       });
     }
   }
@@ -91,7 +95,9 @@ export function LoginForm() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">Login</Button>
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? 'Logging in...' : 'Login'}
+              </Button>
             </form>
           </Form>
           <Separator className="my-4" />

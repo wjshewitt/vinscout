@@ -10,9 +10,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from './ui/separator';
-import { signInWithGoogle, signUpWithEmail } from '@/lib/firebase';
+import { signInWithGoogle, signUpWithEmail, AuthError } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { getAdditionalUserInfo } from 'firebase/auth';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -31,22 +32,32 @@ export function SignupForm() {
   });
 
   async function onSubmit(data: SignupFormValues) {
-    const user = await signUpWithEmail(data.name, data.email, data.password);
-    if (user) {
+    const result = await signUpWithEmail(data.name, data.email, data.password);
+    if (result.user) {
       router.push('/welcome');
-    } else {
-      toast({
+    } else if (result.error) {
+        let description = 'An unknown error occurred. Please try again.';
+        if(result.error.code === 'auth/email-already-in-use') {
+            description = 'This email is already registered. Please log in instead.';
+        }
+       toast({
         variant: 'destructive',
         title: 'Signup Failed',
-        description: 'An error occurred. Please try again.',
+        description: description,
       });
     }
   }
 
   const handleGoogleSignIn = async () => {
-    const user = await signInWithGoogle();
-    if (user) {
-      router.push('/welcome');
+    const result = await signInWithGoogle();
+    if (result) {
+        const additionalInfo = getAdditionalUserInfo(result);
+        // Only new users go to the welcome page
+        if (additionalInfo?.isNewUser) {
+            router.push('/welcome');
+        } else {
+            router.push('/dashboard');
+        }
     }
   };
 
@@ -99,7 +110,9 @@ export function SignupForm() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">Create Account</Button>
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? 'Creating account...' : 'Create Account'}
+              </Button>
             </form>
           </Form>
           <Separator className="my-4" />
