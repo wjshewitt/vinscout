@@ -1,3 +1,4 @@
+
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { 
@@ -225,6 +226,8 @@ export interface VehicleReport {
     lat: number;
     lng: number;
     sightingsCount?: number;
+    rewardAmount?: number;
+    rewardDetails?: string;
 }
 
 export interface Conversation {
@@ -323,6 +326,8 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         lat: data.lat || 0,
         lng: data.lng || 0,
         sightingsCount: data.sightingsCount || 0,
+        rewardAmount: data.rewardAmount,
+        rewardDetails: data.rewardDetails,
     };
 };
 
@@ -854,4 +859,3 @@ export const deleteUserGeofence = async (userId: string, locationName: string) =
 
 export { auth, db };
 export type { User, AuthError };
-    

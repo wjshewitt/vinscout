@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { signInWithGoogle, signInWithEmail, AuthError } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { getAdditionalUserInfo } from 'firebase/auth';
+import { getAdditionalUserInfo, User } from 'firebase/auth';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -30,10 +30,22 @@ export function LoginForm() {
     defaultValues: { email: '', password: '' },
   });
 
+  const handleSuccessfulLogin = (user: User, isNewUser = false) => {
+    if (isNewUser) {
+        router.push('/welcome');
+    } else {
+        toast({
+            title: `Welcome back, ${user.displayName || 'friend'}!`,
+            description: "You've successfully logged in.",
+        });
+        router.push('/dashboard');
+    }
+  };
+
   async function onSubmit(data: LoginFormValues) {
     const result = await signInWithEmail(data.email, data.password);
     if (result.user) {
-      router.push('/dashboard');
+      handleSuccessfulLogin(result.user);
     } else if (result.error) {
        let description = 'An unknown error occurred. Please try again.';
        if (result.error.code === 'auth/invalid-credential' || result.error.code === 'auth/wrong-password' || result.error.code === 'auth/user-not-found') {
@@ -51,11 +63,7 @@ export function LoginForm() {
     const result = await signInWithGoogle();
     if (result) {
       const additionalInfo = getAdditionalUserInfo(result);
-      if (additionalInfo?.isNewUser) {
-        router.push('/welcome');
-      } else {
-        router.push('/dashboard');
-      }
+      handleSuccessfulLogin(result.user, additionalInfo?.isNewUser);
     }
   };
 

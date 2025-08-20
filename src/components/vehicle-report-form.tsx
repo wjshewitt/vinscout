@@ -10,13 +10,15 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin } from 'lucide-react';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, DollarSign } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import { submitVehicleReport } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useDebouncedCallback } from 'use-debounce';
+import { Switch } from './ui/switch';
+import { Label } from './ui/label';
 
 const reportSchema = z.object({
   make: z.string().min(1, 'Make is required'),
@@ -31,6 +33,8 @@ const reportSchema = z.object({
   additionalInfo: z.string().optional(),
   lat: z.number({ required_error: 'Please select a location on the map.' }),
   lng: z.number({ required_error: 'Please select a location on the map.' }),
+  rewardAmount: z.coerce.number().optional(),
+  rewardDetails: z.string().optional(),
 });
 
 type ReportFormValues = z.infer<typeof reportSchema>;
@@ -43,7 +47,7 @@ const steps: { title: string; fields: FieldName[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
     { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
     { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng'] },
-    { title: 'Upload Photos', fields: [] },
+    { title: 'Reward & Photos', fields: ['rewardAmount', 'rewardDetails'] },
 ];
 
 function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: number; lng: number; address: string }) => void }) {
@@ -138,6 +142,7 @@ export function VehicleReportForm() {
   const [models, setModels] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showReward, setShowReward] = useState(false);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 
@@ -184,6 +189,9 @@ export function VehicleReportForm() {
     if (savedFormData) {
         const parsedData = JSON.parse(savedFormData);
         form.reset(parsedData);
+        if (parsedData.rewardAmount > 0) {
+            setShowReward(true);
+        }
     }
   }, [form]);
 
@@ -522,26 +530,72 @@ export function VehicleReportForm() {
             )}
 
             {currentStep === 3 && (
-                 <div className="sm:col-span-2">
-                    <FormItem>
-                    <FormLabel>Upload Photos (Optional)</FormLabel>
-                    <FormControl>
-                        <div className="relative flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-input bg-background p-8 transition-colors hover:border-primary">
-                        <div className="text-center">
-                        <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                        <p className="mt-4 text-sm text-muted-foreground">
-                            <span className="font-semibold text-primary">Click to upload</span> or drag and drop
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            PNG, JPG, GIF up to 10MB
-                        </p>
+                 <div className="space-y-6">
+                    <div className="flex items-center space-x-2">
+                        <Switch id="reward-switch" checked={showReward} onCheckedChange={setShowReward} />
+                        <Label htmlFor="reward-switch">Offer a Reward?</Label>
+                    </div>
+
+                    {showReward && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 border rounded-lg">
+                            <FormField
+                                control={form.control}
+                                name="rewardAmount"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Reward Amount ($)</FormLabel>
+                                    <div className="relative">
+                                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                        <FormControl>
+                                            <Input type="number" placeholder="e.g., 500" {...field} className="h-12 rounded-lg pl-10" />
+                                        </FormControl>
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="rewardDetails"
+                                render={({ field }) => (
+                                <FormItem className="sm:col-span-2">
+                                    <FormLabel>Reward Details (Optional)</FormLabel>
+                                    <FormControl>
+                                    <Textarea
+                                        placeholder="e.g., Reward for information leading to recovery. Higher reward for direct finding."
+                                        className="resize-none min-h-[100px] rounded-lg"
+                                        {...field}
+                                    />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
                         </div>
-                        <input id="photos" type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple disabled />
-                        </div>
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                </div>
+                    )}
+
+
+                    <div className="sm:col-span-2">
+                        <FormItem>
+                        <FormLabel>Upload Photos (Optional)</FormLabel>
+                        <FormControl>
+                            <div className="relative flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-input bg-background p-8 transition-colors hover:border-primary">
+                            <div className="text-center">
+                            <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+                            <p className="mt-4 text-sm text-muted-foreground">
+                                <span className="font-semibold text-primary">Click to upload</span> or drag and drop
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                PNG, JPG, GIF up to 10MB
+                            </p>
+                            </div>
+                            <input id="photos" type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple disabled />
+                            </div>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    </div>
+                 </div>
             )}
         </div>
 

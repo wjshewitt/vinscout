@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2 } from 'lucide-react';
+import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, DollarSign } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -22,6 +22,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import VehicleSightingsMap from './vehicle-sightings-map';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { Input } from './ui/input';
+import { Badge } from './ui/badge';
 
 
 const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) => {
@@ -274,6 +275,27 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
                 </div>
               </div>
               <Separator />
+               {vehicle.rewardAmount && vehicle.rewardAmount > 0 && (
+                 <>
+                    <div>
+                        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                           <Badge variant="secondary" className="bg-green-700/20 text-green-400 border-green-700/40">
+                             <DollarSign className="h-4 w-4 mr-1" />
+                             Reward Offered
+                           </Badge>
+                        </h3>
+                         {isLoggedIn && !isOwner ? (
+                             <>
+                                <p className="text-2xl font-bold text-primary">${vehicle.rewardAmount.toLocaleString()}</p>
+                                {vehicle.rewardDetails && <p className="text-sm text-muted-foreground mt-1">{vehicle.rewardDetails}</p>}
+                             </>
+                         ) : (
+                             <p className="text-sm text-muted-foreground">The owner is offering a reward for information leading to this vehicle's recovery. Please contact them for details.</p>
+                         )}
+                    </div>
+                    <Separator />
+                 </>
+               )}
               <div>
                 <h3 className="text-lg font-semibold mb-2">Last Known Information</h3>
                 <p className="text-sm"><strong>Date of Theft:</strong> {formatDate(vehicle.date)}</p>
