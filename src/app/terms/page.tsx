@@ -11,10 +11,6 @@ export default function TermsOfServicePage() {
           <CardDescription>Last updated: {lastUpdated}</CardDescription>
         </CardHeader>
         <CardContent className="prose prose-invert max-w-none space-y-4">
-          <p className="font-bold text-destructive/80">
-            Disclaimer: I am an AI assistant. The following Terms of Service is a template and not legal advice. You should consult with a legal professional to ensure your Terms of Service are compliant with all applicable laws and regulations.
-          </p>
-
           <h2 className="text-2xl font-bold pt-4">1. Introduction</h2>
           <p>
             Welcome to Vinchaser ("we," "our," or "us"). These Terms of Service ("Terms") govern your use of our application and services. By accessing or using our service, you agree to be bound by these Terms. If you disagree with any part of the terms, you may not access the service.
