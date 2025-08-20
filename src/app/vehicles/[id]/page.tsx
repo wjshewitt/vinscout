@@ -1,8 +1,11 @@
+
 import { getVehicleReportById } from '@/lib/firebase';
 import { VehicleDetailClient } from '@/components/vehicle-detail-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+
+export const dynamic = 'force-dynamic';
 
 export default async function VehicleDetailPage({ params }: { params: { id: string } }) {
   const vehicle = await getVehicleReportById(params.id);
@@ -27,3 +30,5 @@ export default async function VehicleDetailPage({ params }: { params: { id: stri
 
   return <VehicleDetailClient vehicle={vehicle} />;
 }
+
+    

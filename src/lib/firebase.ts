@@ -1,4 +1,3 @@
-
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { 
@@ -202,8 +201,8 @@ export interface VehicleReport {
     status: 'Active' | 'Recovered';
     reporterId: string;
     photos?: string[];
-    lat?: number;
-    lng?: number;
+    lat: number;
+    lng: number;
     sightingsCount?: number;
 }
 
@@ -226,7 +225,26 @@ export interface Message {
     text: string;
     createdAt: string;
     messageType?: 'Sighting' | 'Vehicle Found' | 'Question';
+    sightingLocation?: {
+        address: string;
+        lat: number;
+        lng: number;
+    }
 }
+
+export interface Sighting {
+    id: string;
+    vehicleId: string;
+    sighterId: string;
+    sighterName: string;
+    sighterAvatar: string;
+    message: string;
+    location: string;
+    lat: number;
+    lng: number;
+    sightedAt: string;
+}
+
 
 export interface GeofenceLocation {
     name: string;
@@ -281,11 +299,21 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         status: data.status || 'Active',
         reporterId: data.reporterId || '',
         photos: data.photos || [],
-        lat: data.lat,
-        lng: data.lng,
+        lat: data.lat || 0,
+        lng: data.lng || 0,
         sightingsCount: data.sightingsCount || 0,
     };
 };
+
+const toSighting = (docSnap: any): Sighting => {
+    const data = docSnap.data();
+    return {
+        id: docSnap.id,
+        ...data,
+        sightedAt: data.sightedAt ? data.sightedAt.toDate().toISOString() : new Date().toISOString(),
+    } as Sighting;
+};
+
 
 const toConversation = (docSnap: any): Conversation => {
     const data = docSnap.data();
@@ -366,6 +394,52 @@ export const getUserVehicleReports = async (userId: string): Promise<VehicleRepo
         return [];
     }
 };
+
+// --- Sighting Functions ---
+
+export const getVehicleSightings = async (vehicleId: string): Promise<Sighting[]> => {
+    try {
+        const q = query(collection(db, `vehicleReports/${vehicleId}/sightings`), orderBy("sightedAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(toSighting);
+    } catch (error) {
+        console.error("Error fetching vehicle sightings: ", error);
+        return [];
+    }
+};
+
+export const submitSighting = async (
+    vehicleId: string, 
+    sighter: User, 
+    sightingData: { message: string, location: string, lat: number, lng: number }
+): Promise<string> => {
+    
+    const vehicleRef = doc(db, 'vehicleReports', vehicleId);
+    const sightingRef = doc(collection(db, 'vehicleReports', vehicleId, 'sightings'));
+
+    await runTransaction(db, async (transaction) => {
+        // 1. Increment sightings count on the main vehicle report
+        transaction.update(vehicleRef, {
+            sightingsCount: increment(1)
+        });
+
+        // 2. Create the new sighting document
+        transaction.set(sightingRef, {
+            vehicleId,
+            sighterId: sighter.uid,
+            sighterName: sighter.displayName,
+            sighterAvatar: sighter.photoURL,
+            message: sightingData.message,
+            location: sightingData.location,
+            lat: sightingData.lat,
+            lng: sightingData.lng,
+            sightedAt: serverTimestamp(),
+        });
+    });
+
+    return sightingRef.id;
+}
+
 
 // --- Messaging Functions ---
 
@@ -485,7 +559,7 @@ export const sendMessage = async (
     text: string, 
     sender: User,
     messageType: Message['messageType'],
-    vehicleId?: string
+    sightingLocation?: Message['sightingLocation']
 ) => {
     const conversationRef = doc(db, 'conversations', conversationId);
     
@@ -508,13 +582,19 @@ export const sendMessage = async (
 
         // Add the message
         const messageRef = doc(collection(db, 'conversations', conversationId, 'messages'));
-        transaction.set(messageRef, {
+        const messagePayload: Omit<Message, 'id' | 'createdAt'> & { createdAt: FieldValue } = {
             conversationId,
             senderId: sender.uid,
             text,
             messageType,
             createdAt: serverTimestamp(),
-        });
+        };
+
+        if (messageType === 'Sighting' && sightingLocation) {
+            messagePayload.sightingLocation = sightingLocation;
+        }
+
+        transaction.set(messageRef, messagePayload);
         
         // Update the conversation
         const updateData: any = {
@@ -528,14 +608,6 @@ export const sendMessage = async (
         }
 
         transaction.update(conversationRef, updateData);
-
-        // If it's a sighting, increment the vehicle's sighting count
-        if (messageType === 'Sighting' && vehicleId) {
-            const vehicleRef = doc(db, 'vehicleReports', vehicleId);
-            transaction.update(vehicleRef, {
-                sightingsCount: increment(1)
-            });
-        }
     });
 }
 
@@ -761,5 +833,4 @@ export const deleteUserGeofence = async (userId: string, locationName: string) =
 
 export { auth, db };
 export type { User, AuthError };
-
     

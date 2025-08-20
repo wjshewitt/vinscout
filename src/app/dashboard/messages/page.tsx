@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { Search, Send, Paperclip, MoreVertical, Car, MessageSquare, Loader2, Trash2, ShieldBan } from 'lucide-react';
+import { Search, Send, Paperclip, MoreVertical, Car, MessageSquare, Loader2, Trash2, ShieldBan, MapPin } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { listenToUserConversations, Conversation, listenToMessages, Message, sendMessage, deleteConversation, blockUser, unblockUser, checkIfUserIsBlocked } from '@/lib/firebase';
 import { formatDistanceToNow } from 'date-fns';
@@ -90,7 +90,7 @@ export default function MessagesPage() {
         return;
     }
     
-    await sendMessage(selectedConversation.id, newMessage, user);
+    await sendMessage(selectedConversation.id, newMessage, user, "Question");
     setNewMessage('');
   };
   
@@ -274,6 +274,17 @@ export default function MessagesPage() {
                             )}
                         >
                             <p className={cn("text-sm font-medium mb-1", isYou ? 'text-primary-foreground/80' : 'text-primary')}>{senderDetails?.name}</p>
+                            
+                            {message.messageType === 'Sighting' && message.sightingLocation && (
+                                <div className="mb-2 p-2 bg-black/20 rounded-md">
+                                    <p className="font-bold text-sm">Sighting Reported:</p>
+                                    <div className="flex items-center gap-2 text-xs mt-1">
+                                        <MapPin size={12} />
+                                        <span>{message.sightingLocation.address}</span>
+                                    </div>
+                                </div>
+                            )}
+
                             <p className="text-base">{message.text}</p>
                         </div>
                         {isYou && (
@@ -344,3 +355,5 @@ export default function MessagesPage() {
     </>
   );
 }
+
+    

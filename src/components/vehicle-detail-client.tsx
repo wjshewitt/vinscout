@@ -2,20 +2,24 @@
 'use client';
 
 import Image from 'next/image';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle } from 'lucide-react';
+import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { VehicleReport, createOrGetConversation, sendMessage, Message } from '@/lib/firebase';
-import { useState } from 'react';
+import { VehicleReport, Sighting, Message, createOrGetConversation, sendMessage, getVehicleSightings, submitSighting } from '@/lib/firebase';
+import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
+import { useDebouncedCallback } from 'use-debounce';
+import VehicleSightingsMap from './vehicle-sightings-map';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
+
 
 const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) => {
     if (!dateString) return 'N/A';
@@ -28,6 +32,76 @@ const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) 
 };
 
 
+function SightingLocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: number; lng: number; address: string }) => void }) {
+    const { toast } = useToast();
+    const map = useMap();
+    const [searchAddress, setSearchAddress] = useState('');
+    const [markerPos, setMarkerPos] = useState<google.maps.LatLngLiteral>({ lat: 51.5072, lng: -0.1276 });
+
+    const geocodeAddress = useDebouncedCallback((address: string) => {
+        if (!address) return;
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ address }, (results, status) => {
+            if (status === 'OK' && results && results[0]) {
+                const location = results[0].geometry.location;
+                const newPos = { lat: location.lat(), lng: location.lng() };
+                setMarkerPos(newPos);
+                if (map) {
+                    map.panTo(newPos);
+                }
+                onLocationChange({ ...newPos, address: results[0].formatted_address });
+            } else {
+                 toast({
+                     variant: 'destructive',
+                     title: 'Geocoding Failed',
+                     description: `Could not find a location for the address: ${address}. Please be more specific.`,
+                 });
+            }
+        });
+    }, 1000);
+
+    const handleMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
+        if (e.latLng) {
+            const newPos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+            setMarkerPos(newPos);
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: newPos }, (results, status) => {
+                if (status === 'OK' && results && results[0]) {
+                    setSearchAddress(results[0].formatted_address);
+                    onLocationChange({ ...newPos, address: results[0].formatted_address });
+                }
+            });
+        }
+    };
+    
+    return (
+         <div className="space-y-4">
+             <Input 
+                placeholder="Search for location"
+                value={searchAddress}
+                onChange={(e) => {
+                    setSearchAddress(e.target.value);
+                    geocodeAddress(e.target.value);
+                }}
+            />
+            <div className="h-64 w-full rounded-lg overflow-hidden border">
+                 <Map
+                    defaultCenter={markerPos}
+                    defaultZoom={12}
+                    mapId="sighting_form_map"
+                    gestureHandling="greedy"
+                    disableDefaultUI={true}
+                >
+                    <AdvancedMarker position={markerPos} draggable={true} onDragEnd={handleMarkerDragEnd}>
+                        <MapPin size={32} className="text-primary" />
+                    </AdvancedMarker>
+                </Map>
+            </div>
+             <p className="text-xs text-muted-foreground">Search for the sighting location or drag the pin.</p>
+         </div>
+    )
+}
+
 export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
   const { user, loading: authLoading } = useAuth();
   const [message, setMessage] = useState('');
@@ -37,21 +111,59 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
   const { toast } = useToast();
   const router = useRouter();
   const isLoggedIn = !!user;
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const [sightingLocation, setSightingLocation] = useState<{lat: number, lng: number, address: string} | null>(null);
+  const [sightings, setSightings] = useState<Sighting[]>([]);
+  const [loadingSightings, setLoadingSightings] = useState(true);
 
-  const formatReportedAt = (date: string) => {
-     return formatDateUTC(date, { year: 'numeric', month: 'long', day: 'numeric' });
+  useEffect(() => {
+    if (vehicle.id) {
+        setLoadingSightings(true);
+        getVehicleSightings(vehicle.id)
+            .then(setSightings)
+            .finally(() => setLoadingSightings(false));
+    }
+  }, [vehicle.id]);
+
+  const handleLocationChange = useCallback((loc: { lat: number; lng: number; address: string }) => {
+    setSightingLocation(loc);
+  }, []);
+
+  const formatDateTime = (dateString: string) => {
+     return formatDateUTC(dateString, { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   };
   
-   const formatTheftDate = (date: string) => {
-     return formatDateUTC(date, { year: 'numeric', month: 'long', day: 'numeric' });
+   const formatDate = (dateString: string) => {
+     return formatDateUTC(dateString, { year: 'numeric', month: 'long', day: 'numeric' });
   };
   
   const handleSendMessage = async () => {
     if (!user || !message.trim() || !messageType) return;
+   
     setIsSending(true);
     try {
         const conversationId = await createOrGetConversation(vehicle, user);
-        await sendMessage(conversationId, message, user, messageType, vehicle.id);
+        
+        let finalSightingLocation: { address: string; lat: number; lng: number; } | undefined = undefined;
+
+        if (messageType === 'Sighting') {
+            if (!sightingLocation) {
+                 toast({ variant: "destructive", title: "Location Missing", description: "Please pin the location of the sighting on the map." });
+                 setIsSending(false);
+                 return;
+            }
+            await submitSighting(vehicle.id, user, { 
+                message, 
+                location: sightingLocation.address, 
+                lat: sightingLocation.lat, 
+                lng: sightingLocation.lng 
+            });
+            finalSightingLocation = sightingLocation;
+            // Refetch sightings to update the page
+            setSightings(await getVehicleSightings(vehicle.id));
+        }
+
+        await sendMessage(conversationId, message, user, messageType, finalSightingLocation);
         
         toast({
             title: "Message Sent!",
@@ -61,6 +173,8 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
         setIsDialogOpen(false);
         setMessage('');
         setMessageType(undefined);
+        setSightingLocation(null);
+        
         // Navigate to the messages page to see the conversation
         router.push(`/dashboard/messages?conversationId=${conversationId}`);
         
@@ -75,15 +189,17 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
         setIsSending(false);
     }
   }
+  
+  const mostRecentSighting = sightings?.[0];
 
   return (
-    <div className="container mx-auto py-12">
+    <div className="container mx-auto py-12 space-y-8">
       <Card>
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="text-3xl">{vehicle.make} {vehicle.model} ({vehicle.year})</CardTitle>
-              <CardDescription>Reported Stolen on {formatReportedAt(vehicle.reportedAt)}</CardDescription>
+              <CardDescription>Reported Stolen on {formatDate(vehicle.reportedAt)}</CardDescription>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground bg-muted px-3 py-2 rounded-lg">
                 <Eye className="h-5 w-5 text-primary" />
@@ -134,8 +250,11 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
               <Separator />
               <div>
                 <h3 className="text-lg font-semibold mb-2">Last Known Information</h3>
-                <p className="text-sm"><strong>Date of Theft:</strong> {formatTheftDate(vehicle.date)}</p>
-                <p className="text-sm"><strong>Location:</strong> {vehicle.location}</p>
+                <p className="text-sm"><strong>Date of Theft:</strong> {formatDate(vehicle.date)}</p>
+                <p className="text-sm"><strong>Original Location:</strong> {vehicle.location}</p>
+                {mostRecentSighting && (
+                    <p className="text-sm text-primary"><strong>Last Sighting:</strong> {mostRecentSighting.location}</p>
+                )}
                 <p className="text-sm mt-2"><strong>Details:</strong> {vehicle.features || 'No additional details provided.'}</p>
               </div>
               <Separator />
@@ -149,7 +268,7 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
                         <MessageSquare className="mr-2 h-4 w-4" /> Message Owner
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent className="sm:max-w-lg">
                       <DialogHeader>
                         <DialogTitle>Contact the owner</DialogTitle>
                         <DialogDescription>
@@ -176,6 +295,16 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
                             </SelectContent>
                            </Select>
                         </div>
+                        
+                        {messageType === 'Sighting' && apiKey && (
+                            <div className="space-y-2">
+                                <Label>Sighting Location</Label>
+                                <APIProvider apiKey={apiKey}>
+                                    <SightingLocationPicker onLocationChange={handleLocationChange} />
+                                </APIProvider>
+                            </div>
+                        )}
+                        
                         <div className="grid w-full gap-1.5">
                           <Label htmlFor="message">Your message</Label>
                           <Textarea placeholder="Type your message here." id="message" value={message} onChange={(e) => setMessage(e.target.value)} />
@@ -209,6 +338,62 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
           </div>
         </CardContent>
       </Card>
+      
+      {apiKey && (vehicle.lat || sightings.length > 0) && (
+        <Card>
+            <CardHeader>
+                <CardTitle>Sighting Map</CardTitle>
+                <CardDescription>
+                    {mostRecentSighting 
+                        ? `This car was stolen from ${vehicle.location}. It has been most recently sighted near ${mostRecentSighting.location}.`
+                        : `This map shows the original location where the vehicle was reported stolen.`
+                    }
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="h-96 w-full rounded-lg overflow-hidden border">
+                    <APIProvider apiKey={apiKey}>
+                        <VehicleSightingsMap originalReport={vehicle} sightings={sightings} />
+                    </APIProvider>
+                </div>
+            </CardContent>
+        </Card>
+      )}
+
+      {sightings.length > 0 && (
+        <Card>
+            <CardHeader>
+                <CardTitle>Community Sightings</CardTitle>
+                <CardDescription>All reported sightings for this vehicle.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {loadingSightings ? (
+                    <div className="flex justify-center py-8"><Loader2 className="animate-spin text-primary" /></div>
+                ) : (
+                    sightings.map(sighting => (
+                        <div key={sighting.id} className="p-4 rounded-lg border bg-card flex flex-col sm:flex-row gap-4">
+                           <div className="flex-shrink-0">
+                             <Avatar>
+                                <AvatarImage src={sighting.sighterAvatar} alt={sighting.sighterName} data-ai-hint="person face" />
+                                <AvatarFallback>{sighting.sighterName?.charAt(0) || 'U'}</AvatarFallback>
+                             </Avatar>
+                           </div>
+                           <div className="flex-1">
+                                <p className="text-sm text-muted-foreground">{sighting.message}</p>
+                                <div className="mt-2 text-xs text-muted-foreground space-y-1">
+                                    <p className="flex items-center gap-2"><User size={14} /> Reported by {sighting.sighterName}</p>
+                                    <p className="flex items-center gap-2"><MapPin size={14} /> Sighted at {sighting.location}</p>
+                                    <p className="flex items-center gap-2"><Calendar size={14} /> On {formatDateTime(sighting.sightedAt)}</p>
+                                </div>
+                           </div>
+                        </div>
+                    ))
+                )}
+            </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
+
+    

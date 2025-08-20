@@ -29,8 +29,8 @@ const reportSchema = z.object({
   location: z.string().min(2, "Location is required"),
   date: z.string().min(1, "Date is required"),
   additionalInfo: z.string().optional(),
-  lat: z.number().optional(),
-  lng: z.number().optional(),
+  lat: z.number({ required_error: 'Please select a location on the map.' }),
+  lng: z.number({ required_error: 'Please select a location on the map.' }),
 });
 
 type ReportFormValues = z.infer<typeof reportSchema>;
@@ -51,6 +51,7 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
     const [markerPos, setMarkerPos] = useState<google.maps.LatLngLiteral>(defaultPosition);
     const map = useMap();
     const { toast } = useToast();
+    const form = useFormContext<ReportFormValues>();
 
     const geocodeAddress = useDebouncedCallback((address: string) => {
         if (!address) return;
@@ -99,6 +100,7 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
     return (
         <div className="space-y-4">
             <FormField
+                control={form.control}
                 name="location"
                 render={({ field }) => (
                 <FormItem>
@@ -533,3 +535,5 @@ export function VehicleReportForm() {
     </Form>
   );
 }
+
+    
