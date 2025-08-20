@@ -4,17 +4,18 @@
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Loader2 } from 'lucide-react';
+import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { VehicleReport, createOrGetConversation, sendMessage } from '@/lib/firebase';
+import { VehicleReport, createOrGetConversation, sendMessage, Message } from '@/lib/firebase';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) => {
     if (!dateString) return 'N/A';
@@ -32,6 +33,7 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [messageType, setMessageType] = useState<Message['messageType']>();
   const { toast } = useToast();
   const router = useRouter();
   const isLoggedIn = !!user;
@@ -45,11 +47,11 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
   };
   
   const handleSendMessage = async () => {
-    if (!user || !message.trim()) return;
+    if (!user || !message.trim() || !messageType) return;
     setIsSending(true);
     try {
         const conversationId = await createOrGetConversation(vehicle, user);
-        await sendMessage(conversationId, message, user);
+        await sendMessage(conversationId, message, user, messageType, vehicle.id);
         
         toast({
             title: "Message Sent!",
@@ -58,6 +60,7 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
         
         setIsDialogOpen(false);
         setMessage('');
+        setMessageType(undefined);
         // Navigate to the messages page to see the conversation
         router.push(`/dashboard/messages?conversationId=${conversationId}`);
         
@@ -77,8 +80,17 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
     <div className="container mx-auto py-12">
       <Card>
         <CardHeader>
-          <CardTitle className="text-3xl">{vehicle.make} {vehicle.model} ({vehicle.year})</CardTitle>
-          <CardDescription>Reported Stolen on {formatReportedAt(vehicle.reportedAt)}</CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="text-3xl">{vehicle.make} {vehicle.model} ({vehicle.year})</CardTitle>
+              <CardDescription>Reported Stolen on {formatReportedAt(vehicle.reportedAt)}</CardDescription>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground bg-muted px-3 py-2 rounded-lg">
+                <Eye className="h-5 w-5 text-primary" />
+                <span className="font-bold text-lg text-foreground">{vehicle.sightingsCount || 0}</span>
+                <span>Sightings</span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-2 gap-8">
@@ -139,19 +151,38 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
                       <DialogHeader>
-                        <DialogTitle>Send a message to the owner</DialogTitle>
+                        <DialogTitle>Contact the owner</DialogTitle>
                         <DialogDescription>
                           Provide any information that could help locate the vehicle. Your message will be sent securely.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="grid gap-4 py-4">
                         <div className="grid w-full gap-1.5">
+                          <Label htmlFor="message-type">Reason for contact</Label>
+                          <Select onValueChange={(value) => setMessageType(value as Message['messageType'])} value={messageType}>
+                            <SelectTrigger id="message-type">
+                                <SelectValue placeholder="Select a reason..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Sighting">
+                                    <div className="flex items-center gap-2"><Eye className="h-4 w-4"/> I have seen this vehicle</div>
+                                </SelectItem>
+                                <SelectItem value="Vehicle Found">
+                                    <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4"/> I have found this vehicle</div>
+                                </SelectItem>
+                                <SelectItem value="Question">
+                                    <div className="flex items-center gap-2"><HelpCircle className="h-4 w-4"/> I have a question</div>
+                                </SelectItem>
+                            </SelectContent>
+                           </Select>
+                        </div>
+                        <div className="grid w-full gap-1.5">
                           <Label htmlFor="message">Your message</Label>
                           <Textarea placeholder="Type your message here." id="message" value={message} onChange={(e) => setMessage(e.target.value)} />
                         </div>
                       </div>
                       <DialogFooter>
-                        <Button type="submit" onClick={handleSendMessage} disabled={isSending || !message.trim()}>
+                        <Button type="submit" onClick={handleSendMessage} disabled={isSending || !message.trim() || !messageType}>
                             {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Send Message
                         </Button>

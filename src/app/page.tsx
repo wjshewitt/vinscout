@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { Search, AlertTriangle, Loader2 } from 'lucide-react';
+import { Search, AlertTriangle, Loader2, Car, CheckCircle, Eye } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getVehicleReports, VehicleReport } from '@/lib/firebase';
 
 export default function Home() {
@@ -32,6 +32,14 @@ export default function Home() {
   const isLoggedIn = !!user;
 
   const recentVehicles = reports.slice(0, 3);
+  
+  const stats = useMemo(() => {
+    if (loading) return { active: 0, recovered: 0, sightings: 0 };
+    const active = reports.filter(r => r.status === 'Active').length;
+    const recovered = reports.filter(r => r.status === 'Recovered').length;
+    const sightings = reports.reduce((acc, r) => acc + (r.sightingsCount || 0), 0);
+    return { active, recovered, sightings };
+  }, [reports, loading]);
     
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Invalid Date';
@@ -56,6 +64,30 @@ export default function Home() {
         <p className="text-muted-foreground text-lg max-w-3xl mx-auto">
           Our community is our greatest asset. Browse recent reports and keep an eye out. Your vigilance can make all the difference.
         </p>
+      </div>
+
+       <div className="mb-12 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+        <Card>
+          <CardContent className="p-6">
+            <Car className="h-8 w-8 mx-auto text-primary mb-2" />
+            <p className="text-3xl font-bold">{loading ? <Loader2 className="h-6 w-6 animate-spin mx-auto" /> : stats.active}</p>
+            <p className="text-sm text-muted-foreground">Active Reports</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <CheckCircle className="h-8 w-8 mx-auto text-green-500 mb-2" />
+            <p className="text-3xl font-bold">{loading ? <Loader2 className="h-6 w-6 animate-spin mx-auto" /> : stats.recovered}</p>
+            <p className="text-sm text-muted-foreground">Vehicles Recovered</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <Eye className="h-8 w-8 mx-auto text-blue-400 mb-2" />
+            <p className="text-3xl font-bold">{loading ? <Loader2 className="h-6 w-6 animate-spin mx-auto" /> : stats.sightings}</p>
+            <p className="text-sm text-muted-foreground">Community Sightings</p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="mb-12">

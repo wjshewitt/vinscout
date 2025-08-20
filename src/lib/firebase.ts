@@ -176,7 +176,8 @@ export const submitVehicleReport = async (reportData: object) => {
         const docRef = await addDoc(collection(db, 'vehicleReports'), {
             ...reportData,
             reporterId: auth.currentUser.uid,
-            reportedAt: serverTimestamp() // Use server-side timestamp
+            reportedAt: serverTimestamp(), // Use server-side timestamp
+            sightingsCount: 0
         });
         return docRef.id;
     } catch (error) {
@@ -203,6 +204,7 @@ export interface VehicleReport {
     photos?: string[];
     lat?: number;
     lng?: number;
+    sightingsCount?: number;
 }
 
 export interface Conversation {
@@ -223,6 +225,7 @@ export interface Message {
     senderId: string;
     text: string;
     createdAt: string;
+    messageType?: 'Sighting' | 'Vehicle Found' | 'Question';
 }
 
 export interface GeofenceLocation {
@@ -280,6 +283,7 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         photos: data.photos || [],
         lat: data.lat,
         lng: data.lng,
+        sightingsCount: data.sightingsCount || 0,
     };
 };
 
@@ -457,7 +461,13 @@ export const listenToMessages = (
 };
 
 // Send a message
-export const sendMessage = async (conversationId: string, text: string, sender: User) => {
+export const sendMessage = async (
+    conversationId: string, 
+    text: string, 
+    sender: User,
+    messageType: Message['messageType'],
+    vehicleId?: string
+) => {
     const conversationRef = doc(db, 'conversations', conversationId);
     
     await runTransaction(db, async (transaction) => {
@@ -477,18 +487,20 @@ export const sendMessage = async (conversationId: string, text: string, sender: 
             }
         }
 
+        // Add the message
         const messageRef = doc(collection(db, 'conversations', conversationId, 'messages'));
         transaction.set(messageRef, {
             conversationId,
             senderId: sender.uid,
             text,
+            messageType,
             createdAt: serverTimestamp(),
         });
-
+        
+        // Update the conversation
         const updateData: any = {
             lastMessage: text,
             lastMessageAt: serverTimestamp(),
-            // The conversation is no longer deleted for the sender, since they sent a message.
             deletedFor: arrayRemove(sender.uid)
         };
         
@@ -497,6 +509,14 @@ export const sendMessage = async (conversationId: string, text: string, sender: 
         }
 
         transaction.update(conversationRef, updateData);
+
+        // If it's a sighting, increment the vehicle's sighting count
+        if (messageType === 'Sighting' && vehicleId) {
+            const vehicleRef = doc(db, 'vehicleReports', vehicleId);
+            transaction.update(vehicleRef, {
+                sightingsCount: increment(1)
+            });
+        }
     });
 }
 
