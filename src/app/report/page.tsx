@@ -12,7 +12,7 @@ export default function ReportVehiclePage() {
             Your eyes on the road are crucial. Provide details about the stolen vehicle to mobilize our network and help bring it home.
           </p>
         </div>
-        <div className="mt-12 bg-card/50 backdrop-blur-sm border border-border rounded-2xl p-8 shadow-2xl shadow-blue-500/10">
+        <div className="mt-12 bg-card/50 backdrop-blur-sm border border-border rounded-2xl p-8">
           <VehicleReportForm />
         </div>
       </div>
