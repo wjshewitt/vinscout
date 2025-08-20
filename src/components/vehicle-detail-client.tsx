@@ -523,10 +523,8 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                     <span>Model:</span> <span className="text-muted-foreground">{vehicle.model}</span>
                     <span>Year:</span> <span className="text-muted-foreground">{vehicle.year}</span>
                     <span>Color:</span> <span className="text-muted-foreground">{vehicle.color}</span>
+                    <span>License Plate:</span><span className="font-mono">{vehicle.licensePlate}</span>
                     {vehicle.vin && <><span>VIN:</span> <span className="font-mono text-muted-foreground">{vehicle.vin}</span></>}
-                    </div>
-                    <div>
-                        <span className="license-plate">{vehicle.licensePlate}</span>
                     </div>
                 </div>
               </div>

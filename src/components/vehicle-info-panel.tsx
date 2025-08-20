@@ -64,7 +64,7 @@ export function VehicleInfoPanel({ vehicle, onClose }: VehicleInfoPanelProps) {
 
                     <div className="rounded-lg bg-card p-4 text-center">
                         <p className="font-semibold text-sm text-muted-foreground">License Plate</p>
-                        <p className="license-plate mt-1">{vehicle.licensePlate}</p>
+                        <p className="font-mono text-xl tracking-widest mt-1">{vehicle.licensePlate}</p>
                     </div>
 
                     {vehicle.features && (

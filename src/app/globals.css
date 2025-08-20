@@ -62,9 +62,3 @@ body {
     @apply bg-background text-foreground;
   }
 }
-
-@layer utilities {
-  .license-plate {
-    @apply inline-block bg-yellow-400 text-black font-mono tracking-widest font-bold uppercase px-3 py-1 border-2 border-black rounded-md text-base text-center;
-  }
-}
