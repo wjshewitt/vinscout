@@ -41,13 +41,14 @@ import {
     collectionGroup,
     FieldValue
 } from 'firebase/firestore';
+import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { toast } from '@/hooks/use-toast';
 import _ from 'lodash';
 
 const firebaseConfig = {
   "projectId": "vigilante-garage",
   "appId": "1:109449796594:web:9cdb5b50aed0dfa46ce96b",
-  "storageBucket": "vigilante-garage.firebasestorage.app",
+  "storageBucket": "vigilante-garage.appspot.com",
   "apiKey": "AIzaSyBdqrM1jTSCT3Iv4alBwpt1I48f4v4qZOg",
   "authDomain": "vigilante-garage.firebaseapp.com",
   "messagingSenderId": "109449796594",
@@ -58,6 +59,7 @@ const firebaseConfig = {
 const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
 
@@ -167,22 +169,49 @@ export const deleteUserAccount = async () => {
     }
 };
 
+const uploadImageAndGetURL = async (base64: string, userId: string): Promise<string> => {
+    const timestamp = new Date().getTime();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const fileName = `${userId}-${timestamp}-${randomSuffix}.jpg`;
+    const storageRef = ref(storage, `vehicle-photos/${fileName}`);
+    
+    // The base64 string from canvas.toDataURL is 'data:image/jpeg;base64,....'
+    // We need to strip the header for uploadString
+    const base64Data = base64.split(',')[1];
+    
+    await uploadString(storageRef, base64Data, 'base64', {
+        contentType: 'image/jpeg'
+    });
+    
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+};
+
+
 export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'reporterId' | 'sightingsCount'>) => {
     if (!auth.currentUser) {
         console.error("No user is signed in to submit a report.");
         return null;
     }
+    const userId = auth.currentUser.uid;
 
     try {
+        // 1. Upload images to Firebase Storage and get their URLs
+        const imageUrls = await Promise.all(
+            (reportData.photos || []).map(photoBase64 => uploadImageAndGetURL(photoBase64, userId))
+        );
+
+        // 2. Prepare the report payload for Firestore, now with image URLs
         const reportPayload: any = {
             ...reportData,
-            reporterId: auth.currentUser.uid,
+            photos: imageUrls, // Overwrite with URLs
+            reporterId: userId,
             reportedAt: serverTimestamp(),
             status: 'Active',
             sightingsCount: 0,
         };
 
-        // Ensure optional fields are not sent if they are empty
+        // Ensure optional fields are not sent if they are empty or just whitespace
         if (!reportPayload.vin?.trim()) {
             delete reportPayload.vin;
         }
@@ -190,6 +219,7 @@ export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' |
             delete reportPayload.features;
         }
 
+        // 3. Add the document to Firestore
         const docRef = await addDoc(collection(db, 'vehicleReports'), reportPayload);
         
         return docRef.id;
