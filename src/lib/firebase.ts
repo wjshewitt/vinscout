@@ -499,18 +499,21 @@ export const listenToUnreadCount = (userId: string, callback: (count: number) =>
 // Listen to conversations with unread messages for the notification menu
 export const listenToUnreadConversations = (userId: string, callback: (conversations: Conversation[]) => void): Unsubscribe => {
     const q = query(
-        collection(db, 'conversations'), 
+        collection(db, 'conversations'),
         where('participants', 'array-contains', userId),
-        where(`unread.${userId}`, '>', 0),
-        orderBy(`unread.${userId}`, 'desc'),
         orderBy('lastMessageAt', 'desc')
     );
 
     return onSnapshot(q, async (snapshot) => {
         const conversationsPromises = snapshot.docs.map(async (conversationDoc) => {
             let convo = toConversation(conversationDoc);
-            
+
             if (convo.deletedFor?.includes(userId)) {
+                return null;
+            }
+            
+            // Filter for unread messages on the client
+            if (!convo.unread?.[userId] || convo.unread[userId] === 0) {
                 return null;
             }
 
@@ -536,6 +539,8 @@ export const listenToUnreadConversations = (userId: string, callback: (conversat
         });
 
         const conversations = (await Promise.all(conversationsPromises)).filter(Boolean) as Conversation[];
+        // Sort by last message time on the client
+        conversations.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
         callback(conversations);
     }, (error) => {
         console.error("Error listening to unread conversations:", error);
