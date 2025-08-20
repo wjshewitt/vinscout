@@ -108,6 +108,11 @@ export const logout = async () => {
 
 export const signUpWithEmail = async (name: string, email: string, pass: string): Promise<{user: User | null, error: AuthError | null}> => {
     try {
+        const existingUser = await fetch(`/api/user-exists?email=${encodeURIComponent(email)}`).then(res => res.json());
+        if(existingUser.exists) {
+            return { user: null, error: { code: 'auth/email-already-in-use' } as AuthError };
+        }
+        
         const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
         const user = userCredential.user;
         await updateProfile(user, { displayName: name });
@@ -175,7 +180,7 @@ export interface Conversation {
     participantDetails: { [key: string]: { name: string; avatar: string; } };
     lastMessage: string;
     lastMessageAt: string;
-    unread: { [key: string]: number }; // unread count for each user
+    unread?: { [key: string]: number }; // unread count for each user
     vehicleId: string;
     vehicleSummary: string;
     deletedFor?: string[];
@@ -297,8 +302,8 @@ export const listenToUnreadCount = (userId: string, callback: (count: number) =>
 
     return onSnapshot(q, (snapshot) => {
         let totalUnread = 0;
-        snapshot.forEach(doc => {
-            const convo = toConversation(doc);
+        snapshot.forEach(docSnap => {
+            const convo = toConversation(docSnap);
             // Only count if the convo hasn't been deleted by the user
             if (!(convo.deletedFor?.includes(userId))) {
                 if (convo.unread && convo.unread[userId]) {
@@ -469,8 +474,17 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
     let ownerData: { displayName: string, photoURL: string };
 
     if (!ownerDoc.exists()) {
-        await createUserProfileDocument({ uid: vehicle.reporterId } as User);
-        ownerDoc = await getDoc(ownerRef); // Re-fetch after creation
+       // This is a fallback. The owner should have a user profile, but if not, create a basic one.
+       // This can happen if the owner user was created before the profile creation logic was added.
+        await setDoc(ownerRef, {
+           uid: vehicle.reporterId,
+           displayName: 'Vehicle Owner',
+           email: 'N/A',
+           photoURL: '',
+           createdAt: serverTimestamp(),
+           blockedUsers: []
+       });
+       ownerDoc = await getDoc(ownerRef); // Re-fetch
     }
     
     if (ownerDoc.exists()) {
@@ -480,7 +494,8 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
             photoURL: data.photoURL || ''
         };
     } else {
-        throw new Error("Could not find the vehicle owner's data.");
+        // This should theoretically never be reached now due to the fallback creation.
+        throw new Error("Could not find or create the vehicle owner's data.");
     }
 
     const initiatorName = initiator.displayName || 'Anonymous User';
@@ -519,7 +534,31 @@ export async function deleteConversation(conversationId: string, userId: string)
 }
 
 
+async function ensureUserDocExists(userId: string) {
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+        // If the user document doesn't exist, create a basic one.
+        // This can happen for older accounts. We might not have all details.
+        const authUser = auth.currentUser; // Check if the current user is the one we are modifying
+        const details = (authUser && authUser.uid === userId) 
+            ? { displayName: authUser.displayName, email: authUser.email, photoURL: authUser.photoURL } 
+            : { displayName: 'User', email: 'N/A', photoURL: ''};
+
+        await setDoc(userRef, {
+            uid: userId,
+            displayName: details.displayName,
+            email: details.email,
+            photoURL: details.photoURL,
+            createdAt: serverTimestamp(),
+            blockedUsers: [],
+        });
+    }
+}
+
+
 export async function blockUser(blockerId: string, blockedId: string) {
+    await ensureUserDocExists(blockerId);
     const blockerRef = doc(db, 'users', blockerId);
     return updateDoc(blockerRef, {
         blockedUsers: arrayUnion(blockedId)
@@ -528,6 +567,7 @@ export async function blockUser(blockerId: string, blockedId: string) {
 
 
 export async function unblockUser(unblockerId: string, unblockedId: string) {
+    await ensureUserDocExists(unblockerId);
     const unblockerRef = doc(db, 'users', unblockerId);
     return updateDoc(unblockerRef, {
         blockedUsers: arrayRemove(unblockedId)
@@ -549,3 +589,5 @@ export async function checkIfUserIsBlocked(blockerId: string, blockedId: string)
 
 export { auth, db };
 export type { User, AuthError };
+
+    
