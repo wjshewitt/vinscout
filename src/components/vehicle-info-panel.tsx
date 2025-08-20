@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { VehicleReport } from '@/lib/firebase';
-import { X, Calendar, MapPin as MapPinIcon, Sparkles } from 'lucide-react';
+import { X, Calendar, MapPin as MapPinIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VehicleInfoPanelProps {
@@ -44,18 +44,12 @@ export function VehicleInfoPanel({ vehicle, onClose }: VehicleInfoPanelProps) {
                 <CardContent className="flex-1 space-y-4 p-6 pt-0 overflow-y-auto">
                    <div className="aspect-video w-full relative overflow-hidden rounded-lg">
                         <Image 
-                            src={vehicle.aiPhotoUrl || vehicle.photos?.[0] || "https://placehold.co/600x400.png"}
+                            src={vehicle.photos?.[0] || "https://placehold.co/600x400.png"}
                             alt={`${vehicle.make} ${vehicle.model}`}
                             fill
                             className="object-cover"
                             data-ai-hint="car side"
                         />
-                         {vehicle.aiPhotoUrl && (
-                            <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
-                                <Sparkles className="h-3 w-3" />
-                                AI-generated image
-                            </div>
-                        )}
                    </div>
                    <div className="space-y-2 text-sm">
                      <div className="flex items-center gap-2">
@@ -90,3 +84,5 @@ export function VehicleInfoPanel({ vehicle, onClose }: VehicleInfoPanelProps) {
     </div>
   );
 }
+
+    

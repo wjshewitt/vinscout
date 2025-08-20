@@ -117,7 +117,7 @@ export default function Home() {
               <Card key={vehicle.id} className="overflow-hidden hover:border-primary transition-colors">
                  <Link href={`/vehicles/${vehicle.id}`}>
                   <div className="aspect-video w-full">
-                    <Image src={vehicle.aiPhotoUrl || vehicle.photos?.[0] || "https://placehold.co/600x400.png"} alt={`${vehicle.make} ${vehicle.model}`} width={600} height={400} className="object-cover w-full h-full" data-ai-hint="car front" />
+                    <Image src={vehicle.photos?.[0] || "https://placehold.co/600x400.png"} alt={`${vehicle.make} ${vehicle.model}`} width={600} height={400} className="object-cover w-full h-full" data-ai-hint="car front" />
                   </div>
                   <CardHeader>
                     <CardTitle>{vehicle.make} {vehicle.model}</CardTitle>
@@ -194,7 +194,7 @@ export default function Home() {
                       <TableCell>
                         <div className="flex items-center gap-4">
                           <Avatar className="h-10 w-10 rounded-md">
-                            <AvatarImage src={vehicle.aiPhotoUrl || vehicle.photos?.[0] || 'https://placehold.co/40x40.png'} alt={vehicle.make} data-ai-hint="car front" />
+                            <AvatarImage src={vehicle.photos?.[0] || 'https://placehold.co/40x40.png'} alt={vehicle.make} data-ai-hint="car front" />
                             <AvatarFallback className="rounded-md">{vehicle.make.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div>
@@ -242,3 +242,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

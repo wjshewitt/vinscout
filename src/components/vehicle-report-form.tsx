@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling } from 'lucide-react';
+import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { submitVehicleReport, VehicleReport } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
@@ -19,6 +19,7 @@ import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-m
 import { useDebouncedCallback } from 'use-debounce';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
+import Image from 'next/image';
 
 const reportSchema = z.object({
   make: z.string().min(1, 'Make is required'),
@@ -33,7 +34,7 @@ const reportSchema = z.object({
   additionalInfo: z.string().optional(),
   lat: z.number({ required_error: 'Please select a location on the map.' }),
   lng: z.number({ required_error: 'Please select a location on the map.' }),
-  photos: z.array(z.string()).optional(),
+  photos: z.array(z.string()).min(1, "At least one photo is required."),
   rewardAmount: z.coerce.number().optional(),
   rewardDetails: z.string().optional(),
 });
@@ -145,7 +146,8 @@ export function VehicleReportForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showReward, setShowReward] = useState(false);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
@@ -169,6 +171,16 @@ export function VehicleReportForm() {
     control: form.control,
     name: 'make',
   });
+  
+  const currentPhotos = useWatch({
+    control: form.control,
+    name: 'photos',
+    defaultValue: []
+  });
+
+  useEffect(() => {
+    setImagePreviews(currentPhotos || []);
+  }, [currentPhotos]);
 
   useEffect(() => {
     const fetchMakes = async () => {
@@ -254,6 +266,48 @@ export function VehicleReportForm() {
     form.setValue('location', address, { shouldValidate: true });
   }, [form]);
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    setIsUploading(true);
+    const newImagePromises: Promise<string>[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+             toast({ variant: 'destructive', title: 'File too large', description: `${file.name} is larger than 10MB.` });
+             continue;
+        }
+        const promise = new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                resolve(reader.result as string);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+        newImagePromises.push(promise);
+    }
+    
+    Promise.all(newImagePromises).then(newImages => {
+        const updatedPhotos = [...(form.getValues('photos') || []), ...newImages];
+        form.setValue('photos', updatedPhotos, { shouldValidate: true });
+        setImagePreviews(updatedPhotos);
+        setIsUploading(false);
+    }).catch(error => {
+        console.error("Error reading files:", error);
+        toast({ variant: 'destructive', title: 'Error uploading files', description: 'There was a problem reading your files.' });
+        setIsUploading(false);
+    });
+  };
+  
+  const removeImage = (indexToRemove: number) => {
+    const updatedPhotos = (form.getValues('photos') || []).filter((_, index) => index !== indexToRemove);
+    form.setValue('photos', updatedPhotos, { shouldValidate: true });
+    setImagePreviews(updatedPhotos);
+  };
+
 
   async function onSubmit(data: ReportFormValues) {
     if (!user) {
@@ -269,7 +323,6 @@ export function VehicleReportForm() {
     setIsSubmitting(true);
 
     try {
-        // Ensure lat/lng are set if location is present
         if(data.location && (!data.lat || !data.lng)) {
              toast({
                 variant: 'destructive',
@@ -576,24 +629,65 @@ export function VehicleReportForm() {
 
 
                     <div className="sm:col-span-2">
-                        <FormItem>
-                        <FormLabel>Upload Photos (Optional)</FormLabel>
-                        <FormControl>
-                            <div className="relative flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-input bg-background p-8 transition-colors hover:border-primary">
-                            <div className="text-center">
-                            <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <p className="mt-4 text-sm text-muted-foreground">
-                                <span className="font-semibold text-primary">Click to upload</span> or drag and drop
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                PNG, JPG, GIF up to 10MB
-                            </p>
+                        <FormField
+                            control={form.control}
+                            name="photos"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Vehicle Photos</FormLabel>
+                                        <div className="relative flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-input bg-background p-8 transition-colors hover:border-primary">
+                                        <div className="text-center">
+                                            {isUploading ? (
+                                                <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+                                            ) : (
+                                                <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+                                            )}
+                                            <p className="mt-4 text-sm text-muted-foreground">
+                                                <span className="font-semibold text-primary">Click to upload</span> or drag and drop
+                                            </p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                PNG, JPG up to 10MB each.
+                                            </p>
+                                        </div>
+                                        <FormControl>
+                                            <Input 
+                                                id="photos" 
+                                                type="file" 
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                                                multiple 
+                                                onChange={handleFileChange}
+                                                accept="image/png, image/jpeg"
+                                                disabled={isUploading}
+                                            />
+                                        </FormControl>
+                                        </div>
+                                    <FormMessage />
+                                </FormItem>
+                             )}
+                        />
+                         {imagePreviews.length > 0 && (
+                            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                {imagePreviews.map((src, index) => (
+                                    <div key={index} className="relative group aspect-video">
+                                        <Image
+                                            src={src}
+                                            alt={`Preview ${index + 1}`}
+                                            fill
+                                            className="rounded-md object-cover"
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="icon"
+                                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={() => removeImage(index)}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
                             </div>
-                            <input id="photos" type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple disabled />
-                            </div>
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
+                        )}
                     </div>
                  </div>
             )}
@@ -628,3 +722,5 @@ export function VehicleReportForm() {
     </Form>
   );
 }
+
+    

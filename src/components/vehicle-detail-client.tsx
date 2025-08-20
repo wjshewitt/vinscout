@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, PoundSterling, ShieldCheck, Pencil, Sparkles } from 'lucide-react';
+import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, PoundSterling, ShieldCheck, Pencil } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
@@ -28,6 +28,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel"
 
 const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) => {
     if (!dateString) return 'N/A';
@@ -412,7 +419,8 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
   const mostRecentSighting = sightings?.[0];
   const hasReward = vehicle.rewardAmount || vehicle.rewardDetails;
   
-  const mainPhoto = vehicle.aiPhotoUrl || vehicle.photos?.[0] || 'https://placehold.co/800x600.png';
+  const mainPhoto = vehicle.photos?.[0] || 'https://placehold.co/800x600.png';
+  const hasPhotos = vehicle.photos && vehicle.photos.length > 0;
 
   return (
     <div className="container mx-auto py-12 space-y-8">
@@ -438,46 +446,42 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
         <CardContent>
           <div className="grid md:grid-cols-2 gap-8">
             <div>
-              <div className="aspect-video w-full mb-4 relative">
-                <Image
-                  src={mainPhoto}
-                  alt={`${vehicle.make} ${vehicle.model}`}
-                  width={800}
-                  height={600}
-                  className="rounded-lg object-cover w-full h-full"
-                  data-ai-hint="car side"
-                />
-                 {vehicle.aiPhotoUrl && (
-                    <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
-                        <Sparkles className="h-3 w-3" />
-                        AI-generated image for representation
-                    </div>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {(vehicle.photos?.slice(1, 3) || []).map((photo, index) => (
-                  <Image
-                    key={index}
-                    src={photo || 'https://placehold.co/400x300.png'}
-                    alt={`${vehicle.make} ${vehicle.model} photo ${index + 2}`}
-                    width={400}
-                    height={300}
-                    className="rounded-lg object-cover"
-                    data-ai-hint="car detail"
-                  />
-                ))}
-                {(!vehicle.photos || vehicle.photos.length < 3) && [...Array(Math.max(0, 2 - (vehicle.photos?.slice(1,3).length || 0)))].map((_, index) => (
+               {hasPhotos ? (
+                 <Carousel className="w-full">
+                    <CarouselContent>
+                        {vehicle.photos?.map((photo, index) => (
+                            <CarouselItem key={index}>
+                                <div className="aspect-video w-full relative">
+                                    <Image
+                                        src={photo}
+                                        alt={`${vehicle.make} ${vehicle.model} photo ${index + 1}`}
+                                        fill
+                                        className="rounded-lg object-cover"
+                                        data-ai-hint="car side"
+                                    />
+                                </div>
+                            </CarouselItem>
+                        ))}
+                    </CarouselContent>
+                    {vehicle.photos && vehicle.photos.length > 1 && (
+                        <>
+                            <CarouselPrevious />
+                            <CarouselNext />
+                        </>
+                    )}
+                </Carousel>
+               ) : (
+                <div className="aspect-video w-full mb-4 relative">
                     <Image
-                        key={`placeholder-${index}`}
-                        src="https://placehold.co/400x300.png"
-                        alt="Vehicle photo placeholder"
-                        width={400}
-                        height={300}
-                        className="rounded-lg object-cover"
-                        data-ai-hint="car detail"
+                    src={mainPhoto}
+                    alt={`${vehicle.make} ${vehicle.model}`}
+                    width={800}
+                    height={600}
+                    className="rounded-lg object-cover w-full h-full"
+                    data-ai-hint="car side"
                     />
-                ))}
               </div>
+               )}
             </div>
             <div className="space-y-6">
               <div>
@@ -738,3 +742,5 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
     </div>
   );
 }
+
+    
