@@ -278,6 +278,26 @@ export const getUserVehicleReports = async (userId: string): Promise<VehicleRepo
 
 // --- Messaging Functions ---
 
+export const listenToUnreadCount = (userId: string, callback: (count: number) => void): Unsubscribe => {
+    const q = query(
+        collection(db, 'conversations'), 
+        where('participants', 'array-contains', userId)
+    );
+
+    return onSnapshot(q, (snapshot) => {
+        let totalUnread = 0;
+        snapshot.forEach(doc => {
+            const convo = toConversation(doc);
+            if (convo.unread && convo.unread[userId]) {
+                totalUnread += convo.unread[userId];
+            }
+        });
+        callback(totalUnread);
+    }, (error) => {
+        console.error("Error listening to unread count:", error);
+    });
+};
+
 // Listen to a user's conversations
 export const listenToUserConversations = (userId: string, callback: (conversations: Conversation[]) => void): Unsubscribe => {
     const q = query(
@@ -288,16 +308,21 @@ export const listenToUserConversations = (userId: string, callback: (conversatio
     return onSnapshot(q, async (snapshot) => {
         const conversationsPromises = snapshot.docs.map(async (conversationDoc) => {
             const convo = toConversation(conversationDoc);
+            if (!convo.participantDetails) {
+              convo.participantDetails = {};
+            }
             for (const pId of convo.participants) {
-                const userDoc = await getDoc(doc(db, 'users', pId));
-                if (userDoc.exists()) {
-                    const userData = userDoc.data();
-                    convo.participantDetails[pId] = {
-                        name: userData.displayName || 'Unknown User',
-                        avatar: userData.photoURL || ''
-                    };
-                } else {
-                     convo.participantDetails[pId] = { name: 'Unknown User', avatar: '' };
+                if (!convo.participantDetails[pId]) {
+                    const userDoc = await getDoc(doc(db, 'users', pId));
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        convo.participantDetails[pId] = {
+                            name: userData.displayName || 'Unknown User',
+                            avatar: userData.photoURL || ''
+                        };
+                    } else {
+                         convo.participantDetails[pId] = { name: 'Unknown User', avatar: '' };
+                    }
                 }
             }
             return convo;
@@ -314,46 +339,20 @@ export const listenToMessages = (
     conversationId: string, 
     callback: (messages: Message[]) => void,
     currentUserId: string,
-    currentConversationId: string | null
 ): Unsubscribe => {
     const q = query(
         collection(db, 'conversations', conversationId, 'messages'),
         orderBy('createdAt', 'asc')
     );
-
-    let isFirstLoad = true;
-
+    
     const unsubscribe = onSnapshot(q, async (snapshot) => {
         const messages = snapshot.docs.map(toMessage);
         callback(messages);
-
-        if (isFirstLoad) {
-            isFirstLoad = false;
-        } else if (messages.length > 0) {
-            const lastMessage = messages[messages.length - 1];
-            // If the message is not from the current user and we are not in the conversation, show toast
-            if (lastMessage.senderId !== currentUserId) {
-                 const conversationRef = doc(db, 'conversations', conversationId);
-                 const convoDoc = await getDoc(conversationRef);
-                 if (convoDoc.exists()) {
-                    const otherParticipantId = convoDoc.data().participants.find((p: string) => p !== currentUserId);
-                    if (otherParticipantId) {
-                        const senderDetails = convoDoc.data().participantDetails[lastMessage.senderId];
-                        const senderName = senderDetails ? senderDetails.name : "Someone";
-                        if (conversationId !== currentConversationId) {
-                            toast({
-                                title: `New message from ${senderName}`,
-                                description: lastMessage.text,
-                            });
-                        }
-                    }
-                 }
-            }
-        }
         
         // Reset unread count for current user when they view the conversation
-        if (conversationId === currentConversationId) {
-            const conversationRef = doc(db, 'conversations', conversationId);
+        const conversationRef = doc(db, 'conversations', conversationId);
+        const convoDoc = await getDoc(conversationRef);
+        if (convoDoc.exists() && convoDoc.data().unread[currentUserId] > 0) {
             await updateDoc(conversationRef, {
                 [`unread.${currentUserId}`]: 0
             });
@@ -429,13 +428,10 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
             photoURL: data.photoURL || ''
         };
     } else {
-        const ownerAuth = await auth.getUser(vehicle.reporterId).catch(() => null);
-        if (ownerAuth) {
-             ownerData = { displayName: ownerAuth.displayName || 'Vehicle Owner', photoURL: ownerAuth.photoURL || ''};
-             await createUserProfileDocument(ownerAuth);
-        } else {
-            throw new Error("Could not find the vehicle owner's data.");
-        }
+        // Fallback to create a profile if it doesn't exist.
+        const ownerAuthRecord = { uid: vehicle.reporterId, email: 'N/A', photoURL: '', displayName: 'Vehicle Owner' };
+        await createUserProfileDocument(ownerAuthRecord as User);
+        ownerData = { displayName: 'Vehicle Owner', photoURL: '' };
     }
     
     const initiatorName = initiator.displayName || 'Anonymous User';
@@ -463,5 +459,3 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
 
 export { auth, db };
 export type { User, AuthError };
-
-    

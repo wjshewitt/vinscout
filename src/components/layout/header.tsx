@@ -14,9 +14,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from '@/hooks/use-auth';
-import { logout } from '@/lib/firebase';
+import { listenToUnreadCount, logout } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { useEffect, useState } from 'react';
 
 function Logo() {
   return (
@@ -181,34 +182,37 @@ function UserMenu({ isMobile = false }) {
 
 
 function NotificationMenu() {
-    const notifications: any[] = []; // Replace with real data
-    const unreadCount = notifications.filter(n => !n.read).length;
+    const { user } = useAuth();
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+      if (user) {
+        const unsubscribe = listenToUnreadCount(user.uid, (count) => {
+          setUnreadCount(count);
+        });
+        return () => unsubscribe();
+      }
+    }, [user]);
 
     return (
         <Popover>
             <PopoverTrigger asChild>
                  <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && (
-                        <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
-                          {unreadCount}
-                        </span>
-                    )}
-                     {unreadCount === 0 && (
-                        <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs">
-                          0
-                        </span>
-                    )}
+                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
+                        {unreadCount}
+                    </span>
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0">
                 <div className="p-4 font-medium border-b">Notifications</div>
                 <div className="p-4">
-                    {notifications.length === 0 ? (
+                    {unreadCount === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-4">You have no new notifications.</p>
                     ) : (
                         <div className="space-y-2">
-                           {/* Map through notifications here */}
+                           {/* In a real app, you would list notifications here */}
+                           <p className="text-sm text-muted-foreground">You have {unreadCount} unread messages.</p>
                         </div>
                     )}
                 </div>
