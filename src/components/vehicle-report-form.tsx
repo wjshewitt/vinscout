@@ -523,9 +523,9 @@ export function VehicleReportForm() {
                                                             value={make}
                                                             key={make}
                                                             onSelect={() => {
-                                                                form.setValue("make", make)
-                                                                handleMakeChange(make)
-                                                                setIsMakePopoverOpen(false)
+                                                                form.setValue("make", make);
+                                                                handleMakeChange(make);
+                                                                setIsMakePopoverOpen(false);
                                                             }}
                                                         >
                                                             <Check
@@ -586,7 +586,7 @@ export function VehicleReportForm() {
                                                             value={model}
                                                             key={model}
                                                             onSelect={(currentValue) => {
-                                                                form.setValue("model", currentValue === field.value ? "" : currentValue)
+                                                                form.setValue("model", currentValue)
                                                                 setIsModelPopoverOpen(false)
                                                             }}
                                                         >
@@ -883,5 +883,3 @@ export function VehicleReportForm() {
     </Form>
   );
 }
-
-    
