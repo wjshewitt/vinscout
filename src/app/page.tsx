@@ -76,16 +76,22 @@ export default function Home() {
   const formatLocation = (location: LocationInfo | undefined, loggedIn: boolean): string => {
     if (!location) return 'Unknown Location';
     
+    // Logged-in users see more specific location info if available
     if (loggedIn && location.street && location.city) {
         return `${location.street}, ${location.city}`;
     }
     
+    // Default for non-logged-in users or if street is missing
     if (location.city) {
         return location.city;
     }
 
+    // Fallback if city is missing, but fullAddress exists
     if (location.fullAddress) {
-        return location.fullAddress.split(',')[0];
+        const parts = location.fullAddress.split(',');
+        // Try to find a city-like part, otherwise return the first part.
+        if (parts.length > 1) return parts[parts.length - 2]?.trim() || parts[0]?.trim();
+        return parts[0]?.trim() || 'Unknown Location';
     }
     
     return 'Unknown Location';
