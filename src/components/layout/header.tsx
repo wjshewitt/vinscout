@@ -14,10 +14,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from '@/hooks/use-auth';
-import { listenToUnreadCount, logout } from '@/lib/firebase';
+import { logout, listenToUnreadConversations, Conversation } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { useEffect, useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { formatDistanceToNow } from 'date-fns';
 
 function Logo() {
   return (
@@ -184,36 +186,59 @@ function UserMenu({ isMobile = false }) {
 
 function NotificationMenu() {
     const { user } = useAuth();
-    const [unreadCount, setUnreadCount] = useState(0);
+    const [unreadConversations, setUnreadConversations] = useState<Conversation[]>([]);
 
     useEffect(() => {
       if (user) {
-        const unsubscribe = listenToUnreadCount(user.uid, (count) => {
-          setUnreadCount(count);
+        const unsubscribe = listenToUnreadConversations(user.uid, (conversations) => {
+          setUnreadConversations(conversations);
         });
         return () => unsubscribe();
       }
     }, [user]);
+    
+    const totalUnreadCount = unreadConversations.reduce((acc, convo) => acc + (convo.unread?.[user?.uid || ''] || 0), 0);
 
     return (
         <Popover>
             <PopoverTrigger asChild>
                  <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
-                        {unreadCount}
+                    {totalUnreadCount > 0 && <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
+                        {totalUnreadCount}
                     </span>}
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0">
                 <div className="p-4 font-medium border-b">Notifications</div>
-                <div className="p-4">
-                    {unreadCount === 0 ? (
+                <div className="p-2 max-h-80 overflow-y-auto">
+                    {unreadConversations.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-4">You have no new notifications.</p>
                     ) : (
                         <div className="space-y-2">
-                           {/* In a real app, you would list notifications here */}
-                           <p className="text-sm text-muted-foreground">You have {unreadCount} unread messages.</p>
+                           {unreadConversations.map(convo => {
+                               const otherParticipantId = convo.participants.find(p => p !== user?.uid);
+                               const otherParticipant = otherParticipantId ? convo.participantDetails[otherParticipantId] : { name: 'Unknown', avatar: ''};
+                               const unreadCount = user && convo.unread ? convo.unread[user.uid] || 0 : 0;
+                               
+                               return (
+                                   <Link href={`/dashboard/messages?conversationId=${convo.id}`} key={convo.id} className="block p-2 rounded-lg hover:bg-accent">
+                                        <div className="flex items-start gap-3">
+                                            <Avatar className="h-10 w-10">
+                                                <AvatarImage src={otherParticipant.avatar} alt={otherParticipant.name} />
+                                                <AvatarFallback>{otherParticipant.name.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 text-sm">
+                                                <p><span className="font-bold">{otherParticipant.name}</span> sent you a message</p>
+                                                <p className="text-muted-foreground text-xs mt-1">{formatDistanceToNow(new Date(convo.lastMessageAt), { addSuffix: true })}</p>
+                                            </div>
+                                             <div className="flex items-center justify-center bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 ml-2 self-center">
+                                                {unreadCount}
+                                            </div>
+                                        </div>
+                                   </Link>
+                               )
+                           })}
                         </div>
                     )}
                 </div>

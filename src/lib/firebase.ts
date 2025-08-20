@@ -494,6 +494,52 @@ export const listenToUnreadCount = (userId: string, callback: (count: number) =>
     return unsubscribe;
 };
 
+// Listen to conversations with unread messages for the notification menu
+export const listenToUnreadConversations = (userId: string, callback: (conversations: Conversation[]) => void): Unsubscribe => {
+    const q = query(
+        collection(db, 'conversations'), 
+        where('participants', 'array-contains', userId),
+        where(`unread.${userId}`, '>', 0),
+        orderBy(`unread.${userId}`, 'desc'),
+        orderBy('lastMessageAt', 'desc')
+    );
+
+    return onSnapshot(q, async (snapshot) => {
+        const conversationsPromises = snapshot.docs.map(async (conversationDoc) => {
+            let convo = toConversation(conversationDoc);
+            
+            if (convo.deletedFor?.includes(userId)) {
+                return null;
+            }
+
+            if (!convo.participantDetails) {
+              convo.participantDetails = {};
+            }
+
+            for (const pId of convo.participants) {
+                if (!convo.participantDetails[pId]) {
+                    const userDoc = await getDoc(doc(db, 'users', pId));
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        convo.participantDetails[pId] = {
+                            name: userData.displayName || 'Unknown User',
+                            avatar: userData.photoURL || ''
+                        };
+                    } else {
+                         convo.participantDetails[pId] = { name: 'Unknown User', avatar: '' };
+                    }
+                }
+            }
+            return convo;
+        });
+
+        const conversations = (await Promise.all(conversationsPromises)).filter(Boolean) as Conversation[];
+        callback(conversations);
+    }, (error) => {
+        console.error("Error listening to unread conversations:", error);
+    });
+};
+
 // Listen to a user's conversations
 export const listenToUserConversations = (userId: string, callback: (conversations: Conversation[]) => void): Unsubscribe => {
     const q = query(
