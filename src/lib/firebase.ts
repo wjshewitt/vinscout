@@ -14,7 +14,8 @@ import {
   AuthError,
   User,
   UserCredential,
-  deleteUser
+  deleteUser,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { 
     getFirestore, 
@@ -146,6 +147,15 @@ export const signInWithEmail = async (email: string, pass: string): Promise<{use
         return { user: null, error: error as AuthError };
     }
 }
+
+export const sendPasswordReset = async (email: string): Promise<{ success: boolean; error: AuthError | null }> => {
+    try {
+        await sendPasswordResetEmail(auth, email);
+        return { success: true, error: null };
+    } catch (error) {
+        return { success: false, error: error as AuthError };
+    }
+};
 
 export const deleteUserAccount = async () => {
     const user = auth.currentUser;

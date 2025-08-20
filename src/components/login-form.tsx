@@ -14,6 +14,7 @@ import { signInWithGoogle, signInWithEmail, AuthError } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { getAdditionalUserInfo, User } from 'firebase/auth';
+import { ResetPasswordDialog } from './reset-password-form';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -95,7 +96,10 @@ export function LoginForm() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <div className="flex items-center justify-between">
+                        <FormLabel>Password</FormLabel>
+                        <ResetPasswordDialog />
+                    </div>
                     <FormControl>
                       <Input type="password" {...field} />
                     </FormControl>
