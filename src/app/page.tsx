@@ -70,6 +70,25 @@ export default function Home() {
       timeZone: 'UTC'
     });
   };
+  
+  const formatLocation = (location: string, loggedIn: boolean): string => {
+    if (!location) return 'Unknown';
+    const parts = location.split(',').map(part => part.trim());
+
+    if (parts.length < 2) return location; 
+
+    const city = parts[1]; // e.g., 'London'
+
+    if (!loggedIn) {
+        return city;
+    }
+
+    const street = parts[0]; // e.g., '6 Christchurch Terrace'
+    // Remove house number from street
+    const streetName = street.replace(/^\d+\s*/, '');
+    
+    return `${streetName}, ${city}`;
+  };
 
   return (
     <div className="container mx-auto py-12">
@@ -121,7 +140,7 @@ export default function Home() {
                   </div>
                   <CardHeader>
                     <CardTitle>{vehicle.make} {vehicle.model}</CardTitle>
-                    <CardDescription>{vehicle.year} - Last seen in {vehicle.location}</CardDescription>
+                    <CardDescription>{vehicle.year} - Last seen in {formatLocation(vehicle.location, isLoggedIn)}</CardDescription>
                   </CardHeader>
                 </Link>
               </Card>
@@ -203,7 +222,7 @@ export default function Home() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>{vehicle.location}</TableCell>
+                      <TableCell>{formatLocation(vehicle.location, isLoggedIn)}</TableCell>
                       <TableCell>{formatDate(vehicle.date)}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="outline" size="sm" asChild>
@@ -242,5 +261,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
