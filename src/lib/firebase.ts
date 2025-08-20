@@ -174,13 +174,21 @@ export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' |
     }
 
     try {
-        const reportPayload: Omit<VehicleReport, 'id'> & { reportedAt: FieldValue } = {
+        const reportPayload: any = {
             ...reportData,
             reporterId: auth.currentUser.uid,
             reportedAt: serverTimestamp(),
             status: 'Active',
             sightingsCount: 0,
         };
+
+        // Ensure optional fields are not sent if they are empty
+        if (!reportPayload.vin?.trim()) {
+            delete reportPayload.vin;
+        }
+        if (!reportPayload.features?.trim()) {
+            delete reportPayload.features;
+        }
 
         const docRef = await addDoc(collection(db, 'vehicleReports'), reportPayload);
         
@@ -943,3 +951,5 @@ export const deleteUserGeofence = async (userId: string, locationName: string) =
 
 export { auth, db };
 export type { User, AuthError };
+
+    
