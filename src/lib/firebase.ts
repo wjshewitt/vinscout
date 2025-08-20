@@ -31,7 +31,8 @@ import {
     Unsubscribe,
     writeBatch,
     setDoc,
-    increment
+    increment,
+    updateDoc
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 
@@ -285,8 +286,8 @@ export const listenToUserConversations = (userId: string, callback: (conversatio
         orderBy('lastMessageAt', 'desc')
     );
     return onSnapshot(q, async (snapshot) => {
-        const conversationsPromises = snapshot.docs.map(async (doc) => {
-            const convo = toConversation(doc);
+        const conversationsPromises = snapshot.docs.map(async (conversationDoc) => {
+            const convo = toConversation(conversationDoc);
             for (const pId of convo.participants) {
                 const userDoc = await getDoc(doc(db, 'users', pId));
                 if (userDoc.exists()) {
@@ -331,13 +332,22 @@ export const listenToMessages = (
         } else if (messages.length > 0) {
             const lastMessage = messages[messages.length - 1];
             // If the message is not from the current user and we are not in the conversation, show toast
-            if (lastMessage.senderId !== currentUserId && conversationId !== currentConversationId) {
-                 const senderDoc = await getDoc(doc(db, 'users', lastMessage.senderId));
-                 const senderName = senderDoc.exists() ? senderDoc.data().displayName : 'Someone';
-                 toast({
-                    title: `New message from ${senderName}`,
-                    description: lastMessage.text,
-                 });
+            if (lastMessage.senderId !== currentUserId) {
+                 const conversationRef = doc(db, 'conversations', conversationId);
+                 const convoDoc = await getDoc(conversationRef);
+                 if (convoDoc.exists()) {
+                    const otherParticipantId = convoDoc.data().participants.find((p: string) => p !== currentUserId);
+                    if (otherParticipantId) {
+                        const senderDetails = convoDoc.data().participantDetails[lastMessage.senderId];
+                        const senderName = senderDetails ? senderDetails.name : "Someone";
+                        if (conversationId !== currentConversationId) {
+                            toast({
+                                title: `New message from ${senderName}`,
+                                description: lastMessage.text,
+                            });
+                        }
+                    }
+                 }
             }
         }
         
@@ -419,7 +429,13 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
             photoURL: data.photoURL || ''
         };
     } else {
-       throw new Error("Could not find the vehicle owner's data.");
+        const ownerAuth = await auth.getUser(vehicle.reporterId).catch(() => null);
+        if (ownerAuth) {
+             ownerData = { displayName: ownerAuth.displayName || 'Vehicle Owner', photoURL: ownerAuth.photoURL || ''};
+             await createUserProfileDocument(ownerAuth);
+        } else {
+            throw new Error("Could not find the vehicle owner's data.");
+        }
     }
     
     const initiatorName = initiator.displayName || 'Anonymous User';
