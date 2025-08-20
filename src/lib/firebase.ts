@@ -377,7 +377,7 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
         return d.toISOString().split('T')[0];
     };
-
+    
     const defaultLocation: LocationInfo = {
         fullAddress: 'Unknown Location',
         street: '',
@@ -386,7 +386,7 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         country: '',
     };
     
-    let location: LocationInfo;
+    let location: LocationInfo = defaultLocation;
     if (data.location && typeof data.location === 'object' && data.location.fullAddress) {
         location = {
             fullAddress: data.location.fullAddress || 'Unknown Address',
@@ -395,8 +395,6 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
             postcode: data.location.postcode || '',
             country: data.location.country || '',
         };
-    } else {
-        location = defaultLocation;
     }
 
     return {
