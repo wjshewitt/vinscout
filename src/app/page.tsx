@@ -74,13 +74,13 @@ export default function Home() {
   };
   
   const formatLocation = (location: LocationInfo | undefined, type: 'full' | 'city' = 'city'): string => {
-    if (!location || !location.fullAddress) {
-      return 'Unknown Location';
+    if (!location) {
+        return 'Unknown Location';
     }
     if (type === 'full') {
-        return location.fullAddress;
+        return location.fullAddress || 'Unknown Location';
     }
-    return location.city || location.fullAddress.split(',')[0] || 'Unknown Location';
+    return location.city || location.fullAddress || 'Unknown Location';
   };
 
   return (

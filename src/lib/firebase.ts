@@ -380,21 +380,24 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         return new Date().toISOString().split('T')[0];
     };
     
-    const location: LocationInfo = data.location && typeof data.location === 'object'
-        ? {
-            fullAddress: data.location.fullAddress || 'Unknown Location',
+    let location: LocationInfo;
+    if (data.location && typeof data.location === 'object' && data.location.fullAddress) {
+        location = {
+            fullAddress: data.location.fullAddress || 'Unknown Address',
             street: data.location.street || '',
-            city: data.location.city || 'Unknown',
+            city: data.location.city || 'Unknown City',
             postcode: data.location.postcode || '',
             country: data.location.country || '',
-          }
-        : {
+        };
+    } else {
+        location = {
             fullAddress: 'Unknown Location',
             street: '',
-            city: 'Unknown',
+            city: 'Unknown Location',
             postcode: '',
             country: '',
-          };
+        };
+    }
 
 
     return {
@@ -1004,5 +1007,3 @@ export const deleteUserGeofence = async (userId: string, locationName: string) =
 
 export { auth, db };
 export type { User, AuthError };
-
-    
