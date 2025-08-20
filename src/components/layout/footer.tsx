@@ -26,7 +26,7 @@ export function Footer() {
             <DialogTrigger asChild>
               <Button>Support Me</Button>
             </DialogTrigger>
-            <DialogContent className="p-0 max-w-2xl h-[720px] bg-transparent border-0">
+            <DialogContent className="p-0 max-w-md h-[640px] bg-transparent border-0">
                 <DialogHeader className="sr-only">
                   <DialogTitle>Support Me</DialogTitle>
                 </DialogHeader>
