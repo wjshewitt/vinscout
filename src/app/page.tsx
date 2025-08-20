@@ -73,28 +73,11 @@ export default function Home() {
     });
   };
   
-  const formatLocation = (location: LocationInfo | undefined, loggedIn: boolean): string => {
-    if (!location) return 'Unknown Location';
-    
-    // Logged-in users see more specific location info if available
-    if (loggedIn && location.street && location.city) {
-        return `${location.street}, ${location.city}`;
+  const formatLocation = (location: LocationInfo | undefined): string => {
+    if (!location || !location.fullAddress || location.fullAddress === 'Unknown Location') {
+      return 'Unknown Location';
     }
-    
-    // Default for non-logged-in users or if street is missing
-    if (location.city) {
-        return location.city;
-    }
-
-    // Fallback if city is missing, but fullAddress exists
-    if (location.fullAddress) {
-        const parts = location.fullAddress.split(',');
-        // Try to find a city-like part, otherwise return the first part.
-        if (parts.length > 1) return parts[parts.length - 2]?.trim() || parts[0]?.trim();
-        return parts[0]?.trim() || 'Unknown Location';
-    }
-    
-    return 'Unknown Location';
+    return location.city || location.fullAddress;
   };
 
   return (
@@ -147,7 +130,7 @@ export default function Home() {
                   </div>
                   <CardHeader>
                     <CardTitle>{vehicle.make} {vehicle.model}</CardTitle>
-                    <CardDescription>{vehicle.year} - Last seen in {formatLocation(vehicle.location, isLoggedIn)}</CardDescription>
+                    <CardDescription>{vehicle.year} - Last seen in {formatLocation(vehicle.location)}</CardDescription>
                   </CardHeader>
                 </Link>
               </Card>
@@ -231,7 +214,7 @@ export default function Home() {
                         </div>
                       </TableCell>
                       <TableCell><span className="font-mono">{vehicle.licensePlate}</span></TableCell>
-                      <TableCell>{formatLocation(vehicle.location, isLoggedIn)}</TableCell>
+                      <TableCell>{formatLocation(vehicle.location)}</TableCell>
                       <TableCell>{formatDate(vehicle.date)}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="outline" size="sm" asChild>

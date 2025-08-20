@@ -1,4 +1,3 @@
-
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { 
@@ -381,7 +380,21 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         return new Date().toISOString().split('T')[0];
     };
     
-    const location: LocationInfo = data.location || { fullAddress: 'Unknown Location', street: '', city: 'Unknown', postcode: '', country: '' };
+    const location: LocationInfo = data.location && typeof data.location === 'object'
+        ? {
+            fullAddress: data.location.fullAddress || 'Unknown Location',
+            street: data.location.street || '',
+            city: data.location.city || 'Unknown',
+            postcode: data.location.postcode || '',
+            country: data.location.country || '',
+          }
+        : {
+            fullAddress: 'Unknown Location',
+            street: '',
+            city: 'Unknown',
+            postcode: '',
+            country: '',
+          };
 
 
     return {
