@@ -575,8 +575,8 @@ export function VehicleReportForm() {
                                         <Command>
                                             <CommandInput 
                                                 placeholder="Search or type model..."
-                                                value={field.value}
                                                 onValueChange={field.onChange}
+                                                value={field.value}
                                             />
                                             <CommandEmpty>No model found. You can type a custom one.</CommandEmpty>
                                             <CommandList>
@@ -586,7 +586,7 @@ export function VehicleReportForm() {
                                                             value={model}
                                                             key={model}
                                                             onSelect={(currentValue) => {
-                                                                form.setValue("model", currentValue)
+                                                                form.setValue("model", currentValue === field.value ? "" : currentValue)
                                                                 setIsModelPopoverOpen(false)
                                                             }}
                                                         >
