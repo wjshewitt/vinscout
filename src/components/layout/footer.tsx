@@ -2,6 +2,15 @@
 'use client';
 
 import Link from 'next/link';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Button } from '../ui/button';
+
 
 export function Footer() {
 
@@ -13,7 +22,14 @@ export function Footer() {
           <Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
           <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
           <a href="mailto:hewittjswill@gmail.com" className="hover:text-foreground transition-colors">Contact Us</a>
-          <button id="kofi-button" className="kofi-button-class">Support Me</button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>Support Me</Button>
+            </DialogTrigger>
+            <DialogContent className="p-0 max-w-2xl h-[720px] bg-transparent border-0">
+                <iframe id='kofiframe' src='https://ko-fi.com/autofind/?hidefeed=true&widget=true&embed=true&preview=true' className='h-full w-full rounded-lg' style={{border:'none', background:'#f9f9f9;'}} title='autofind'></iframe>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </footer>
