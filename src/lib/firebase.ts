@@ -208,6 +208,12 @@ export const deleteVehicleReport = async (reportId: string): Promise<void> => {
     await deleteDoc(reportRef);
 }
 
+export const updateVehicleStatus = async (reportId: string, status: 'Active' | 'Recovered'): Promise<void> => {
+    const reportRef = doc(db, 'vehicleReports', reportId);
+    await updateDoc(reportRef, { status });
+}
+
+
 // Types
 export interface VehicleReport {
     id: string;

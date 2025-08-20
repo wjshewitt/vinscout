@@ -5,14 +5,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, PoundSterling } from 'lucide-react';
+import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, PoundSterling, ShieldCheck } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { VehicleReport, Sighting, Message, createOrGetConversation, sendMessage, getVehicleSightings, submitSighting, deleteVehicleReport } from '@/lib/firebase';
+import { VehicleReport, Sighting, Message, createOrGetConversation, sendMessage, getVehicleSightings, submitSighting, deleteVehicleReport, updateVehicleStatus } from '@/lib/firebase';
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -106,11 +106,13 @@ function SightingLocationPicker({ onLocationChange }: { onLocationChange: (pos: 
     )
 }
 
-export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
+export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: VehicleReport }) {
   const { user, loading: authLoading } = useAuth();
+  const [vehicle, setVehicle] = useState(initialVehicle);
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [messageType, setMessageType] = useState<Message['messageType']>();
   const { toast } = useToast();
@@ -122,6 +124,10 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
   const [sightings, setSightings] = useState<Sighting[]>([]);
   const [loadingSightings, setLoadingSightings] = useState(true);
 
+  useEffect(() => {
+    setVehicle(initialVehicle);
+  }, [initialVehicle]);
+  
   useEffect(() => {
     if (vehicle.id) {
         setLoadingSightings(true);
@@ -217,6 +223,28 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
     }
   };
   
+  const handleStatusUpdate = async (newStatus: 'Active' | 'Recovered') => {
+      if (!isOwner) return;
+      setIsUpdatingStatus(true);
+      try {
+        await updateVehicleStatus(vehicle.id, newStatus);
+        setVehicle(prev => ({...prev, status: newStatus}));
+        toast({
+            title: `Status Updated to ${newStatus}`,
+            description: `This vehicle report is now marked as ${newStatus}.`,
+        });
+      } catch (error) {
+         console.error('Error updating status:', error);
+         toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to update vehicle status. Please try again.',
+         });
+      } finally {
+        setIsUpdatingStatus(false);
+      }
+  };
+  
   const mostRecentSighting = sightings?.[0];
   const hasReward = vehicle.rewardAmount || vehicle.rewardDetails;
 
@@ -226,7 +254,12 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-3xl">{vehicle.make} {vehicle.model} ({vehicle.year})</CardTitle>
+              <div className="flex items-center gap-4 mb-2">
+                 <CardTitle className="text-3xl">{vehicle.make} {vehicle.model} ({vehicle.year})</CardTitle>
+                 <Badge variant={vehicle.status === 'Active' ? 'default' : 'secondary'} className={cn(vehicle.status === 'Recovered' && 'bg-green-700 hover:bg-green-700/90')}>
+                    {vehicle.status}
+                 </Badge>
+              </div>
               <CardDescription>Reported Stolen on {formatDate(vehicle.reportedAt)}</CardDescription>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground bg-muted px-3 py-2 rounded-lg">
@@ -312,7 +345,7 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
               <div>
                 {authLoading ? (
                   <Loader2 className="animate-spin text-primary" />
-                ) : !isOwner && (
+                ) : !isOwner && vehicle.status === 'Active' && (
                   <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                       <Button size="lg" className="w-full" disabled={!isLoggedIn}>
@@ -379,7 +412,7 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
                             </DialogHeader>
                              <DialogFooter>
                                 <Button asChild><Link href="/login">Log In</Link></Button>
-                            </DialogFooter>
+                             </DialogFooter>
                         </DialogContent>
                     )}
                   </Dialog>
@@ -389,8 +422,54 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
           </div>
         </CardContent>
         {isOwner && (
-            <CardFooter className="border-t bg-muted/30 px-6 py-4 justify-between items-center">
-                 <p className="text-sm text-muted-foreground">This is your report. You can manage it here.</p>
+            <CardFooter className="border-t bg-muted/30 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                 <p className="text-sm text-muted-foreground text-center sm:text-left">This is your report. You can manage its status here or delete it permanently.</p>
+                 <div className="flex items-center gap-2">
+                    {vehicle.status === 'Active' ? (
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" className="bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20 hover:text-green-300">
+                                    <ShieldCheck className="mr-2 h-4 w-4"/>Mark as Recovered
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Mark as Recovered?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will update the report's status to "Recovered" and remove it from the active list. You can reverse this action later.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleStatusUpdate('Recovered')} disabled={isUpdatingStatus}>
+                                        {isUpdatingStatus ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                        Confirm
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    ) : (
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button>Re-list as Active</Button>
+                            </AlertDialogTrigger>
+                             <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Re-list as Active?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will change the status back to "Active" and make it visible on the main list again.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleStatusUpdate('Active')} disabled={isUpdatingStatus}>
+                                        {isUpdatingStatus ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                        Re-list
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
                  <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="destructive">
@@ -414,6 +493,7 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+                 </div>
             </CardFooter>
         )}
       </Card>
