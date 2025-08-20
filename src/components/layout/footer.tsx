@@ -11,6 +11,7 @@ export function Footer() {
         <div className="flex items-center gap-4 mt-4 md:mt-0">
           <Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
           <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+          <a href="https://ko-fi.com/your_username" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Support on Ko-fi</a>
           <a href="mailto:hewittjswill@gmail.com" className="hover:text-foreground transition-colors">Contact Us</a>
         </div>
       </div>
