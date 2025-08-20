@@ -61,7 +61,7 @@ export default function Home() {
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Invalid Date';
     // Handle both ISO strings and 'YYYY-MM-DD' formats by ensuring it's treated as UTC
-    const date = new Date(dateString.includes('T') ? dateString : `${dateString}T00:00:00.000Z`);
+    const date = new Date(`${dateString}T00:00:00.000Z`);
     if (isNaN(date.getTime())) {
       return 'Invalid Date';
     }

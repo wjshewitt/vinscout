@@ -373,8 +373,10 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
 
     const formatDateString = (dateInput: any): string => {
         if (!dateInput) return new Date().toISOString().split('T')[0];
+        // Handle Firestore Timestamps or string dates
         const d = (dateInput.toDate && typeof dateInput.toDate === 'function') ? dateInput.toDate() : new Date(dateInput);
         if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+        // Return in 'YYYY-MM-DD' format
         return d.toISOString().split('T')[0];
     };
     
@@ -386,7 +388,8 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         country: '',
     };
     
-    let location: LocationInfo = defaultLocation;
+    let location: LocationInfo;
+    // Defensively check if location is a well-formed object.
     if (data.location && typeof data.location === 'object' && data.location.fullAddress) {
         location = {
             fullAddress: data.location.fullAddress || 'Unknown Address',
@@ -395,7 +398,10 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
             postcode: data.location.postcode || '',
             country: data.location.country || '',
         };
+    } else {
+        location = defaultLocation;
     }
+
 
     return {
         id: docSnap.id,
@@ -406,7 +412,7 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         licensePlate: data.licensePlate || '',
         vin: data.vin,
         features: data.features,
-        location,
+        location, // Use the safely parsed location object
         date: formatDateString(data.date),
         reportedAt: convertTimestampToString(data.reportedAt),
         status: data.status || 'Active',
