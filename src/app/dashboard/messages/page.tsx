@@ -173,7 +173,7 @@ export default function MessagesPage() {
                             isYou ? 'bg-primary text-primary-foreground' : 'bg-card'
                             )}
                         >
-                            <p className={cn("text-sm font-medium mb-1", isYou ? 'text-blue-200' : 'text-primary')}>{senderDetails?.name}</p>
+                            <p className={cn("text-sm font-medium mb-1", isYou ? 'text-primary-foreground/80' : 'text-primary')}>{senderDetails?.name}</p>
                             <p className="text-base">{message.text}</p>
                         </div>
                         {isYou && (
