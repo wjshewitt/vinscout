@@ -19,6 +19,7 @@ import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-m
 import { useDebouncedCallback } from 'use-debounce';
 import VehicleSightingsMap from './vehicle-sightings-map';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
+import { Input } from '@/components/ui/input';
 
 
 const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) => {
@@ -395,5 +396,3 @@ export function VehicleDetailClient({ vehicle }: { vehicle: VehicleReport }) {
     </div>
   );
 }
-
-    
