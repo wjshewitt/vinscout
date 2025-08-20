@@ -75,7 +75,7 @@ export default function MessagesPage() {
   }, [selectedConversation, user, isPageActive]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
   }, [messages]);
 
   const handleSendMessage = async () => {
@@ -355,3 +355,5 @@ export default function MessagesPage() {
     </>
   );
 }
+
+    
