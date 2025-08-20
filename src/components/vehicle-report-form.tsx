@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
-import { submitVehicleReport } from '@/lib/firebase';
+import { submitVehicleReport, VehicleReport } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
@@ -33,6 +33,7 @@ const reportSchema = z.object({
   additionalInfo: z.string().optional(),
   lat: z.number({ required_error: 'Please select a location on the map.' }),
   lng: z.number({ required_error: 'Please select a location on the map.' }),
+  photos: z.array(z.string()).optional(),
   rewardAmount: z.coerce.number().optional(),
   rewardDetails: z.string().optional(),
 });
@@ -47,7 +48,7 @@ const steps: { title: string; fields: FieldName[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
     { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
     { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng'] },
-    { title: 'Reward & Photos', fields: ['rewardAmount', 'rewardDetails'] },
+    { title: 'Reward & Photos', fields: ['rewardAmount', 'rewardDetails', 'photos'] },
 ];
 
 function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: number; lng: number; address: string }) => void }) {
@@ -158,6 +159,7 @@ export function VehicleReportForm() {
       location: '',
       date: '',
       additionalInfo: '',
+      photos: [],
       rewardAmount: '' as any,
       rewardDetails: '',
     },
@@ -278,12 +280,7 @@ export function VehicleReportForm() {
             return;
         }
     
-        const reportId = await submitVehicleReport({
-            ...data,
-            reportedAt: new Date(),
-            status: 'Active',
-            reporterId: user.uid
-        });
+        const reportId = await submitVehicleReport(data as Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'reporterId'>);
 
         if (reportId) {
             toast({

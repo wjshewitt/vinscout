@@ -43,6 +43,7 @@ import {
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import _ from 'lodash';
+import { generateVehicleImage } from '@/ai/flows/generate-vehicle-image';
 
 const firebaseConfig = {
   "projectId": "vigilante-garage",
@@ -167,25 +168,48 @@ export const deleteUserAccount = async () => {
     }
 };
 
-export const submitVehicleReport = async (reportData: object) => {
+export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'reporterId'>) => {
     if (!auth.currentUser) {
         console.error("No user is signed in to submit a report.");
         return null;
     }
-    
+
     try {
-        const docRef = await addDoc(collection(db, 'vehicleReports'), {
+        const reportPayload = {
             ...reportData,
             reporterId: auth.currentUser.uid,
-            reportedAt: serverTimestamp(), // Use server-side timestamp
-            sightingsCount: 0
-        });
+            reportedAt: serverTimestamp(),
+            status: 'Active',
+            sightingsCount: 0,
+            aiPhotoUrl: null, // Initialize with null
+        };
+
+        const docRef = await addDoc(collection(db, 'vehicleReports'), reportPayload);
+        
+        // If no photos were uploaded, trigger AI image generation
+        if (!reportData.photos || reportData.photos.length === 0) {
+            console.log("No photos provided, generating AI image...");
+            const aiPhotoUrl = await generateVehicleImage({
+                make: reportData.make,
+                model: reportData.model,
+                year: reportData.year.toString(),
+                color: reportData.color,
+            });
+
+            if (aiPhotoUrl) {
+                console.log("AI image generated, updating report...");
+                await updateDoc(doc(db, 'vehicleReports', docRef.id), {
+                    aiPhotoUrl: aiPhotoUrl,
+                });
+            }
+        }
+
         return docRef.id;
     } catch (error) {
         console.error("Error adding document: ", error);
         return null;
     }
-}
+};
 
 export const updateVehicleReport = async (reportId: string, dataToUpdate: Partial<VehicleReport>) => {
     const reportRef = doc(db, 'vehicleReports', reportId);
@@ -235,6 +259,7 @@ export interface VehicleReport {
     status: 'Active' | 'Recovered';
     reporterId: string;
     photos?: string[];
+    aiPhotoUrl?: string | null;
     lat: number;
     lng: number;
     sightingsCount?: number;
@@ -336,6 +361,7 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         status: data.status || 'Active',
         reporterId: data.reporterId || '',
         photos: data.photos || [],
+        aiPhotoUrl: data.aiPhotoUrl,
         lat: data.lat || 0,
         lng: data.lng || 0,
         sightingsCount: data.sightingsCount || 0,

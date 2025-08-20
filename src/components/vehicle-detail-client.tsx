@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, PoundSterling, ShieldCheck, Pencil } from 'lucide-react';
+import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, PoundSterling, ShieldCheck, Pencil, Sparkles } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
@@ -411,6 +411,8 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
   
   const mostRecentSighting = sightings?.[0];
   const hasReward = vehicle.rewardAmount || vehicle.rewardDetails;
+  
+  const mainPhoto = vehicle.aiPhotoUrl || vehicle.photos?.[0] || 'https://placehold.co/800x600.png';
 
   return (
     <div className="container mx-auto py-12 space-y-8">
@@ -436,15 +438,21 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
         <CardContent>
           <div className="grid md:grid-cols-2 gap-8">
             <div>
-              <div className="aspect-video w-full mb-4">
+              <div className="aspect-video w-full mb-4 relative">
                 <Image
-                  src={vehicle.photos?.[0] || 'https://placehold.co/800x600.png'}
+                  src={mainPhoto}
                   alt={`${vehicle.make} ${vehicle.model}`}
                   width={800}
                   height={600}
                   className="rounded-lg object-cover w-full h-full"
                   data-ai-hint="car side"
                 />
+                 {vehicle.aiPhotoUrl && (
+                    <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
+                        <Sparkles className="h-3 w-3" />
+                        AI-generated image for representation
+                    </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 {(vehicle.photos?.slice(1, 3) || []).map((photo, index) => (
@@ -730,5 +738,3 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
     </div>
   );
 }
-
-    
