@@ -566,7 +566,7 @@ export function VehicleReportForm() {
                                                     !field.value && "text-muted-foreground"
                                                 )}
                                             >
-                                                {field.value || "Select Model"}
+                                                {field.value || "Select or Type Model"}
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
                                         </FormControl>
@@ -574,8 +574,9 @@ export function VehicleReportForm() {
                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
                                             <CommandInput 
-                                                placeholder="Search or type model..." 
-                                                onValueChange={(value) => form.setValue("model", value)}
+                                                placeholder="Search or type model..."
+                                                value={field.value}
+                                                onValueChange={field.onChange}
                                             />
                                             <CommandEmpty>No model found. You can type a custom one.</CommandEmpty>
                                             <CommandList>
@@ -584,8 +585,8 @@ export function VehicleReportForm() {
                                                         <CommandItem
                                                             value={model}
                                                             key={model}
-                                                            onSelect={() => {
-                                                                form.setValue("model", model)
+                                                            onSelect={(currentValue) => {
+                                                                form.setValue("model", currentValue === field.value ? "" : currentValue)
                                                                 setIsModelPopoverOpen(false)
                                                             }}
                                                         >
@@ -882,3 +883,5 @@ export function VehicleReportForm() {
     </Form>
   );
 }
+
+    
