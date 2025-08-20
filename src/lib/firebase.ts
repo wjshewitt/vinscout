@@ -196,7 +196,7 @@ export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' |
     const userId = auth.currentUser.uid;
 
     try {
-        // 1. Upload images to Firebase Storage and get their URLs
+        // 1. Upload images to Firebase Storage and get their URLs in parallel
         const imageUrls = await Promise.all(
             (reportData.photos || []).map(photoBase64 => uploadImageAndGetURL(photoBase64, userId))
         );
