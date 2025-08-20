@@ -6,11 +6,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { Search, Send, Paperclip, MoreVertical, Car, MessageSquare, Loader2 } from 'lucide-react';
+import { Search, Send, Paperclip, MoreVertical, Car, MessageSquare, Loader2, Trash2, ShieldBan } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { listenToUserConversations, Conversation, listenToMessages, Message, sendMessage } from '@/lib/firebase';
+import { listenToUserConversations, Conversation, listenToMessages, Message, sendMessage, deleteConversation, blockUser, unblockUser, checkIfUserIsBlocked } from '@/lib/firebase';
 import { formatDistanceToNow } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export default function MessagesPage() {
   const { user, loading: authLoading } = useAuth();
@@ -20,6 +23,10 @@ export default function MessagesPage() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState('');
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showBlockDialog, setShowBlockDialog] = useState(false);
+  const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -29,7 +36,7 @@ export default function MessagesPage() {
         setConversations(loadedConversations);
         
         const urlConvoId = searchParams.get('conversationId');
-        if (urlConvoId && !selectedConversation) {
+        if (urlConvoId) {
             const convoToSelect = loadedConversations.find(c => c.id === urlConvoId);
             if(convoToSelect) {
                 setSelectedConversation(convoToSelect);
@@ -43,10 +50,14 @@ export default function MessagesPage() {
     } else if (!authLoading) {
       setLoading(false);
     }
-  }, [user, authLoading, searchParams, selectedConversation]);
+  }, [user, authLoading, searchParams]);
 
   useEffect(() => {
     if (selectedConversation && user) {
+      const otherParticipantId = selectedConversation.participants.find(p => p !== user.uid);
+      if (otherParticipantId) {
+        checkIfUserIsBlocked(user.uid, otherParticipantId).then(setIsBlocked);
+      }
       const unsubscribe = listenToMessages(selectedConversation.id, setMessages, user.uid, selectedConversation.id);
       return () => unsubscribe();
     }
@@ -57,7 +68,17 @@ export default function MessagesPage() {
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || !user) return;
+    if (!newMessage.trim() || !selectedConversation || !user || isBlocked) return;
+    const isRecipientBlocked = await checkIfUserIsBlocked(selectedConversation.participants.find(p => p !== user.uid)!, user.uid);
+    if(isRecipientBlocked) {
+        toast({
+            variant: "destructive",
+            title: "Cannot send message",
+            description: "This user has blocked you.",
+        });
+        return;
+    }
+    
     await sendMessage(selectedConversation.id, newMessage, user);
     setNewMessage('');
   };
@@ -65,6 +86,58 @@ export default function MessagesPage() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSendMessage();
+    }
+  };
+  
+  const handleDeleteConversation = async () => {
+    if (!selectedConversation || !user) return;
+    try {
+        await deleteConversation(selectedConversation.id, user.uid);
+        toast({
+            title: "Conversation Deleted",
+            description: "The conversation has been removed from your inbox.",
+        });
+        setSelectedConversation(null);
+        setShowDeleteDialog(false);
+    } catch (error) {
+        console.error("Error deleting conversation: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to delete conversation.',
+        });
+    }
+  };
+
+  const handleBlockUser = async () => {
+    if (!selectedConversation || !user) return;
+    const otherParticipantId = selectedConversation.participants.find(p => p !== user.uid);
+    if (!otherParticipantId) return;
+
+    try {
+        if(isBlocked) {
+            await unblockUser(user.uid, otherParticipantId);
+            toast({
+                title: "User Unblocked",
+                description: "You can now send and receive messages from this user.",
+            });
+            setIsBlocked(false);
+        } else {
+            await blockUser(user.uid, otherParticipantId);
+            toast({
+                title: "User Blocked",
+                description: "You will no longer receive messages from this user.",
+            });
+            setIsBlocked(true);
+        }
+        setShowBlockDialog(false);
+    } catch (error) {
+         console.error("Error blocking/unblocking user: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not complete the action. Please try again.',
+        });
     }
   };
 
@@ -87,6 +160,7 @@ export default function MessagesPage() {
   }
 
   return (
+    <>
     <div className="h-[calc(100vh-4rem)] flex text-foreground">
       <div className="w-full md:w-80 flex-shrink-0 flex flex-col bg-card border-r border-border">
         <div className="p-4 border-b border-border">
@@ -117,7 +191,7 @@ export default function MessagesPage() {
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center">
                     <p className="text-foreground text-base font-medium truncate">{otherParticipant?.name}</p>
-                    <p className="text-muted-foreground text-xs">{formatDistanceToNow(new Date(convo.lastMessageAt), { addSuffix: true })}</p>
+                    {convo.lastMessageAt && <p className="text-muted-foreground text-xs">{formatDistanceToNow(new Date(convo.lastMessageAt), { addSuffix: true })}</p>}
                     </div>
                     <div className="flex justify-between items-start">
                     <p className="text-muted-foreground text-sm truncate mt-1">{convo.lastMessage}</p>
@@ -144,9 +218,24 @@ export default function MessagesPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon">
-                    <MoreVertical className="text-muted-foreground" />
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <MoreVertical className="text-muted-foreground" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => setShowDeleteDialog(true)} className="text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete Conversation</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                             <DropdownMenuItem onSelect={() => setShowBlockDialog(true)}>
+                                <ShieldBan className="mr-2 h-4 w-4" />
+                                <span>{isBlocked ? 'Unblock' : 'Block'} User</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -188,24 +277,59 @@ export default function MessagesPage() {
                 <div ref={messagesEndRef} />
                 </div>
                 <div className="p-4 bg-background border-t border-border">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon">
-                        <Paperclip className="text-muted-foreground" />
-                    </Button>
-                    <Input
-                    className="flex-1 rounded-full py-3 px-6 focus:ring-2 focus:ring-primary"
-                    placeholder="Type a message..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    />
-                    <Button className="rounded-full p-3" size="icon" onClick={handleSendMessage}>
-                    <Send className="h-5 w-5" />
-                    </Button>
-                </div>
+                {isBlocked ? (
+                    <div className="text-center text-sm text-muted-foreground p-4 bg-muted rounded-lg">
+                        You have blocked this user. Unblock them to send a message.
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-4">
+                        <Button variant="ghost" size="icon">
+                            <Paperclip className="text-muted-foreground" />
+                        </Button>
+                        <Input
+                        className="flex-1 rounded-full py-3 px-6 focus:ring-2 focus:ring-primary"
+                        placeholder="Type a message..."
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        />
+                        <Button className="rounded-full p-3" size="icon" onClick={handleSendMessage}>
+                        <Send className="h-5 w-5" />
+                        </Button>
+                    </div>
+                )}
                 </div>
             </div>
        )}
     </div>
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will permanently delete the conversation from your inbox. The other participant will still see the chat history. This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteConversation} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+     <AlertDialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>{isBlocked ? 'Unblock' : 'Block'} this user?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    {isBlocked ? 'Unblocking this user will allow you to send and receive messages again.' : 'Blocking this user will prevent them from sending you messages. You will not be able to message them either.'}
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleBlockUser}>{isBlocked ? 'Unblock' : 'Block'}</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

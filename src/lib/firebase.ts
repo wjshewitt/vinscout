@@ -32,7 +32,12 @@ import {
     writeBatch,
     setDoc,
     increment,
-    updateDoc
+    updateDoc,
+    deleteDoc,
+    arrayUnion,
+    arrayRemove,
+    runTransaction,
+    collectionGroup
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 
@@ -67,10 +72,12 @@ const createUserProfileDocument = async (user: User, details: { displayName?: st
         const createdAt = serverTimestamp();
         try {
             await setDoc(userRef, {
+                uid: user.uid,
                 displayName,
                 email,
                 photoURL,
                 createdAt,
+                blockedUsers: [],
             });
         } catch (error) {
             console.error('Error creating user profile', error);
@@ -115,6 +122,8 @@ export const signUpWithEmail = async (name: string, email: string, pass: string)
 export const signInWithEmail = async (email: string, pass: string): Promise<{user: User | null, error: AuthError | null}> => {
     try {
         const result = await signInWithEmailAndPassword(auth, email, pass);
+        // Ensure user profile exists on sign-in as well, for older accounts
+        await createUserProfileDocument(result.user);
         return { user: result.user, error: null };
     } catch (error) {
         return { user: null, error: error as AuthError };
@@ -130,6 +139,7 @@ export const submitVehicleReport = async (reportData: object) => {
     try {
         const docRef = await addDoc(collection(db, 'vehicleReports'), {
             ...reportData,
+            reporterId: auth.currentUser.uid,
             reportedAt: serverTimestamp() // Use server-side timestamp
         });
         return docRef.id;
@@ -168,6 +178,7 @@ export interface Conversation {
     unread: { [key: string]: number }; // unread count for each user
     vehicleId: string;
     vehicleSummary: string;
+    deletedFor?: string[];
 }
 
 export interface Message {
@@ -178,8 +189,8 @@ export interface Message {
     createdAt: string;
 }
 
-const toVehicleReport = (doc: any): VehicleReport => {
-    const data = doc.data();
+const toVehicleReport = (docSnap: any): VehicleReport => {
+    const data = docSnap.data();
     
     const convertTimestampToString = (ts: Timestamp | null | undefined): string => {
         return ts ? ts.toDate().toISOString() : new Date().toISOString();
@@ -196,7 +207,7 @@ const toVehicleReport = (doc: any): VehicleReport => {
     };
 
     return {
-        id: doc.id,
+        id: docSnap.id,
         make: data.make || '',
         model: data.model || '',
         year: data.year || 0,
@@ -215,19 +226,19 @@ const toVehicleReport = (doc: any): VehicleReport => {
     };
 };
 
-const toConversation = (doc: any): Conversation => {
-    const data = doc.data();
+const toConversation = (docSnap: any): Conversation => {
+    const data = docSnap.data();
     return {
-        id: doc.id,
+        id: docSnap.id,
         ...data,
         lastMessageAt: data.lastMessageAt ? data.lastMessageAt.toDate().toISOString() : new Date().toISOString(),
     } as Conversation;
 }
 
-const toMessage = (doc: any): Message => {
-    const data = doc.data();
+const toMessage = (docSnap: any): Message => {
+    const data = docSnap.data();
     return {
-        id: doc.id,
+        id: docSnap.id,
         ...data,
         createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
     } as Message;
@@ -288,8 +299,11 @@ export const listenToUnreadCount = (userId: string, callback: (count: number) =>
         let totalUnread = 0;
         snapshot.forEach(doc => {
             const convo = toConversation(doc);
-            if (convo.unread && convo.unread[userId]) {
-                totalUnread += convo.unread[userId];
+            // Only count if the convo hasn't been deleted by the user
+            if (!(convo.deletedFor?.includes(userId))) {
+                if (convo.unread && convo.unread[userId]) {
+                    totalUnread += convo.unread[userId];
+                }
             }
         });
         callback(totalUnread);
@@ -307,10 +321,17 @@ export const listenToUserConversations = (userId: string, callback: (conversatio
     );
     return onSnapshot(q, async (snapshot) => {
         const conversationsPromises = snapshot.docs.map(async (conversationDoc) => {
-            const convo = toConversation(conversationDoc);
+            let convo = toConversation(conversationDoc);
+            
+            // Filter out conversations marked as deleted for the current user
+            if (convo.deletedFor?.includes(userId)) {
+                return null;
+            }
+
             if (!convo.participantDetails) {
               convo.participantDetails = {};
             }
+
             for (const pId of convo.participants) {
                 if (!convo.participantDetails[pId]) {
                     const userDoc = await getDoc(doc(db, 'users', pId));
@@ -327,7 +348,8 @@ export const listenToUserConversations = (userId: string, callback: (conversatio
             }
             return convo;
         });
-        const conversations = await Promise.all(conversationsPromises);
+
+        const conversations = (await Promise.all(conversationsPromises)).filter(Boolean) as Conversation[];
         callback(conversations);
     }, (error) => {
         console.error("Error listening to conversations:", error);
@@ -348,17 +370,26 @@ export const listenToMessages = (
     const unsubscribe = onSnapshot(q, async (snapshot) => {
         const messages = snapshot.docs.map(toMessage);
         callback(messages);
-        
-        // Reset unread count for current user when they view the conversation
-        const conversationRef = doc(db, 'conversations', conversationId);
-        const convoDoc = await getDoc(conversationRef);
-        if (convoDoc.exists() && convoDoc.data().unread[currentUserId] > 0) {
-            await updateDoc(conversationRef, {
-                [`unread.${currentUserId}`]: 0
-            });
+
+        const lastMessage = messages[messages.length - 1];
+        // If the user is viewing the convo and there are messages, reset their unread count.
+        // Don't reset if they are the sender of the last message.
+        if (lastMessage && lastMessage.senderId !== currentUserId) {
+            const conversationRef = doc(db, 'conversations', conversationId);
+            const convoDoc = await getDoc(conversationRef);
+            if (convoDoc.exists() && convoDoc.data().unread?.[currentUserId] > 0) {
+                await updateDoc(conversationRef, {
+                    [`unread.${currentUserId}`]: 0
+                });
+            }
         }
     }, (error) => {
         console.error("Error listening to messages:", error);
+        toast({
+            variant: "destructive",
+            title: "Could not load messages",
+            description: "There was a problem fetching the conversation. Please try again."
+        });
     });
     
     return unsubscribe;
@@ -366,35 +397,46 @@ export const listenToMessages = (
 
 // Send a message
 export const sendMessage = async (conversationId: string, text: string, sender: User) => {
-    const batch = writeBatch(db);
-    
-    const messageRef = doc(collection(db, 'conversations', conversationId, 'messages'));
-    batch.set(messageRef, {
-        conversationId,
-        senderId: sender.uid,
-        text,
-        createdAt: serverTimestamp(),
-    });
-
     const conversationRef = doc(db, 'conversations', conversationId);
     
-    const convoDoc = await getDoc(conversationRef);
-    if(convoDoc.exists()) {
-        const otherParticipantId = convoDoc.data().participants.find((p: string) => p !== sender.uid);
-        
+    await runTransaction(db, async (transaction) => {
+        const convoDoc = await transaction.get(conversationRef);
+        if (!convoDoc.exists()) {
+            throw "Conversation does not exist!";
+        }
+
+        const convoData = convoDoc.data();
+        const otherParticipantId = convoData.participants.find((p: string) => p !== sender.uid);
+
+        if (otherParticipantId) {
+            const otherUserRef = doc(db, 'users', otherParticipantId);
+            const otherUserDoc = await transaction.get(otherUserRef);
+            if(otherUserDoc.exists() && otherUserDoc.data().blockedUsers?.includes(sender.uid)) {
+                throw new Error("You have been blocked by this user.");
+            }
+        }
+
+        const messageRef = doc(collection(db, 'conversations', conversationId, 'messages'));
+        transaction.set(messageRef, {
+            conversationId,
+            senderId: sender.uid,
+            text,
+            createdAt: serverTimestamp(),
+        });
+
         const updateData: any = {
             lastMessage: text,
             lastMessageAt: serverTimestamp(),
+            // The conversation is no longer deleted for the sender, since they sent a message.
+            deletedFor: arrayRemove(sender.uid)
         };
-
+        
         if (otherParticipantId) {
            updateData[`unread.${otherParticipantId}`] = increment(1);
         }
 
-        batch.update(conversationRef, updateData);
-    }
-    
-    await batch.commit();
+        transaction.update(conversationRef, updateData);
+    });
 }
 
 
@@ -415,12 +457,22 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
     const existingConversation = snapshot.docs.find(doc => doc.data().participants.includes(vehicle.reporterId));
 
     if (existingConversation) {
+        // If a user re-initiates a deleted conversation, un-delete it for them.
+        await updateDoc(doc(db, 'conversations', existingConversation.id), {
+            deletedFor: arrayRemove(initiator.uid)
+        });
         return existingConversation.id;
     }
     
-    const ownerDoc = await getDoc(doc(db, 'users', vehicle.reporterId));
+    const ownerRef = doc(db, 'users', vehicle.reporterId);
+    let ownerDoc = await getDoc(ownerRef);
     let ownerData: { displayName: string, photoURL: string };
 
+    if (!ownerDoc.exists()) {
+        await createUserProfileDocument({ uid: vehicle.reporterId } as User);
+        ownerDoc = await getDoc(ownerRef); // Re-fetch after creation
+    }
+    
     if (ownerDoc.exists()) {
         const data = ownerDoc.data();
         ownerData = {
@@ -428,12 +480,9 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
             photoURL: data.photoURL || ''
         };
     } else {
-        // Fallback to create a profile if it doesn't exist.
-        const ownerAuthRecord = { uid: vehicle.reporterId, email: 'N/A', photoURL: '', displayName: 'Vehicle Owner' };
-        await createUserProfileDocument(ownerAuthRecord as User);
-        ownerData = { displayName: 'Vehicle Owner', photoURL: '' };
+        throw new Error("Could not find the vehicle owner's data.");
     }
-    
+
     const initiatorName = initiator.displayName || 'Anonymous User';
     const initiatorAvatar = initiator.photoURL || '';
 
@@ -450,10 +499,51 @@ export const createOrGetConversation = async (vehicle: VehicleReport, initiator:
         lastMessage: "",
         lastMessageAt: serverTimestamp(),
         unread: { [initiator.uid]: 0, [vehicle.reporterId]: 0 },
+        deletedFor: [],
     }
     
     await setDoc(newConversationRef, newConversationData);
     return newConversationRef.id;
+}
+
+
+// --- Block and Delete Functions ---
+
+export async function deleteConversation(conversationId: string, userId: string) {
+    const convoRef = doc(db, 'conversations', conversationId);
+    // Instead of deleting, we add the user's ID to a "deletedFor" array.
+    // This hides it from their view but keeps it for the other user.
+    return updateDoc(convoRef, {
+        deletedFor: arrayUnion(userId)
+    });
+}
+
+
+export async function blockUser(blockerId: string, blockedId: string) {
+    const blockerRef = doc(db, 'users', blockerId);
+    return updateDoc(blockerRef, {
+        blockedUsers: arrayUnion(blockedId)
+    });
+}
+
+
+export async function unblockUser(unblockerId: string, unblockedId: string) {
+    const unblockerRef = doc(db, 'users', unblockerId);
+    return updateDoc(unblockerRef, {
+        blockedUsers: arrayRemove(unblockedId)
+    });
+}
+
+
+export async function checkIfUserIsBlocked(blockerId: string, blockedId: string): Promise<boolean> {
+    if (!blockerId || !blockedId) return false;
+    const blockerRef = doc(db, 'users', blockerId);
+    const docSnap = await getDoc(blockerRef);
+    if (docSnap.exists()) {
+        const data = docSnap.data();
+        return data.blockedUsers?.includes(blockedId) || false;
+    }
+    return false;
 }
 
 
