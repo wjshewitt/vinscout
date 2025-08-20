@@ -20,7 +20,7 @@ export function KofiWidget() {
           window.kofiWidgetOverlay.draw('autofind', {
             'type': 'floating-chat',
             'floating-chat.donateButton.text': 'Support me',
-            'floating-chat.donateButton.background-color': '#00b9fe',
+            'floating-chat.donateButton.background-color': 'hsl(var(--primary))',
             'floating-chat.donateButton.text-color': '#fff'
           });
         }

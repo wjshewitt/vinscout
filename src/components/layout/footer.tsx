@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import { KofiWidget } from '../kofi-widget';
 
 export function Footer() {
   return (
@@ -12,9 +13,7 @@ export function Footer() {
           <Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
           <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
           <a href="mailto:hewittjswill@gmail.com" className="hover:text-foreground transition-colors">Contact Us</a>
-          <a href='https://ko-fi.com/autofind' target='_blank' rel="noopener noreferrer">
-            <img height='28' style={{border: '0px', height: '28px'}} src='https://storage.ko-fi.com/cdn/kofi2.png?v=3' alt='Buy Me a Coffee at ko-fi.com' />
-          </a>
+          <KofiWidget />
         </div>
       </div>
     </footer>
