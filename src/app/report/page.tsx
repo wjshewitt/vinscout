@@ -1,4 +1,4 @@
-import { VehicleReportForm } from '@/components/vehicle-report-form';
+import { VehicleReportFormLoader } from '@/components/vehicle-report-form-loader';
 
 export default function ReportVehiclePage() {
   return (
@@ -13,7 +13,7 @@ export default function ReportVehiclePage() {
           </p>
         </div>
         <div className="mt-12 bg-card/50 backdrop-blur-sm border border-border rounded-2xl p-8">
-          <VehicleReportForm />
+          <VehicleReportFormLoader />
         </div>
       </div>
     </main>

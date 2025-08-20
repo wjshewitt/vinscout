@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, useWatch, useFormContext } from 'react-hook-form';
@@ -272,8 +271,8 @@ export function VehicleReportForm() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  
   const [isMakePopoverOpen, setIsMakePopoverOpen] = useState(false);
-  const [makeSearchQuery, setMakeSearchQuery] = useState('');
   const [isModelPopoverOpen, setIsModelPopoverOpen] = useState(false);
 
   const form = useForm<ReportFormValues>({
@@ -424,12 +423,6 @@ export function VehicleReportForm() {
     setImagePreviews(updatedPhotos);
   };
 
-  const filteredMakes = useMemo(() => {
-    if (!makeSearchQuery) return makes;
-    return makes.filter(make => make.toLowerCase().includes(makeSearchQuery.toLowerCase()));
-  }, [makes, makeSearchQuery]);
-
-
   async function onSubmit(data: ReportFormValues) {
     if (!user) {
         toast({
@@ -501,55 +494,52 @@ export function VehicleReportForm() {
                                 <FormLabel>Make</FormLabel>
                                 <FormControl>
                                   <Popover open={isMakePopoverOpen} onOpenChange={setIsMakePopoverOpen}>
-                                      <PopoverTrigger asChild>
-                                              <Button
-                                                  variant="outline"
-                                                  role="combobox"
-                                                  className={cn(
-                                                      "w-full justify-between h-12 rounded-lg",
-                                                      !field.value && "text-muted-foreground"
-                                                  )}
-                                              >
-                                                  {field.value || "Select Make"}
-                                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                              </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                          <Command>
-                                              <CommandInput 
-                                                placeholder="Search make..."
-                                                value={makeSearchQuery}
-                                                onValueChange={setMakeSearchQuery}
-                                              />
-                                              <CommandEmpty>No make found.</CommandEmpty>
-                                              <CommandList>
-                                                  <CommandGroup>
-                                                      {filteredMakes.map((make) => (
-                                                          <CommandItem
-                                                              value={make}
-                                                              key={make}
-                                                              onSelect={() => {
-                                                                  form.setValue("make", make);
-                                                                  handleMakeChange(make);
-                                                                  setMakeSearchQuery('');
-                                                                  setIsMakePopoverOpen(false);
-                                                              }}
-                                                          >
-                                                              <Check
-                                                                  className={cn(
-                                                                      "mr-2 h-4 w-4",
-                                                                      make === field.value
-                                                                          ? "opacity-100"
-                                                                          : "opacity-0"
-                                                                  )}
-                                                              />
-                                                              {make}
-                                                          </CommandItem>
-                                                      ))}
-                                                  </CommandGroup>
-                                              </CommandList>
-                                          </Command>
-                                      </PopoverContent>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn(
+                                                "w-full justify-between h-12 rounded-lg",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {field.value || "Select Make"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput 
+                                              placeholder="Search make..."
+                                            />
+                                            <CommandEmpty>No make found.</CommandEmpty>
+                                            <CommandList>
+                                                <CommandGroup>
+                                                    {makes.map((make) => (
+                                                        <CommandItem
+                                                            value={make}
+                                                            key={make}
+                                                            onSelect={() => {
+                                                                form.setValue("make", make);
+                                                                handleMakeChange(make);
+                                                                setIsMakePopoverOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    make === field.value
+                                                                        ? "opacity-100"
+                                                                        : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {make}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
                                   </Popover>
                                 </FormControl>
                                 <FormMessage />
@@ -562,38 +552,43 @@ export function VehicleReportForm() {
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Model</FormLabel>
-                                 <FormControl>
+                                <FormControl>
                                   <Popover open={isModelPopoverOpen} onOpenChange={setIsModelPopoverOpen}>
                                       <PopoverTrigger asChild>
-                                              <Button
-                                                  variant="outline"
-                                                  role="combobox"
-                                                  disabled={!selectedMake}
-                                                  className={cn(
-                                                      "w-full justify-between h-12 rounded-lg",
-                                                      !field.value && "text-muted-foreground"
-                                                  )}
-                                              >
-                                                  {field.value || "Select or Type Model"}
-                                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                              </Button>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            disabled={!selectedMake}
+                                            className={cn(
+                                                "w-full justify-between h-12 rounded-lg",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {field.value || "Select or Type Model"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
                                       </PopoverTrigger>
                                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                          <Command shouldFilter={false}>
+                                          <Command
+                                            filter={(value, search) => {
+                                                if (value.toLowerCase().includes(search.toLowerCase())) return 1
+                                                return 0
+                                            }}
+                                          >
                                               <CommandInput 
                                                   placeholder="Search or type model..."
+                                                  onValueChange={field.onChange}
                                                   value={field.value}
-                                                  onValueChange={(value) => form.setValue("model", value)}
                                               />
                                               <CommandEmpty>No model found. You can type a custom one.</CommandEmpty>
                                               <CommandList>
                                                   <CommandGroup>
-                                                      {models.filter(model => model.toLowerCase().includes(field.value?.toLowerCase() || '')).map((model) => (
+                                                      {models.map((model) => (
                                                           <CommandItem
                                                               value={model}
                                                               key={model}
-                                                              onSelect={() => {
-                                                                  form.setValue("model", model)
+                                                              onSelect={(currentValue) => {
+                                                                  form.setValue("model", currentValue === field.value ? "" : currentValue)
                                                                   setIsModelPopoverOpen(false)
                                                               }}
                                                           >
