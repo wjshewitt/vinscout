@@ -23,6 +23,7 @@ import VehicleSightingsMap from './vehicle-sightings-map';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
+import { cn } from '@/lib/utils';
 
 
 const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) => {
@@ -554,5 +555,3 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
     </div>
   );
 }
-
-    
