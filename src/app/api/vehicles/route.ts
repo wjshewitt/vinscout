@@ -4,7 +4,6 @@ import { NextResponse } from 'next/server';
 const vehicleData = {
   "Abarth": ["595 / 695", "124 Spider", "Punto Evo", "Grande Punto"],
   "AC": ["Cobra", "Ace", "Aceca", "3000ME", "Greyhound"],
-  "AC Cars": ["Cobra", "Ace", "Aceca", "3000ME", "Greyhound", "Frua"],
   "Acura": ["NSX", "Integra", "Legend", "MDX", "RDX", "TLX"],
   "Adler": ["Trumpf", "Trumpf Junior", "Diplomat", "Favorit", "Standard 6", "2.5-litre"],
   "AEC": ["Regent", "Routemaster", "Reliance", "Matador", "Monarch", "Mammoth"],
