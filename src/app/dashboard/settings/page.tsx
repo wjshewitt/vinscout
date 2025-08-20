@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { Loader2, MapPin, Search, Trash2, Redo2, Mail, MessageSquare, Phone } from 'lucide-react';
+import { Loader2, MapPin, Search, Trash2, Redo2, Mail, MessageSquare, Phone, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { APIProvider, Map, AdvancedMarker, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import { useDebouncedCallback } from 'use-debounce';
@@ -22,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { getUserGeofences, saveUserGeofence, deleteUserGeofence, GeofenceLocation, getNotificationSettings, saveNotificationSettings, UserNotificationSettings } from '@/lib/firebase';
+import { getUserGeofences, saveUserGeofence, deleteUserGeofence, GeofenceLocation, getNotificationSettings, saveNotificationSettings, UserNotificationSettings, deleteUserAccount } from '@/lib/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -30,6 +29,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import _ from 'lodash';
+import { useRouter } from 'next/navigation';
 
 
 function MapComponent({ 
@@ -325,8 +325,73 @@ function AddLocationDialog({ onSave, onOpenChange }: { onSave: (location: Geofen
   );
 }
 
+function AccountSettings() {
+    const { user } = useAuth();
+    const router = useRouter();
+    const { toast } = useToast();
+    const [isDeleting, setIsDeleting] = useState(false);
 
-export default function NotificationsPage() {
+    const handleDeleteAccount = async () => {
+        if (!user) return;
+        setIsDeleting(true);
+        try {
+            await deleteUserAccount();
+            toast({
+                title: "Account Deleted",
+                description: "Your account and all associated data have been deleted.",
+            });
+            router.push('/');
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error Deleting Account',
+                description: 'There was a problem deleting your account. You may need to log in again to complete this action.',
+            });
+            setIsDeleting(false);
+        }
+    };
+
+    return (
+        <Card className="border-destructive/50">
+            <CardHeader>
+                <CardTitle>Delete Account</CardTitle>
+                <CardDescription>Permanently remove your account and all associated data.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground">
+                    This action is irreversible. All of your reported vehicles, messages, and saved locations will be permanently deleted. Please be certain before proceeding.
+                </p>
+            </CardContent>
+            <CardFooter className="border-t border-destructive/50 px-6 py-4 justify-end">
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" disabled={isDeleting}>
+                            {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                            Delete My Account
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive hover:bg-destructive/90">
+                                {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Yes, delete my account
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </CardFooter>
+        </Card>
+    );
+}
+
+function NotificationSettings() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [locations, setLocations] = useState<GeofenceLocation[]>([]);
@@ -426,171 +491,190 @@ export default function NotificationsPage() {
     handleSettingsChange({ phoneNumber: value });
   };
 
-  return (
-    <div className="container mx-auto py-12 max-w-4xl">
-        <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight">Notification Settings</h1>
-            <p className="mt-2 text-muted-foreground">Choose how and where you want to be notified about stolen vehicle reports.</p>
-        </div>
-        
-        {loading || !apiKey ? (
-             <div className="flex justify-center items-center py-20">
-               { !apiKey ? <p className="text-destructive">Map API Key is missing.</p> : <Loader2 className="animate-spin text-primary" size={32} /> }
+   if (loading || !apiKey) {
+        return (
+            <div className="flex justify-center items-center py-20">
+            { !apiKey ? <p className="text-destructive">Map API Key is missing.</p> : <Loader2 className="animate-spin text-primary" size={32} /> }
             </div>
-        ) : modifiedSettings && (
-            <div className="space-y-12">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Alert Preferences</CardTitle>
-                        <CardDescription>Select the types of alerts you would like to receive and how you get them.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                         <div className="flex items-center justify-between space-x-4 rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                                <Label htmlFor="national-alerts" className="text-base font-medium">National Alerts</Label>
-                                <p className="text-sm text-muted-foreground">Receive notifications for any vehicle reported stolen, regardless of location.</p>
-                            </div>
-                            <Switch
-                                id="national-alerts"
-                                checked={modifiedSettings.nationalAlerts}
-                                onCheckedChange={(checked) => handleSettingsChange({ nationalAlerts: checked })}
-                            />
-                        </div>
+        );
+    }
+    
+    if (!modifiedSettings) return null;
+
+  return (
+        <div className="space-y-12">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Alert Preferences</CardTitle>
+                    <CardDescription>Select the types of alerts you would like to receive and how you get them.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
                         <div className="flex items-center justify-between space-x-4 rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                                <Label htmlFor="local-alerts" className="text-base font-medium">Local Alerts</Label>
-                                 <p className="text-sm text-muted-foreground">Only receive notifications for vehicles reported in your saved locations below.</p>
-                            </div>
-                            <Switch
-                                id="local-alerts"
-                                checked={modifiedSettings.localAlerts}
-                                onCheckedChange={(checked) => handleSettingsChange({ localAlerts: checked })}
-                            />
+                        <div className="space-y-0.5">
+                            <Label htmlFor="national-alerts" className="text-base font-medium">National Alerts</Label>
+                            <p className="text-sm text-muted-foreground">Receive notifications for any vehicle reported stolen, regardless of location.</p>
                         </div>
-                         <Separator />
-                         <div>
-                            <h4 className="text-base font-medium mb-4">Notification Channels</h4>
-                            <div className="space-y-4">
-                               <div className="flex items-center justify-between space-x-4">
-                                  <Label htmlFor="email-channel" className="flex items-center gap-3 text-sm font-medium">
-                                    <Mail className="w-5 h-5 text-muted-foreground"/>
-                                    <span>Email Notifications</span>
-                                  </Label>
-                                  <Switch
-                                      id="email-channel"
-                                      checked={modifiedSettings.notificationChannels?.email}
-                                      onCheckedChange={(checked) => handleChannelChange('email', checked)}
-                                  />
-                              </div>
-                               <div className="flex items-center justify-between space-x-4">
-                                  <Label htmlFor="sms-channel" className="flex items-center gap-3 text-sm font-medium">
-                                    <MessageSquare className="w-5 h-5 text-muted-foreground"/>
-                                    <span>SMS Notifications</span>
-                                  </Label>
-                                  <Switch
-                                      id="sms-channel"
-                                      checked={modifiedSettings.notificationChannels?.sms}
-                                      onCheckedChange={(checked) => handleChannelChange('sms', checked)}
-                                  />
-                              </div>
-                               <div className="flex items-center justify-between space-x-4">
-                                  <Label htmlFor="whatsapp-channel" className="flex items-center gap-3 text-sm font-medium">
-                                    <Phone className="w-5 h-5 text-muted-foreground"/>
-                                    <span>WhatsApp Notifications</span>
-                                  </Label>
-                                  <Switch
-                                      id="whatsapp-channel"
-                                      checked={modifiedSettings.notificationChannels?.whatsapp}
-                                      onCheckedChange={(checked) => handleChannelChange('whatsapp', checked)}
-                                  />
-                              </div>
-                               {(modifiedSettings.notificationChannels?.sms || modifiedSettings.notificationChannels?.whatsapp) && (
-                                 <div className="pt-2">
-                                     <Label htmlFor="phone-number">Phone Number</Label>
-                                     <Input 
-                                         id="phone-number"
-                                         type="tel"
-                                         placeholder="Enter phone number with country code"
-                                         value={modifiedSettings.phoneNumber}
-                                         onChange={(e) => handlePhoneNumberChange(e.target.value)}
-                                         className="mt-2"
-                                     />
-                                     <p className="text-xs text-muted-foreground mt-2">Used for SMS and/or WhatsApp notifications. Carrier charges may apply.</p>
-                                 </div>
-                               )}
+                        <Switch
+                            id="national-alerts"
+                            checked={modifiedSettings.nationalAlerts}
+                            onCheckedChange={(checked) => handleSettingsChange({ nationalAlerts: checked })}
+                        />
+                    </div>
+                    <div className="flex items-center justify-between space-x-4 rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                            <Label htmlFor="local-alerts" className="text-base font-medium">Local Alerts</Label>
+                                <p className="text-sm text-muted-foreground">Only receive notifications for vehicles reported in your saved locations below.</p>
+                        </div>
+                        <Switch
+                            id="local-alerts"
+                            checked={modifiedSettings.localAlerts}
+                            onCheckedChange={(checked) => handleSettingsChange({ localAlerts: checked })}
+                        />
+                    </div>
+                        <Separator />
+                        <div>
+                        <h4 className="text-base font-medium mb-4">Notification Channels</h4>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between space-x-4">
+                                <Label htmlFor="email-channel" className="flex items-center gap-3 text-sm font-medium">
+                                <Mail className="w-5 h-5 text-muted-foreground"/>
+                                <span>Email Notifications</span>
+                                </Label>
+                                <Switch
+                                    id="email-channel"
+                                    checked={modifiedSettings.notificationChannels?.email}
+                                    onCheckedChange={(checked) => handleChannelChange('email', checked)}
+                                />
                             </div>
-                         </div>
-                    </CardContent>
-                    <CardFooter className="border-t px-6 py-4 justify-end">
-                        <Button onClick={handleSaveSettings} disabled={!hasChanges || isSaving}>
-                           {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                           Save Changes
-                        </Button>
-                    </CardFooter>
-                </Card>
-
-                <Separator />
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Local Alert Areas</CardTitle>
-                        <CardDescription>Manage the geofenced locations for your local alerts. You will only receive local alerts if the option above is enabled.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                         <div className="space-y-4">
-                            {locations.length > 0 ? (
-                                locations.map(loc => (
-                                    <div key={loc.name} className="rounded-lg border bg-card p-4">
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <h4 className="font-medium">{loc.name}</h4>
-                                                <p className="text-sm text-muted-foreground">{loc.address}</p>
-                                                 <p className="text-xs text-muted-foreground/80 mt-1 capitalize">
-                                                    {loc.type === 'radius' && `Radius: ${(loc.radius! / 1000).toFixed(1)}km`}
-                                                    {loc.type === 'polygon' && `Polygon Area`}
-                                                </p>
-                                            </div>
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive -mt-2 -mr-2">
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Delete "{loc.name}"?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            Are you sure you want to delete this geofence? You will no longer receive local notifications for this area.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteLocation(loc.name)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="text-sm text-muted-foreground text-center py-8">No locations saved yet for local alerts.</p>
+                            <div className="flex items-center justify-between space-x-4">
+                                <Label htmlFor="sms-channel" className="flex items-center gap-3 text-sm font-medium">
+                                <MessageSquare className="w-5 h-5 text-muted-foreground"/>
+                                <span>SMS Notifications</span>
+                                </Label>
+                                <Switch
+                                    id="sms-channel"
+                                    checked={modifiedSettings.notificationChannels?.sms}
+                                    onCheckedChange={(checked) => handleChannelChange('sms', checked)}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between space-x-4">
+                                <Label htmlFor="whatsapp-channel" className="flex items-center gap-3 text-sm font-medium">
+                                <Phone className="w-5 h-5 text-muted-foreground"/>
+                                <span>WhatsApp Notifications</span>
+                                </Label>
+                                <Switch
+                                    id="whatsapp-channel"
+                                    checked={modifiedSettings.notificationChannels?.whatsapp}
+                                    onCheckedChange={(checked) => handleChannelChange('whatsapp', checked)}
+                                />
+                            </div>
+                            {(modifiedSettings.notificationChannels?.sms || modifiedSettings.notificationChannels?.whatsapp) && (
+                                <div className="pt-2">
+                                    <Label htmlFor="phone-number">Phone Number</Label>
+                                    <Input 
+                                        id="phone-number"
+                                        type="tel"
+                                        placeholder="Enter phone number with country code"
+                                        value={modifiedSettings.phoneNumber}
+                                        onChange={(e) => handlePhoneNumberChange(e.target.value)}
+                                        className="mt-2"
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-2">Used for SMS and/or WhatsApp notifications. Carrier charges may apply.</p>
+                                </div>
                             )}
                         </div>
-                         <Dialog open={isAddLocationDialogOpen} onOpenChange={setIsAddLocationDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button className="mt-6 w-full" variant="outline" disabled={!modifiedSettings.localAlerts}>Add New Location</Button>
-                            </DialogTrigger>
-                            <APIProvider apiKey={apiKey}>
-                                <AddLocationDialog onSave={handleSaveLocation} onOpenChange={setIsAddLocationDialogOpen} />
-                            </APIProvider>
-                        </Dialog>
-                    </CardContent>
-                </Card>
-            </div>
-        )}
-    </div>
+                        </div>
+                </CardContent>
+                <CardFooter className="border-t px-6 py-4 justify-end">
+                    <Button onClick={handleSaveSettings} disabled={!hasChanges || isSaving}>
+                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Changes
+                    </Button>
+                </CardFooter>
+            </Card>
+
+            <Separator />
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Local Alert Areas</CardTitle>
+                    <CardDescription>Manage the geofenced locations for your local alerts. You will only receive local alerts if the option above is enabled.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                        <div className="space-y-4">
+                        {locations.length > 0 ? (
+                            locations.map(loc => (
+                                <div key={loc.name} className="rounded-lg border bg-card p-4">
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <h4 className="font-medium">{loc.name}</h4>
+                                            <p className="text-sm text-muted-foreground">{loc.address}</p>
+                                                <p className="text-xs text-muted-foreground/80 mt-1 capitalize">
+                                                {loc.type === 'radius' && `Radius: ${(loc.radius! / 1000).toFixed(1)}km`}
+                                                {loc.type === 'polygon' && `Polygon Area`}
+                                            </p>
+                                        </div>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive -mt-2 -mr-2">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Delete "{loc.name}"?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        Are you sure you want to delete this geofence? You will no longer receive local notifications for this area.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDeleteLocation(loc.name)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-sm text-muted-foreground text-center py-8">No locations saved yet for local alerts.</p>
+                        )}
+                    </div>
+                        <Dialog open={isAddLocationDialogOpen} onOpenChange={setIsAddLocationDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="mt-6 w-full" variant="outline" disabled={!modifiedSettings.localAlerts}>Add New Location</Button>
+                        </DialogTrigger>
+                        <APIProvider apiKey={apiKey}>
+                            <AddLocationDialog onSave={handleSaveLocation} onOpenChange={setIsAddLocationDialogOpen} />
+                        </APIProvider>
+                    </Dialog>
+                </CardContent>
+            </Card>
+        </div>
   );
 }
 
 
+export default function SettingsPage() {
 
+    return (
+        <div className="container mx-auto py-12 max-w-4xl">
+             <div className="mb-8">
+                <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+                <p className="mt-2 text-muted-foreground">Manage your account and notification preferences.</p>
+            </div>
+            <Tabs defaultValue="notifications" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                    <TabsTrigger value="account">Account</TabsTrigger>
+                </TabsList>
+                <TabsContent value="notifications" className="pt-6">
+                   <NotificationSettings />
+                </TabsContent>
+                <TabsContent value="account" className="pt-6">
+                    <AccountSettings />
+                </TabsContent>
+            </Tabs>
+        </div>
+    );
+}

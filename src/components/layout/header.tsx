@@ -147,7 +147,7 @@ function UserMenu({ isMobile = false }) {
         </div>
         <Link href="/dashboard" className="w-full block text-muted-foreground transition-colors hover:text-primary py-2">Dashboard</Link>
         <Link href="/report" className="w-full block text-muted-foreground transition-colors hover:text-primary py-2">Report Vehicle</Link>
-        <Link href="/dashboard/notifications" className="w-full block text-muted-foreground transition-colors hover:text-primary py-2">Settings</Link>
+        <Link href="/dashboard/settings" className="w-full block text-muted-foreground transition-colors hover:text-primary py-2">Settings</Link>
         <Button variant="ghost" className="w-full justify-start px-0" onClick={handleLogout}>Log Out</Button>
       </div>
     );
@@ -172,7 +172,7 @@ function UserMenu({ isMobile = false }) {
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild><Link href="/dashboard">Dashboard</Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link href="/report">Report Vehicle</Link></DropdownMenuItem>
-        <DropdownMenuItem asChild><Link href="/dashboard/notifications">Settings</Link></DropdownMenuItem>
+        <DropdownMenuItem asChild><Link href="/dashboard/settings">Settings</Link></DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
       </DropdownMenuContent>
@@ -199,9 +199,9 @@ function NotificationMenu() {
             <PopoverTrigger asChild>
                  <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
-                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
+                    {unreadCount > 0 && <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
                         {unreadCount}
-                    </span>
+                    </span>}
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0">

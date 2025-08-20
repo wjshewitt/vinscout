@@ -13,7 +13,8 @@ import {
   browserSessionPersistence,
   AuthError,
   User,
-  UserCredential
+  UserCredential,
+  deleteUser
 } from 'firebase/auth';
 import { 
     getFirestore, 
@@ -142,6 +143,28 @@ export const signInWithEmail = async (email: string, pass: string): Promise<{use
         return { user: null, error: error as AuthError };
     }
 }
+
+export const deleteUserAccount = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error('No user is currently signed in.');
+    }
+
+    try {
+        // First, delete the user's Firestore document
+        const userDocRef = doc(db, 'users', user.uid);
+        await deleteDoc(userDocRef);
+
+        // Then, delete the user from Firebase Authentication
+        await deleteUser(user);
+
+    } catch (error) {
+        console.error("Error deleting user account:", error);
+        // Re-authentication might be required for security-sensitive operations.
+        // The calling function should handle this error and prompt the user if needed.
+        throw error;
+    }
+};
 
 export const submitVehicleReport = async (reportData: object) => {
     if (!auth.currentUser) {
@@ -573,6 +596,7 @@ async function ensureUserDocExists(userId: string) {
     const userSnap = await getDoc(userRef);
     if (!userSnap.exists()) {
         try {
+            // This is a fallback and may not have all user details if the user isn't the current user.
             const authUser = auth.currentUser;
             const details = (authUser && authUser.uid === userId) 
                 ? { displayName: authUser.displayName, email: authUser.email, photoURL: authUser.photoURL } 
@@ -700,4 +724,3 @@ export { auth, db };
 export type { User, AuthError };
 
     
-

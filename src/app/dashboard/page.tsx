@@ -95,13 +95,13 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Bell className="text-primary"/> Notifications</CardTitle>
-            <CardDescription>Configure your alert settings.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Bell className="text-primary"/> Settings</CardTitle>
+            <CardDescription>Configure your notifications and account.</CardDescription>
           </CardHeader>
           <CardContent>
-            <p>Local notifications are enabled.</p>
+            <p>Manage your alert and account preferences.</p>
             <Button asChild className="mt-4">
-              <Link href="/dashboard/notifications">Manage Settings</Link>
+              <Link href="/dashboard/settings">Manage Settings</Link>
             </Button>
           </CardContent>
         </Card>
