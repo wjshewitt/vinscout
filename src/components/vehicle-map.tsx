@@ -63,20 +63,18 @@ const VehicleMap: FC<VehicleMapProps> = ({ vehicles }) => {
             position={{ lat: selectedVehicle.lat, lng: selectedVehicle.lng }}
             onCloseClick={() => setSelectedVehicle(null)}
             pixelOffset={[0,-40]}
+            headerDisabled
           >
-            <Card className="w-80 border-none shadow-none bg-popover text-popover-foreground">
+            <Card className="w-80 bg-background/80 backdrop-blur-sm border-border text-foreground">
               <CardHeader className="p-4">
                 <CardTitle>{selectedVehicle.make} {selectedVehicle.model} ({selectedVehicle.year})</CardTitle>
                 <CardDescription>License Plate: {selectedVehicle.licensePlate}</CardDescription>
               </CardHeader>
               <CardContent className="p-4 pt-0">
-                <p>Color: {selectedVehicle.color}</p>
+                <p className="text-sm">Color: {selectedVehicle.color}</p>
                 <div className="mt-4 flex gap-2">
                   <Button asChild size="sm">
                     <Link href={`/vehicles/${selectedVehicle.id}`}>View Details</Link>
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setSelectedVehicle(null)}>
-                    Close
                   </Button>
                 </div>
               </CardContent>
