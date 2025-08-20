@@ -1,3 +1,4 @@
+
 'use client';
 
 import { APIProvider, Map, AdvancedMarker, Pin, InfoWindow, useMap } from '@vis.gl/react-google-maps';
@@ -40,7 +41,7 @@ const VehicleMap: FC<VehicleMapProps> = ({ vehicles }) => {
       <Map
         defaultCenter={{ lat: 54.5, lng: -2.5 }}
         defaultZoom={6}
-        mapId="vigilante_garage_map"
+        mapId="autofind_map"
         fullscreenControl={false}
         streetViewControl={false}
         mapTypeControl={false}

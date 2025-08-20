@@ -6,7 +6,7 @@ import { Header } from '@/components/layout/header';
 import { Providers } from '@/components/layout/providers';
 
 export const metadata: Metadata = {
-  title: 'Vigilante Garage',
+  title: 'AutoFind',
   description: 'Community-based stolen vehicle recovery.',
 };
 
