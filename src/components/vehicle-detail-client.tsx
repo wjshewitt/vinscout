@@ -475,32 +475,32 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
           </div>
         </CardHeader>
         <CardContent>
-          <div className="w-full mb-8">
-             <div className="aspect-video w-full relative bg-muted rounded-lg flex items-center justify-center">
-                  {hasPhotos ? (
-                      <Carousel className="w-full h-full">
-                          <CarouselContent>
-                              {vehicle.photos.map((src, index) => (
-                              <CarouselItem key={index}>
-                                  <div className="relative w-full h-full aspect-video">
-                                      <Image src={src} alt={`Vehicle photo ${index + 1}`} layout="fill" objectFit="cover" className="rounded-lg" />
-                                  </div>
-                              </CarouselItem>
-                              ))}
-                          </CarouselContent>
-                          {vehicle.photos.length > 1 && (
-                            <>
-                                <CarouselPrevious className="left-2" />
-                                <CarouselNext className="right-2" />
-                            </>
-                          )}
-                      </Carousel>
-                  ) : (
-                      <Car className="h-24 w-24 text-muted-foreground" />
-                  )}
-             </div>
-          </div>
           <div className="grid md:grid-cols-2 gap-x-8 gap-y-6">
+            <div className="w-full">
+                 <div className="aspect-video w-full relative bg-muted rounded-lg flex items-center justify-center">
+                      {hasPhotos ? (
+                          <Carousel className="w-full h-full">
+                              <CarouselContent>
+                                  {vehicle.photos.map((src, index) => (
+                                  <CarouselItem key={index}>
+                                      <div className="relative w-full h-full aspect-video">
+                                          <Image src={src} alt={`Vehicle photo ${index + 1}`} layout="fill" objectFit="cover" className="rounded-lg" />
+                                      </div>
+                                  </CarouselItem>
+                                  ))}
+                              </CarouselContent>
+                              {vehicle.photos.length > 1 && (
+                                <>
+                                    <CarouselPrevious className="left-2" />
+                                    <CarouselNext className="right-2" />
+                                </>
+                              )}
+                          </Carousel>
+                      ) : (
+                          <Car className="h-24 w-24 text-muted-foreground" />
+                      )}
+                 </div>
+            </div>
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold mb-2">Vehicle Details</h3>
@@ -526,8 +526,10 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                 <p className="text-sm mt-2"><strong>Details:</strong> {vehicle.features || 'No additional details provided.'}</p>
               </div>
             </div>
+          </div>
+          <div className="grid md:grid-cols-2 gap-x-8 gap-y-6 mt-6">
             <div className="space-y-6">
-               {hasReward && (
+                {hasReward && (
                  <>
                     <div>
                         <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
@@ -547,10 +549,10 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                              <p className="text-sm text-muted-foreground">The owner is offering a reward for information leading to this vehicle's recovery. Please contact them for details.</p>
                          )}
                     </div>
-                    <Separator />
                  </>
                )}
-              
+            </div>
+            <div className="space-y-6">
                 {authLoading ? (
                   <Loader2 className="animate-spin text-primary" />
                 ) : !isOwner && vehicle.status === 'Active' && (
