@@ -364,8 +364,10 @@ export function VehicleReportForm() {
   const [showReward, setShowReward] = useState(false);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentFile, setCurrentFile] = useState<string | null>(null);
   
   const [isMakePopoverOpen, setIsMakePopoverOpen] = useState(false);
   const [isModelPopoverOpen, setIsModelPopoverOpen] = useState(false);
@@ -491,7 +493,7 @@ export function VehicleReportForm() {
     form.setValue('location.country', locationInfo.country || '');
     form.setValue('location.fullAddress', locationInfo.fullAddress || '', { shouldValidate: true });
   }, [form]);
-
+  
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || !user) return;
@@ -499,27 +501,27 @@ export function VehicleReportForm() {
     const filesToUpload = Array.from(files);
 
     setIsUploading(true);
-    toast({ title: 'Uploading Images...', description: 'Please wait while your images are uploaded.' });
 
-    const uploadPromises = filesToUpload.map((file) => 
-        uploadImageAndGetURL(file, user.uid, (progress) => {
-            setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
-        })
-    );
-     
-    try {
-        const urls = await Promise.all(uploadPromises);
-        const updatedPhotos = [...(form.getValues('photos') || []), ...urls];
-        form.setValue('photos', updatedPhotos, { shouldValidate: true });
-        setImagePreviews(updatedPhotos);
-        toast({ title: 'Upload Complete', description: 'All images have been uploaded.' });
-    } catch (error) {
-         const errorMessage = error instanceof Error ? error.message : 'Some images could not be uploaded.';
-        toast({ variant: 'destructive', title: 'Upload Failed', description: errorMessage });
-    } finally {
-        setIsUploading(false);
-        setUploadProgress({});
+    for (const file of filesToUpload) {
+        setCurrentFile(file.name);
+        try {
+            const url = await uploadImageAndGetURL(file, user.uid, (progress) => {
+                setUploadProgress(progress);
+            });
+            const updatedPhotos = [...(form.getValues('photos') || []), url];
+            form.setValue('photos', updatedPhotos, { shouldValidate: true });
+            setImagePreviews(updatedPhotos);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : `Could not upload ${file.name}.`;
+            toast({ variant: 'destructive', title: 'Upload Failed', description: errorMessage });
+            // Stop on first error
+            break; 
+        }
     }
+
+    setIsUploading(false);
+    setCurrentFile(null);
+    setUploadProgress(0);
   };
    
   const removeImage = (indexToRemove: number) => {
@@ -592,7 +594,7 @@ export function VehicleReportForm() {
   }
    
   const renderStepContent = () => {
-    if(currentStep === 0) {
+    if (currentStep === 0) {
         return (
              <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
                 <FormField
@@ -933,7 +935,7 @@ export function VehicleReportForm() {
                             <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
                             <Label
                                 htmlFor="file-upload"
-                                className="relative cursor-pointer rounded-md bg-background font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary/80"
+                                className={cn("relative cursor-pointer rounded-md bg-background font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary/80", isUploading && "pointer-events-none opacity-50")}
                             >
                                 <span>{isUploading ? 'Uploading...' : 'Upload files'}</span>
                                 <Input id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept="image/*" disabled={isUploading} />
@@ -943,14 +945,12 @@ export function VehicleReportForm() {
                             <p className="text-xs leading-5 text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
                         </div>
                     </div>
-                    {isUploading && Object.keys(uploadProgress).length > 0 && (
+                     {isUploading && currentFile && (
                         <div className="mt-4 space-y-2">
-                            {Object.entries(uploadProgress).map(([name, progress]) => (
-                                <div key={name}>
-                                    <p className="text-sm text-muted-foreground">{name}</p>
-                                    <Progress value={progress} className="w-full h-2" />
-                                </div>
-                            ))}
+                            <div>
+                                <p className="text-sm text-muted-foreground">Uploading: {currentFile}</p>
+                                <Progress value={uploadProgress} className="w-full h-2" />
+                            </div>
                         </div>
                      )}
                      {imagePreviews.length > 0 && (
@@ -1017,4 +1017,5 @@ export function VehicleReportForm() {
     
 
     
+
 
