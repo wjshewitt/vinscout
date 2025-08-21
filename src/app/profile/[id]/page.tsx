@@ -113,15 +113,15 @@ export default async function ProfilePage({ params }: { params: { id: string } }
     getUserVehicleReports(params.id),
     getUserSightings(params.id)
   ]);
-
+  
   return (
     <div className="container mx-auto py-12 max-w-4xl space-y-8">
       <ProfileHeader profile={profile} />
 
        <Tabs defaultValue="reports" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="reports"><Car className="mr-2" />Vehicle Reports ({reports.length})</TabsTrigger>
-              <TabsTrigger value="sightings"><Eye className="mr-2"/>Sightings ({sightings.length})</TabsTrigger>
+              <TabsTrigger value="reports"><Car className="mr-2 h-4 w-4" />Vehicle Reports ({reports.length})</TabsTrigger>
+              <TabsTrigger value="sightings"><Eye className="mr-2 h-4 w-4" />Sightings ({sightings.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="reports" className="pt-6">
               <UserReports reports={reports} />
@@ -133,3 +133,5 @@ export default async function ProfilePage({ params }: { params: { id: string } }
     </div>
   );
 }
+
+    

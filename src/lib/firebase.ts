@@ -256,14 +256,19 @@ export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' |
             sightingsCount: 0,
         };
 
-        // Ensure optional fields are not sent if they are empty or just whitespace
+        // Ensure optional fields are not sent if they are empty, undefined, or just whitespace
         if (!reportPayload.vin?.trim()) {
             delete reportPayload.vin;
         }
         if (!reportPayload.features?.trim()) {
             delete reportPayload.features;
         }
-        
+        if (reportPayload.rewardAmount === undefined || isNaN(reportPayload.rewardAmount) || reportPayload.rewardAmount <= 0) {
+            delete reportPayload.rewardAmount;
+        }
+        if (!reportPayload.rewardDetails?.trim()) {
+            delete reportPayload.rewardDetails;
+        }
         if (!reportPayload.photos) {
             reportPayload.photos = [];
         }
@@ -1043,7 +1048,12 @@ export const getUserSightings = async (userId: string): Promise<Sighting[]> => {
             return sighting;
         });
         
-        return await Promise.all(sightingsPromises);
+        const sightings = await Promise.all(sightingsPromises);
+        
+        // Manual sort as a fallback / consistent behavior
+        sightings.sort((a, b) => new Date(b.sightedAt).getTime() - new Date(a.sightedAt).getTime());
+        
+        return sightings;
     } catch (error) {
         console.error("Error fetching user sightings:", error);
         return [];
@@ -1055,3 +1065,6 @@ export const getUserSightings = async (userId: string): Promise<Sighting[]> => {
 export { auth, db };
 export type { User, AuthError };
 
+
+
+    
