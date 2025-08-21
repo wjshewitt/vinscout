@@ -9,6 +9,8 @@ import { z } from 'genkit/zod';
 import { getFirestore, serverTimestamp } from 'firebase-admin/firestore';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { HttpsOptions } from 'firebase-functions/v2/https';
+import { DocumentSnapshot } from 'firebase-admin/firestore';
+
 
 // Initialize Firebase Admin SDK if not already done.
 if (getApps().length === 0) {
@@ -52,11 +54,16 @@ const newReportNotifierFlow = ai.defineFlow(
     inputSchema: z.any(),
     outputSchema: z.void(),
   },
-  async (eventData) => {
+  async (event) => {
     console.log('New vehicle report received. Processing for notifications.');
-
-    const reportId = eventData.params.reportId;
-    const reportData = VehicleReportSchema.parse({ ...eventData.data.value.fields, id: reportId });
+    
+    // For 'oncreate' triggers, the new document data is in `event.data.after`.
+    const snapshot = event.data.after as DocumentSnapshot;
+    if (!snapshot) {
+        console.log("No data in the event. Exiting.");
+        return;
+    }
+    const reportData = VehicleReportSchema.parse({ ...snapshot.data(), id: snapshot.id });
 
     if (reportData.status !== 'Active') {
         console.log(`Report for ${reportData.licensePlate} is not active. Skipping notification.`);
@@ -146,5 +153,5 @@ export const newReportNotifier = onFlow(
     },
     httpsOptions: {} as HttpsOptions,
   },
-  (data) => data
+  (data) => data // Pass the entire event object to the flow
 );
