@@ -199,12 +199,6 @@ export const uploadImageAndGetURL = (
   return new Promise((resolve, reject) => {
     if (!userId) {
       reject(new Error("User not authenticated for upload."));
-      logout();
-      toast({
-        variant: "destructive",
-        title: "Session Expired",
-        description: "You have been logged out. Please log in again to upload images.",
-      });
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
