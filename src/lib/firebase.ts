@@ -40,7 +40,8 @@ import {
     arrayRemove,
     runTransaction,
     collectionGroup,
-    FieldValue
+    FieldValue,
+    limit
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { toast } from '@/hooks/use-toast';
@@ -196,6 +197,16 @@ export const uploadImageAndGetURL = (
   onProgress: (progress: number) => void
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
+    if (!userId) {
+      reject(new Error("User not authenticated for upload."));
+      logout();
+      toast({
+        variant: "destructive",
+        title: "Session Expired",
+        description: "You have been logged out. Please log in again to upload images.",
+      });
+      return;
+    }
     if (file.size > 10 * 1024 * 1024) {
       reject(new Error('File is too large. Maximum size is 10MB.'));
       return;
@@ -1052,6 +1063,21 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
     }
     return null;
 }
+
+export const getUserProfileByEmail = async (email: string): Promise<UserProfile | null> => {
+    try {
+        const q = query(collection(db, "users"), where("email", "==", email), limit(1));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            return toUserProfile(querySnapshot.docs[0]);
+        }
+        return null;
+    } catch (error) {
+        console.error("Error fetching user profile by email:", error);
+        return null;
+    }
+}
+
 
 export const getUserSightings = async (userId: string): Promise<Sighting[]> => {
     try {

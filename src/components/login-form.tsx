@@ -10,11 +10,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { signInWithGoogle, signInWithEmail, AuthError } from '@/lib/firebase';
+import { signInWithGoogle, signInWithEmail, AuthError, getUserProfileByEmail, UserProfile } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { getAdditionalUserInfo, User } from 'firebase/auth';
 import { ResetPasswordDialog } from './reset-password-form';
+import { useEffect, useState } from 'react';
+import { useDebounce } from 'use-debounce';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -26,17 +28,41 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export function LoginForm() {
   const router = useRouter();
   const { toast } = useToast();
+  const [preloadedUser, setPreloadedUser] = useState<UserProfile | null>(null);
+
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
+
+  const emailValue = form.watch('email');
+  const [debouncedEmail] = useDebounce(emailValue, 500);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+        // Zod validation for email format
+        const emailCheck = z.string().email().safeParse(debouncedEmail);
+        if (emailCheck.success) {
+            const userProfile = await getUserProfileByEmail(debouncedEmail);
+            setPreloadedUser(userProfile);
+        } else {
+            setPreloadedUser(null);
+        }
+    };
+
+    if (debouncedEmail) {
+        fetchUser();
+    } else {
+        setPreloadedUser(null);
+    }
+  }, [debouncedEmail]);
 
   const handleSuccessfulLogin = (user: User, isNewUser = false) => {
     if (isNewUser) {
         router.replace('/welcome');
     } else {
         toast({
-            title: `Welcome back, ${user.displayName || 'friend'}!`,
+            title: `Welcome back, ${user.displayName || preloadedUser?.displayName || 'friend'}!`,
             description: "You've successfully logged in.",
         });
         router.replace('/dashboard');
@@ -108,7 +134,7 @@ export function LoginForm() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Logging in...' : 'Login'}
+                {form.formState.isSubmitting ? `Logging in, ${preloadedUser?.displayName || 'please wait'}...` : 'Login'}
               </Button>
             </form>
           </Form>
