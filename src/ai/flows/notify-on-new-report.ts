@@ -17,7 +17,6 @@ if (getApps().length === 0) {
 const db = getFirestore();
 
 // Define the structure of the data we expect from the Firestore trigger.
-// This is what the `data()` of the DocumentSnapshot will contain.
 const VehicleReportSchema = z.object({
   make: z.string(),
   model: z.string(),
@@ -30,6 +29,19 @@ const VehicleReportSchema = z.object({
     fullAddress: z.string().optional(),
   }).optional(),
 });
+
+// Define the structure of the user's notification settings.
+const NotificationSettingsSchema = z.object({
+    nationalAlerts: z.boolean().optional(),
+    localAlerts: z.boolean().optional(),
+    email: z.string().optional(),
+    phoneNumber: z.string().optional(),
+    notificationChannels: z.object({
+        email: z.boolean().optional(),
+        sms: z.boolean().optional(),
+        whatsapp: z.boolean().optional(),
+    }).optional(),
+}).optional();
 
 
 // This is the core logic of our flow.
@@ -57,38 +69,44 @@ const newReportNotifierFlow = ai.defineFlow(
         return;
     }
 
-    const usersToNotify: string[] = [];
+    const notificationJobs: Promise<void>[] = [];
 
     usersSnapshot.forEach(doc => {
         const user = doc.data();
-        const settings = user.notificationSettings;
-        if (!settings) {
-            return;
-        }
+        const settings = NotificationSettingsSchema.parse(user.notificationSettings);
+        
+        let shouldNotify = false;
 
         // Case 1: User wants national alerts
-        if (settings.nationalAlerts) {
-            usersToNotify.push(user.uid);
-            console.log(`User ${user.uid} will be notified due to national alert preference.`);
-            return; // Skip to next user
+        if (settings?.nationalAlerts) {
+            shouldNotify = true;
+            console.log(`User ${user.uid} qualifies for notification due to national alert preference.`);
         }
-
-        // Case 2: User wants local alerts and has geofences
-        if (settings.localAlerts && user.geofences?.length > 0) {
+        // Case 2: User wants local alerts
+        else if (settings?.localAlerts && user.geofences?.length > 0) {
             // In a real application, you would check if the new vehicle's location
             // falls within any of the user's geofenced areas.
             // This requires geospatial queries which are complex.
             // For this example, we will just log that we would perform this check.
-            console.log(`User ${user.uid} has local alert preferences. Geospatial check would be performed here.`);
+            console.log(`User ${user.uid} qualifies for notification due to local alert preference. Geospatial check would be performed here.`);
+            shouldNotify = true; // Simulating a match for demonstration purposes.
+        }
+
+        if (shouldNotify && settings?.notificationChannels) {
+            const vehicleInfo = `${reportData.year} ${reportData.make} ${reportData.model}`;
+            
+            // Check which channels are enabled and log the action.
+            if (settings.notificationChannels.email && settings.email) {
+                console.log(`ACTION: Send EMAIL to ${settings.email} for new report on ${vehicleInfo} (${reportData.licensePlate}).`);
+            }
+            if (settings.notificationChannels.sms && settings.phoneNumber) {
+                console.log(`ACTION: Send SMS to ${settings.phoneNumber} for new report on ${vehicleInfo} (${reportData.licensePlate}).`);
+            }
+            if (settings.notificationChannels.whatsapp && settings.phoneNumber) {
+                 console.log(`ACTION: Send WHATSAPP message to ${settings.phoneNumber} for new report on ${vehicleInfo} (${reportData.licensePlate}).`);
+            }
         }
     });
-
-    if (usersToNotify.length > 0) {
-        console.log("Preparing to send notifications to:", usersToNotify);
-        // TODO: Implement actual notification sending logic (e.g., email, push).
-    } else {
-        console.log("No users matched notification criteria for this report.");
-    }
   }
 );
 
