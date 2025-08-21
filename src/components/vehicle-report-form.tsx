@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useForm, useWatch, FormProvider } from 'react-hook-form';
+import { useForm, useWatch, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -313,8 +313,8 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                             <h3 className="text-lg font-semibold">Vehicle Details</h3>
                             <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(1)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
                         </div>
-                        <div className="space-y-2">
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <div className="space-y-2 text-sm">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                             <span>Make:</span> <span className="text-muted-foreground">{data.make}</span>
                             <span>Model:</span> <span className="text-muted-foreground">{data.model}</span>
                             <span>Year:</span> <span className="text-muted-foreground">{data.year}</span>
