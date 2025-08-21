@@ -6,21 +6,14 @@
 import { ai } from '@/ai/genkit';
 import { onDocumentCreated } from 'genkit/firebase';
 import { z } from 'genkit/zod';
-import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, getApps } from 'firebase-admin/app';
 
-const firebaseConfig = {
-  "projectId": "vigilante-garage",
-  "appId": "1:109449796594:web:9cdb5b50aed0dfa46ce96b",
-  "storageBucket": "vigilante-garage.appspot.com",
-  "apiKey": "AIzaSyBdqrM1jTSCT3Iv4alBwpt1I48f4v4qZOg",
-  "authDomain": "vigilante-garage.firebaseapp.com",
-  "messagingSenderId": "109449796594",
-  "measurementId": ""
-};
-
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Initialize Firebase Admin SDK. It automatically uses the project's service account.
+if (getApps().length === 0) {
+    initializeApp();
+}
+const db = getFirestore();
 
 // Define the structure of the data we expect from the Firestore trigger.
 const VehicleReportSchema = z.object({
@@ -47,10 +40,6 @@ export const newReportNotifier = ai.defineFlow(
     }),
   },
   async (reportSnapshot) => {
-    // We can't use the regular firebase admin SDK here in Genkit flows easily,
-    // so we'll use the client SDK to fetch users.
-    // This is not ideal for performance on a large user base but is suitable for this context.
-
     console.log('New vehicle report received. Processing for notifications.');
 
     const reportData = VehicleReportSchema.parse(reportSnapshot.data());
@@ -60,8 +49,8 @@ export const newReportNotifier = ai.defineFlow(
         return;
     }
 
-    const usersRef = collection(db, 'users');
-    const usersSnapshot = await getDocs(usersRef);
+    const usersRef = db.collection('users');
+    const usersSnapshot = await usersRef.get();
 
     if (usersSnapshot.empty) {
         console.log("No users found to notify.");
