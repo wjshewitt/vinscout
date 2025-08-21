@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X, Search, Check, ChevronsUpDown, Car, Eye, Calendar, User, Flag, ShieldCheck } from 'lucide-react';
+import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X, Search, Check, ChevronsUpDown, Car, Eye, Calendar, User, Flag, ShieldCheck, Pencil } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { submitVehicleReport, VehicleReport, LocationInfo, uploadImageAndGetURL } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
@@ -33,6 +33,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
+import { sub, formatISO } from 'date-fns';
 
 const locationSchema = z.object({
   street: z.string().min(1, 'Street is required'),
@@ -580,6 +581,11 @@ export function VehicleReportForm() {
     form.setValue('photos', updatedPhotos, { shouldValidate: true });
     setImagePreviews(updatedPhotos);
   };
+  
+  const setDatePreset = (unit: 'days' | 'weeks' | 'months', amount: number) => {
+      const newDate = sub(new Date(), { [unit]: amount });
+      form.setValue('date', formatISO(newDate, { representation: 'date' }));
+  }
 
   async function onSubmit(data: ReportFormValues) {
     if (!user) {
@@ -909,9 +915,15 @@ export function VehicleReportForm() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Date of Theft</FormLabel>
+                             <p className="text-sm text-muted-foreground">If you do not know exactly when the vehicle was stolen, please estimate or choose one of the below options.</p>
                             <FormControl>
-                            <Input type="date" {...field} className="h-12 rounded-lg" />
+                                <Input type="date" {...field} className="h-12 rounded-lg" />
                             </FormControl>
+                             <div className="flex gap-2 pt-2">
+                                <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('days', 1)}>Today</Button>
+                                <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('weeks', 1)}>Last Week</Button>
+                                <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('months', 1)}>Last Month</Button>
+                            </div>
                             <FormMessage />
                         </FormItem>
                         )}

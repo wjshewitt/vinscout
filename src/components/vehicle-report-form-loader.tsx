@@ -1,3 +1,4 @@
+
 'use client';
 
 import dynamic from 'next/dynamic';
@@ -9,6 +10,7 @@ const VehicleReportForm = dynamic(
   () => import('@/components/vehicle-report-form').then((mod) => mod.VehicleReportForm),
   {
     loading: () => <div className="p-8"><Skeleton className="h-[500px] w-full" /></div>,
+     ssr: false
   }
 );
 
