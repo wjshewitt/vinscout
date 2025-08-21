@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { Header } from '@/components/layout/header';
 import { Providers } from '@/components/layout/providers';
 import { Footer } from '@/components/layout/footer';
-import { SessionWatcher } from '@/components/layout/session-watcher';
 
 
 export const metadata: Metadata = {
@@ -28,7 +27,6 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased bg-background text-foreground flex flex-col min-h-screen">
         <Providers>
-            <SessionWatcher />
             <Header />
             <main className="flex-1 bg-gradient-to-b from-background to-gray-900">{children}</main>
             <Footer />

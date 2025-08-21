@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 function Logo() {
   return (
@@ -126,9 +127,14 @@ export function Header() {
 function UserMenu({ isMobile = false }) {
   const { user } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
 
   const handleLogout = async () => {
     await logout();
+    toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+    });
     router.push('/');
   };
 

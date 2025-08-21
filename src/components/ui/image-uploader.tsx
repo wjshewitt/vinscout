@@ -46,9 +46,13 @@ export function ImageUploader({
 
     // --- Pre-upload checks ---
     if (!userId) {
-      // The global SessionWatcher will handle logout and messaging.
-      // We just need to prevent the upload from starting.
       setError("You must be logged in to upload images.");
+       toast({
+            variant: 'destructive',
+            title: 'Authentication Required',
+            description: 'Please log in again to upload images.',
+       });
+       router.push('/login');
       return;
     }
     
