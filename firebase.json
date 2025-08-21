@@ -2,7 +2,7 @@
 {
   "functions": [
     {
-      "source": ".genkit/dist/functions",
+      "source": ".genkit/dist",
       "codebase": "default",
       "runtime": "nodejs20",
       "ignore": [
