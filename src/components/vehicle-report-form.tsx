@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useForm, useWatch, useFormContext } from 'react-hook-form';
+import { useForm, useWatch, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -13,15 +13,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X, Search, Check, ChevronsUpDown, Car, Eye, Calendar, User, Flag, ShieldCheck, Pencil, AlertCircle } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
-import { submitVehicleReport, VehicleReport, LocationInfo } from '@/lib/firebase';
+import { submitVehicleReport, LocationInfo } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useDebouncedCallback } from 'use-debounce';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { Progress } from './ui/progress';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
 import {
@@ -68,7 +67,7 @@ type FieldName = keyof ReportFormValues;
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear - i);
 
-const steps: { title: string; fields: (keyof ReportFormValues)[] }[] = [
+const steps: { title: string; fields: FieldName[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
     { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
     { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng', 'rewardAmount', 'rewardDetails'] },
@@ -162,7 +161,7 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
             setMarkerPos({lat: form.getValues('lat'), lng: form.getValues('lng')});
         }
       }
-    }, [form]);
+    }, []);
 
 
     return (
@@ -422,21 +421,25 @@ export function VehicleReportForm() {
   }, [toast]);
    
   useEffect(() => {
-    const savedFormData = localStorage.getItem('vehicleReportForm');
-    if (savedFormData) {
-        try {
-            const parsedData = JSON.parse(savedFormData);
-            form.reset(parsedData);
-        } catch (e) {
-            console.error("Could not parse saved form data", e);
-            localStorage.removeItem('vehicleReportForm');
+    if (typeof window !== 'undefined') {
+        const savedFormData = localStorage.getItem('vehicleReportForm');
+        if (savedFormData) {
+            try {
+                const parsedData = JSON.parse(savedFormData);
+                form.reset(parsedData);
+            } catch (e) {
+                console.error("Could not parse saved form data", e);
+                localStorage.removeItem('vehicleReportForm');
+            }
         }
     }
   }, [form]);
 
   useEffect(() => {
     const subscription = form.watch((value) => {
-      localStorage.setItem('vehicleReportForm', JSON.stringify(value));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vehicleReportForm', JSON.stringify(value));
+      }
     });
     return () => subscription.unsubscribe();
   }, [form]);
@@ -486,11 +489,7 @@ export function VehicleReportForm() {
   const handleLocationChange = useCallback(({ lat, lng, locationInfo }: { lat: number; lng: number; locationInfo: LocationInfo }) => {
     form.setValue('lat', lat);
     form.setValue('lng', lng);
-    form.setValue('location.street', locationInfo.street || '');
-    form.setValue('location.city', locationInfo.city || '');
-    form.setValue('location.postcode', locationInfo.postcode || '');
-    form.setValue('location.country', locationInfo.country || '');
-    form.setValue('location.fullAddress', locationInfo.fullAddress || '', { shouldValidate: true });
+    form.setValue('location', locationInfo, { shouldValidate: true });
   }, [form]);
   
   const setDatePreset = (unit: 'days' | 'weeks' | 'months', amount: number) => {
@@ -531,7 +530,9 @@ export function VehicleReportForm() {
               description: 'Your stolen vehicle report has been submitted successfully.',
             });
             form.reset();
-            localStorage.removeItem('vehicleReportForm');
+            if(typeof window !== 'undefined') {
+                localStorage.removeItem('vehicleReportForm');
+            }
             router.push(`/vehicles/${reportId}`);
         } else {
             throw new Error("Submission failed to return an ID.");
@@ -571,6 +572,7 @@ export function VehicleReportForm() {
                                     <PopoverTrigger asChild>
                                         <FormControl>
                                             <Button
+                                                type="button"
                                                 variant="outline"
                                                 role="combobox"
                                                 className={cn(
@@ -631,6 +633,7 @@ export function VehicleReportForm() {
                                       <PopoverTrigger asChild>
                                         <FormControl>
                                             <Button
+                                                type="button"
                                                 variant="outline"
                                                 role="combobox"
                                                 disabled={!selectedMake}
@@ -698,6 +701,7 @@ export function VehicleReportForm() {
                                     <PopoverTrigger asChild>
                                         <FormControl>
                                             <Button
+                                                type="button"
                                                 variant="outline"
                                                 role="combobox"
                                                 className={cn(
@@ -816,7 +820,7 @@ export function VehicleReportForm() {
         case 2:
             return (
                 <div className="space-y-6">
-                    <APIProvider apiKey={apiKey}>
+                    <APIProvider apiKey={apiKey!}>
                         <LocationPicker onLocationChange={handleLocationChange} />
                     </APIProvider>
                      
@@ -906,7 +910,7 @@ export function VehicleReportForm() {
   };
 
   return (
-    <Form {...form}>
+    <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <div className="space-y-6">
             {renderStepContent()}
@@ -935,6 +939,6 @@ export function VehicleReportForm() {
           </div>
         </div>
       </form>
-    </Form>
+    </FormProvider>
   );
 }
