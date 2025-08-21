@@ -60,7 +60,7 @@ const firebaseConfig = {
 const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
+const storage = getStorage(app, firebaseConfig.storageBucket);
 const googleProvider = new GoogleAuthProvider();
 
 
@@ -185,10 +185,15 @@ export const uploadImageAndGetURL = (
   onProgress: (progress: number) => void
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      reject(new Error('File is too large. Maximum size is 10MB.'));
+      return;
+    }
+
     const timestamp = new Date().getTime();
     const randomSuffix = Math.random().toString(36).substring(2, 8);
-    const fileName = `${userId}-${timestamp}-${randomSuffix}.jpg`;
-    const storageRef = ref(storage, `vehicle-photos/${fileName}`);
+    const fileName = `${userId}-${timestamp}-${randomSuffix}-${file.name}`;
+    const storageRef = ref(storage, `vehicle-photos/${userId}/${fileName}`);
 
     const uploadTask = uploadBytesResumable(storageRef, file);
 

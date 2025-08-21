@@ -514,8 +514,8 @@ export function VehicleReportForm() {
         setImagePreviews(updatedPhotos);
         toast({ title: 'Upload Complete', description: 'All images have been uploaded.' });
     } catch (error) {
-         console.error("Error uploading files:", error);
-        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Some images could not be uploaded.' });
+         const errorMessage = error instanceof Error ? error.message : 'Some images could not be uploaded.';
+        toast({ variant: 'destructive', title: 'Upload Failed', description: errorMessage });
     } finally {
         setIsUploading(false);
         setUploadProgress({});
@@ -592,391 +592,393 @@ export function VehicleReportForm() {
   }
    
   const renderStepContent = () => {
-    switch (currentStep) {
-        case 0:
-            return (
-                 <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-                    <FormField
-                        control={form.control}
-                        name="make"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                                <FormLabel>Make</FormLabel>
-                                  <Popover open={isMakePopoverOpen} onOpenChange={setIsMakePopoverOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn(
-                                                    "w-full justify-between h-12 rounded-lg",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                            >
-                                                {field.value || "Select Make"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput 
-                                              placeholder="Search make..."
-                                            />
-                                            <CommandEmpty>No make found.</CommandEmpty>
-                                            <CommandList>
-                                                <CommandGroup>
-                                                    {makes.map((make) => (
-                                                        <CommandItem
-                                                            value={make}
-                                                            key={make}
-                                                            onSelect={() => {
-                                                                form.setValue("make", make);
-                                                                handleMakeChange(make);
-                                                                setIsMakePopoverOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    make === field.value
-                                                                        ? "opacity-100"
-                                                                        : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {make}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                  </Popover>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                     <FormField
-                        control={form.control}
-                        name="model"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                                <FormLabel>Model</FormLabel>
-                                  <Popover open={isModelPopoverOpen} onOpenChange={setIsModelPopoverOpen}>
-                                      <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                disabled={!selectedMake}
-                                                className={cn(
-                                                    "w-full justify-between h-12 rounded-lg",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                            >
-                                                {field.value || "Select or Type Model"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                          <Command
-                                            filter={(value, search) => {
-                                                if (value.toLowerCase().includes(search.toLowerCase())) return 1
-                                                return 0
-                                            }}
-                                          >
-                                              <CommandInput 
-                                                  placeholder="Search or type model..."
-                                                  onValueChange={field.onChange}
-                                                  value={field.value}
-                                              />
-                                              <CommandEmpty>No model found. You can type a custom one.</CommandEmpty>
-                                              <CommandList>
-                                                  <CommandGroup>
-                                                      {models.map((model) => (
-                                                          <CommandItem
-                                                              value={model}
-                                                              key={model}
-                                                              onSelect={(currentValue) => {
-                                                                  form.setValue("model", currentValue === field.value ? "" : currentValue)
-                                                                  setIsModelPopoverOpen(false)
-                                                              }}
-                                                          >
-                                                              <Check
-                                                                  className={cn(
-                                                                      "mr-2 h-4 w-4",
-                                                                      model === field.value
-                                                                          ? "opacity-100"
-                                                                          : "opacity-0"
-                                                                  )}
-                                                              />
-                                                              {model}
-                                                          </CommandItem>
-                                                      ))}
-                                                  </CommandGroup>
-                                              </CommandList>
-                                          </Command>
-                                      </PopoverContent>
-                                  </Popover>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="year"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                                <FormLabel>Year</FormLabel>
-                                <Popover open={isYearPopoverOpen} onOpenChange={setIsYearPopoverOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn(
-                                                    "w-full justify-between h-12 rounded-lg",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                            >
-                                                {field.value || "Select Year"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search year..." />
-                                            <CommandEmpty>No year found.</CommandEmpty>
-                                            <CommandList>
-                                                <CommandGroup>
-                                                    {years.map((year) => (
-                                                        <CommandItem
-                                                            value={year.toString()}
-                                                            key={year}
-                                                            onSelect={() => {
-                                                                form.setValue("year", year);
-                                                                setIsYearPopoverOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    year === field.value
-                                                                        ? "opacity-100"
-                                                                        : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {year}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                 </div>
-            );
-        case 1:
-            return (
-                 <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-                    <FormField
-                        control={form.control}
-                        name="color"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Color</FormLabel>
-                            <FormControl>
-                            <Input placeholder="e.g., Python Green" {...field} className="h-12 rounded-lg" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="licensePlate"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>License Plate Number</FormLabel>
-                            <FormControl>
-                            <Input placeholder="Enter License Plate Number" {...field} className="h-12 rounded-lg" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <div className="sm:col-span-2">
-                    <FormField
-                        control={form.control}
-                        name="vin"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>VIN (Optional)</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Enter Vehicle Identification Number" {...field} value={field.value ?? ''} className="h-12 rounded-lg" />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                    </div>
-                    <div className="sm:col-span-2">
-                    <FormField
-                        control={form.control}
-                        name="features"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Distinctive Features (Optional)</FormLabel>
-                            <FormControl>
-                            <Textarea
-                                placeholder="e.g., Carbon fiber roof, aftermarket wheels, small dent on rear bumper"
-                                className="resize-none min-h-[100px] rounded-lg"
-                                {...field}
-                                value={field.value ?? ''}
-                            />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    </div>
-                </div>
-            );
-        case 2:
-            return (
-                <div className="grid grid-cols-1 gap-x-8 gap-y-6">
-                    <APIProvider apiKey={apiKey}>
-                        <LocationPicker onLocationChange={handleLocationChange} />
-                    </APIProvider>
-                     
-                    <FormField
-                        control={form.control}
-                        name="date"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Date of Theft</FormLabel>
-                             <p className="text-sm text-muted-foreground">If you do not know exactly when the vehicle was stolen, please estimate or choose one of the below options.</p>
-                            <FormControl>
-                                <Input type="date" {...field} className="h-12 rounded-lg" />
-                            </FormControl>
-                             <div className="flex gap-2 pt-2">
-                                <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('days', 1)}>Today</Button>
-                                <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('weeks', 1)}>Last Week</Button>
-                                <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('months', 1)}>Last Month</Button>
-                            </div>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                </div>
-            );
-        case 3:
-            return (
-                 <div className="grid grid-cols-1 gap-x-8 gap-y-6">
-                    <div>
-                        <div className="flex items-center space-x-2 mb-4">
-                            <Switch id="reward-switch" checked={showReward} onCheckedChange={setShowReward} />
-                            <Label htmlFor="reward-switch">Offer a reward?</Label>
-                        </div>
-                        {showReward && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
-                                <FormField
-                                    control={form.control}
-                                    name="rewardAmount"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Reward Amount (£)</FormLabel>
-                                        <div className="relative">
-                                            <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                            <FormControl>
-                                                <Input type="number" {...field} value={field.value ?? ''} className="pl-10 h-12 rounded-lg" />
-                                            </FormControl>
-                                        </div>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="rewardDetails"
-                                    render={({ field }) => (
-                                    <FormItem className="md:col-span-2">
-                                        <FormLabel>Reward Details</FormLabel>
-                                        <FormControl>
-                                        <Textarea
-                                            placeholder="e.g., Reward for information leading to recovery..."
-                                            className="resize-none min-h-[100px] rounded-lg"
-                                            {...field}
-                                            value={field.value ?? ''}
-                                        />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                            </div>
-                        )}
-                    </div>
-                     <div>
-                        <FormLabel>Upload Photos (Optional)</FormLabel>
-                        <div className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10">
-                            <div className="text-center">
-                                <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                                <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
-                                <Label
-                                    htmlFor="file-upload"
-                                    className="relative cursor-pointer rounded-md bg-background font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary/80"
-                                >
-                                    <span>{isUploading ? 'Uploading...' : 'Upload files'}</span>
-                                    <Input id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept="image/*" disabled={isUploading} />
-                                </Label>
-                                <p className="pl-1">or drag and drop</p>
-                                </div>
-                                <p className="text-xs leading-5 text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
-                            </div>
-                        </div>
-                        {isUploading && Object.keys(uploadProgress).length > 0 && (
-                            <div className="mt-4 space-y-2">
-                                {Object.entries(uploadProgress).map(([name, progress]) => (
-                                    <div key={name}>
-                                        <p className="text-sm text-muted-foreground">{name}</p>
-                                        <Progress value={progress} className="w-full h-2" />
-                                    </div>
-                                ))}
-                            </div>
-                         )}
-                         {imagePreviews.length > 0 && (
-                            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {imagePreviews.map((src, index) => (
-                                    <div key={index} className="relative group">
-                                        <Image src={src} alt={`Preview ${index}`} width={150} height={150} className="rounded-lg object-cover aspect-square" />
+    if(currentStep === 0) {
+        return (
+             <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+                <FormField
+                    control={form.control}
+                    name="make"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Make</FormLabel>
+                              <Popover open={isMakePopoverOpen} onOpenChange={setIsMakePopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <FormControl>
                                         <Button
-                                            type="button"
-                                            variant="destructive"
-                                            size="icon"
-                                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            onClick={() => removeImage(index)}
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn(
+                                                "w-full justify-between h-12 rounded-lg",
+                                                !field.value && "text-muted-foreground"
+                                            )}
                                         >
-                                            <X className="h-4 w-4" />
+                                            {field.value || "Select Make"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                 </div>
-            );
-        case 4:
-            return <PreviewStep data={form.getValues()} onEdit={(step) => setCurrentStep(step)} />;
-        default:
-            return null;
+                                    </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                        <CommandInput 
+                                          placeholder="Search make..."
+                                        />
+                                        <CommandEmpty>No make found.</CommandEmpty>
+                                        <CommandList>
+                                            <CommandGroup>
+                                                {makes.map((make) => (
+                                                    <CommandItem
+                                                        value={make}
+                                                        key={make}
+                                                        onSelect={() => {
+                                                            form.setValue("make", make);
+                                                            handleMakeChange(make);
+                                                            setIsMakePopoverOpen(false);
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                make === field.value
+                                                                    ? "opacity-100"
+                                                                    : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {make}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                              </Popover>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="model"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Model</FormLabel>
+                              <Popover open={isModelPopoverOpen} onOpenChange={setIsModelPopoverOpen}>
+                                  <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            disabled={!selectedMake}
+                                            className={cn(
+                                                "w-full justify-between h-12 rounded-lg",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {field.value || "Select or Type Model"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </FormControl>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                      <Command
+                                        filter={(value, search) => {
+                                            if (value.toLowerCase().includes(search.toLowerCase())) return 1
+                                            return 0
+                                        }}
+                                      >
+                                          <CommandInput 
+                                              placeholder="Search or type model..."
+                                              onValueChange={field.onChange}
+                                              value={field.value}
+                                          />
+                                          <CommandEmpty>No model found. You can type a custom one.</CommandEmpty>
+                                          <CommandList>
+                                              <CommandGroup>
+                                                  {models.map((model) => (
+                                                      <CommandItem
+                                                          value={model}
+                                                          key={model}
+                                                          onSelect={(currentValue) => {
+                                                              form.setValue("model", currentValue === field.value ? "" : currentValue)
+                                                              setIsModelPopoverOpen(false)
+                                                          }}
+                                                      >
+                                                          <Check
+                                                              className={cn(
+                                                                  "mr-2 h-4 w-4",
+                                                                  model === field.value
+                                                                      ? "opacity-100"
+                                                                      : "opacity-0"
+                                                              )}
+                                                          />
+                                                          {model}
+                                                      </CommandItem>
+                                                  ))}
+                                              </CommandGroup>
+                                          </CommandList>
+                                      </Command>
+                                  </PopoverContent>
+                              </Popover>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="year"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Year</FormLabel>
+                            <Popover open={isYearPopoverOpen} onOpenChange={setIsYearPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn(
+                                                "w-full justify-between h-12 rounded-lg",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {field.value || "Select Year"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Search year..." />
+                                        <CommandEmpty>No year found.</CommandEmpty>
+                                        <CommandList>
+                                            <CommandGroup>
+                                                {years.map((year) => (
+                                                    <CommandItem
+                                                        value={year.toString()}
+                                                        key={year}
+                                                        onSelect={() => {
+                                                            form.setValue("year", year);
+                                                            setIsYearPopoverOpen(false);
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                year === field.value
+                                                                    ? "opacity-100"
+                                                                    : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {year}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+             </div>
+        );
     }
+    if (currentStep === 1) {
+        return (
+             <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+                <FormField
+                    control={form.control}
+                    name="color"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Color</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g., Python Green" {...field} className="h-12 rounded-lg" />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="licensePlate"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>License Plate Number</FormLabel>
+                        <FormControl>
+                        <Input placeholder="Enter License Plate Number" {...field} className="h-12 rounded-lg" />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <div className="sm:col-span-2">
+                <FormField
+                    control={form.control}
+                    name="vin"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>VIN (Optional)</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Enter Vehicle Identification Number" {...field} value={field.value ?? ''} className="h-12 rounded-lg" />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+                <div className="sm:col-span-2">
+                <FormField
+                    control={form.control}
+                    name="features"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Distinctive Features (Optional)</FormLabel>
+                        <FormControl>
+                        <Textarea
+                            placeholder="e.g., Carbon fiber roof, aftermarket wheels, small dent on rear bumper"
+                            className="resize-none min-h-[100px] rounded-lg"
+                            {...field}
+                            value={field.value ?? ''}
+                        />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                </div>
+            </div>
+        );
+    }
+    if (currentStep === 2) {
+        return (
+            <div className="grid grid-cols-1 gap-x-8 gap-y-6">
+                <APIProvider apiKey={apiKey}>
+                    <LocationPicker onLocationChange={handleLocationChange} />
+                </APIProvider>
+                 
+                <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Date of Theft</FormLabel>
+                         <p className="text-sm text-muted-foreground">If you do not know exactly when the vehicle was stolen, please estimate or choose one of the below options.</p>
+                        <FormControl>
+                            <Input type="date" {...field} className="h-12 rounded-lg" />
+                        </FormControl>
+                         <div className="flex gap-2 pt-2">
+                            <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('days', 1)}>Today</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('weeks', 1)}>Last Week</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('months', 1)}>Last Month</Button>
+                        </div>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
+        );
+    }
+    if (currentStep === 3) {
+        return (
+             <div className="grid grid-cols-1 gap-x-8 gap-y-6">
+                <div>
+                    <div className="flex items-center space-x-2 mb-4">
+                        <Switch id="reward-switch" checked={showReward} onCheckedChange={setShowReward} />
+                        <Label htmlFor="reward-switch">Offer a reward?</Label>
+                    </div>
+                    {showReward && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
+                            <FormField
+                                control={form.control}
+                                name="rewardAmount"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Reward Amount (£)</FormLabel>
+                                    <div className="relative">
+                                        <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                        <FormControl>
+                                            <Input type="number" {...field} value={field.value ?? ''} className="pl-10 h-12 rounded-lg" />
+                                        </FormControl>
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="rewardDetails"
+                                render={({ field }) => (
+                                <FormItem className="md:col-span-2">
+                                    <FormLabel>Reward Details</FormLabel>
+                                    <FormControl>
+                                    <Textarea
+                                        placeholder="e.g., Reward for information leading to recovery..."
+                                        className="resize-none min-h-[100px] rounded-lg"
+                                        {...field}
+                                        value={field.value ?? ''}
+                                    />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                        </div>
+                    )}
+                </div>
+                 <div>
+                    <FormLabel>Upload Photos (Optional)</FormLabel>
+                    <div className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10">
+                        <div className="text-center">
+                            <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+                            <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
+                            <Label
+                                htmlFor="file-upload"
+                                className="relative cursor-pointer rounded-md bg-background font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary/80"
+                            >
+                                <span>{isUploading ? 'Uploading...' : 'Upload files'}</span>
+                                <Input id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept="image/*" disabled={isUploading} />
+                            </Label>
+                            <p className="pl-1">or drag and drop</p>
+                            </div>
+                            <p className="text-xs leading-5 text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
+                        </div>
+                    </div>
+                    {isUploading && Object.keys(uploadProgress).length > 0 && (
+                        <div className="mt-4 space-y-2">
+                            {Object.entries(uploadProgress).map(([name, progress]) => (
+                                <div key={name}>
+                                    <p className="text-sm text-muted-foreground">{name}</p>
+                                    <Progress value={progress} className="w-full h-2" />
+                                </div>
+                            ))}
+                        </div>
+                     )}
+                     {imagePreviews.length > 0 && (
+                        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {imagePreviews.map((src, index) => (
+                                <div key={index} className="relative group">
+                                    <Image src={src} alt={`Preview ${index}`} width={150} height={150} className="rounded-lg object-cover aspect-square" />
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="icon"
+                                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        onClick={() => removeImage(index)}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+             </div>
+        );
+    }
+    if (currentStep === 4) {
+      return <PreviewStep data={form.getValues()} onEdit={(step) => setCurrentStep(step)} />;
+    }
+    return null;
   };
 
   return (
