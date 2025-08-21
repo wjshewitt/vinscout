@@ -5,13 +5,14 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { uploadImageAndGetURL } from '@/lib/firebase'; // Your existing upload function
+import { uploadImageAndGetURL, logout } from '@/lib/firebase'; // Your existing upload function
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { Upload, X, Loader2, AlertCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface ImageUploaderProps {
   // The ID of the current user, required for the upload path.
@@ -34,6 +35,7 @@ export function ImageUploader({
   maxFileSizeMB = 10,
 }: ImageUploaderProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +46,14 @@ export function ImageUploader({
 
     // --- Pre-upload checks ---
     if (!userId) {
-      setError("You must be logged in to upload images.");
+      setError("Your session has expired. Please log in again to upload images.");
+      toast({
+        variant: 'destructive',
+        title: 'Session Expired',
+        description: 'You have been logged out for security. Please log in again.'
+      });
+      await logout();
+      router.push('/login');
       return;
     }
     
