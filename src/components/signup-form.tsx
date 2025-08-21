@@ -34,7 +34,7 @@ export function SignupForm() {
   async function onSubmit(data: SignupFormValues) {
     const result = await signUpWithEmail(data.name, data.email, data.password);
     if (result.user) {
-      router.push('/welcome');
+      router.replace('/welcome');
     } else if (result.error) {
         let description = 'An unknown error occurred. Please try again.';
         if(result.error.code === 'auth/email-already-in-use') {
@@ -54,9 +54,9 @@ export function SignupForm() {
         const additionalInfo = getAdditionalUserInfo(result);
         // Only new users go to the welcome page
         if (additionalInfo?.isNewUser) {
-            router.push('/welcome');
+            router.replace('/welcome');
         } else {
-            router.push('/dashboard');
+            router.replace('/dashboard');
         }
     }
   };

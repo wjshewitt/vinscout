@@ -33,13 +33,13 @@ export function LoginForm() {
 
   const handleSuccessfulLogin = (user: User, isNewUser = false) => {
     if (isNewUser) {
-        router.push('/welcome');
+        router.replace('/welcome');
     } else {
         toast({
             title: `Welcome back, ${user.displayName || 'friend'}!`,
             description: "You've successfully logged in.",
         });
-        router.push('/dashboard');
+        router.replace('/dashboard');
     }
   };
 
