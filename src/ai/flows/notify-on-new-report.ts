@@ -52,11 +52,11 @@ const newReportNotifierFlow = ai.defineFlow(
     inputSchema: z.any(),
     outputSchema: z.void(),
   },
-  async (reportSnapshot) => {
+  async (eventData) => {
     console.log('New vehicle report received. Processing for notifications.');
-    
-    const reportId = reportSnapshot.id;
-    const reportData = VehicleReportSchema.parse({ ...reportSnapshot.data(), id: reportId });
+
+    const reportId = eventData.params.reportId;
+    const reportData = VehicleReportSchema.parse({ ...eventData.data.value.fields, id: reportId });
 
     if (reportData.status !== 'Active') {
         console.log(`Report for ${reportData.licensePlate} is not active. Skipping notification.`);
