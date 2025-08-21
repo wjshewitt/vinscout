@@ -58,13 +58,14 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
+const auth = getAuth(app, {
+  persistence: browserSessionPersistence,
+  authDomain: firebaseConfig.authDomain,
+});
 const db = getFirestore(app);
 const storage = getStorage(app, firebaseConfig.storageBucket);
 const googleProvider = new GoogleAuthProvider();
 
-
-setPersistence(auth, browserSessionPersistence);
 
 // Helper function to create user profile document
 const createUserProfileDocument = async (user: User, details: { displayName?: string } = {}) => {
@@ -967,3 +968,5 @@ export const deleteUserGeofence = async (userId: string, locationName: string) =
 
 export { auth, db };
 export type { User, AuthError };
+
+    
