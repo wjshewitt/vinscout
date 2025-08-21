@@ -1,3 +1,6 @@
+
+'use client';
+
 import { VehicleReportFormLoader } from '@/components/vehicle-report-form-loader';
 
 export default function ReportVehiclePage() {
