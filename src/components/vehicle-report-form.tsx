@@ -251,52 +251,6 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
     );
 }
 
-const compressImage = (file: File, quality = 0.7): Promise<File> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = document.createElement('img');
-            img.src = event.target?.result as string;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 1920;
-                const MAX_HEIGHT = 1080;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
-                    }
-                } else {
-                    if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
-                    }
-                }
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx?.drawImage(img, 0, 0, width, height);
-                canvas.toBlob((blob) => {
-                    if (blob) {
-                        resolve(new File([blob], file.name, {
-                            type: 'image/jpeg',
-                            lastModified: Date.now()
-                        }));
-                    } else {
-                        reject(new Error('Canvas to Blob conversion failed'));
-                    }
-                }, 'image/jpeg', quality);
-            };
-            img.onerror = reject;
-        };
-        reader.onerror = reject;
-    });
-};
-
 function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: number) => void }) {
     const formatDate = (dateString: string) => {
       if (!dateString) return 'N/A';
@@ -542,22 +496,14 @@ export function VehicleReportForm() {
     const files = event.target.files;
     if (!files || !user) return;
 
+    const filesToUpload = Array.from(files);
+
     setIsUploading(true);
-    toast({ title: 'Processing Images', description: 'Compressing and uploading images...' });
+    toast({ title: 'Uploading Images...', description: 'Please wait while your images are uploaded.' });
 
-    const compressedFiles: { originalName: string, file: File }[] = [];
-    for (const file of Array.from(files)) {
-        try {
-            const compressed = await compressImage(file);
-            compressedFiles.push({ originalName: file.name, file: compressed });
-        } catch (error) {
-             toast({ variant: 'destructive', title: `Error compressing ${file.name}`, description: 'Skipping this file.' });
-        }
-    }
-
-    const uploadPromises = compressedFiles.map(({ file, originalName }) => 
+    const uploadPromises = filesToUpload.map((file) => 
         uploadImageAndGetURL(file, user.uid, (progress) => {
-            setUploadProgress(prev => ({ ...prev, [originalName]: progress }));
+            setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
         })
     );
      
