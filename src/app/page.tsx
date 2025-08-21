@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 import { Search, AlertTriangle, Loader2, Car, CheckCircle, Eye } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
@@ -16,6 +16,8 @@ import { getVehicleReports, VehicleReport, LocationInfo } from '@/lib/firebase';
 import { useDebounce } from 'use-debounce';
 import { useRouter } from 'next/navigation';
 
+const REPORTS_PER_PAGE = 10;
+
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
   const [reports, setReports] = useState<VehicleReport[]>([]);
@@ -23,6 +25,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
   const router = useRouter();
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -37,6 +40,7 @@ export default function Home() {
   const isLoggedIn = !!user;
 
   const filteredReports = useMemo(() => {
+    setCurrentPage(1); // Reset to first page on search
     if (!debouncedSearchQuery) {
       return reports;
     }
@@ -49,8 +53,15 @@ export default function Home() {
       report.licensePlate.toLowerCase().replace(/\s/g, '').includes(lowercasedQuery.replace(/\s/g, ''))
     );
   }, [reports, debouncedSearchQuery]);
+  
+  const totalPages = Math.ceil(filteredReports.length / REPORTS_PER_PAGE);
+  const paginatedReports = useMemo(() => {
+      const startIndex = (currentPage - 1) * REPORTS_PER_PAGE;
+      return filteredReports.slice(startIndex, startIndex + REPORTS_PER_PAGE);
+  }, [filteredReports, currentPage]);
 
-  const recentVehicles = useMemo(() => filteredReports.slice(0, 3), [filteredReports]);
+
+  const recentVehicles = useMemo(() => reports.slice(0, 3), [reports]);
   
   const stats = useMemo(() => {
     if (loading) return { active: 0, recovered: 0, sightings: 0 };
@@ -83,6 +94,12 @@ export default function Home() {
         return location.fullAddress || location.city || 'Unknown Location';
     }
     return location.city || location.fullAddress || 'Unknown Location';
+  };
+  
+  const handlePageChange = (page: number) => {
+      if (page >= 1 && page <= totalPages) {
+          setCurrentPage(page);
+      }
   };
 
   return (
@@ -206,8 +223,8 @@ export default function Home() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredReports.length > 0 ? (
-                  filteredReports.map((vehicle) => (
+                {paginatedReports.length > 0 ? (
+                  paginatedReports.map((vehicle) => (
                     <TableRow 
                         key={vehicle.id} 
                         className="cursor-pointer" 
@@ -248,19 +265,39 @@ export default function Home() {
         </CardContent>
       </Card>
       
-      <Pagination className="mt-8">
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious href="#" />
-          </PaginationItem>
-          <PaginationItem>
-            <PaginationLink href="#">1</PaginationLink>
-          </PaginationItem>
-          <PaginationItem>
-            <PaginationNext href="#" />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
+       {totalPages > 1 && (
+         <Pagination className="mt-8">
+            <PaginationContent>
+                <PaginationItem>
+                    <PaginationPrevious 
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); handlePageChange(currentPage - 1); }}
+                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : undefined}
+                    />
+                </PaginationItem>
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <PaginationItem key={page}>
+                        <PaginationLink 
+                            href="#"
+                            onClick={(e) => { e.preventDefault(); handlePageChange(page); }}
+                            isActive={currentPage === page}
+                        >
+                            {page}
+                        </PaginationLink>
+                    </PaginationItem>
+                ))}
+
+                <PaginationItem>
+                    <PaginationNext 
+                         href="#"
+                         onClick={(e) => { e.preventDefault(); handlePageChange(currentPage + 1); }}
+                         className={currentPage === totalPages ? 'pointer-events-none opacity-50' : undefined}
+                    />
+                </PaginationItem>
+            </PaginationContent>
+        </Pagination>
+       )}
 
     </div>
   );
