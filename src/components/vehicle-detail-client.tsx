@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, PoundSterling, ShieldCheck, Pencil } from 'lucide-react';
+import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, PoundSterling, ShieldCheck, Pencil, Car } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
@@ -477,42 +477,9 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
         <CardContent>
           <div className="grid md:grid-cols-2 gap-8">
             <div>
-               {hasPhotos ? (
-                 <Carousel className="w-full">
-                    <CarouselContent>
-                        {vehicle.photos?.map((photo, index) => (
-                            <CarouselItem key={index}>
-                                <div className="aspect-video w-full relative">
-                                    <Image
-                                        src={photo}
-                                        alt={`${vehicle.make} ${vehicle.model} photo ${index + 1}`}
-                                        fill
-                                        className="rounded-lg object-cover"
-                                        data-ai-hint="car side"
-                                    />
-                                </div>
-                            </CarouselItem>
-                        ))}
-                    </CarouselContent>
-                    {vehicle.photos && vehicle.photos.length > 1 && (
-                        <>
-                            <CarouselPrevious />
-                            <CarouselNext />
-                        </>
-                    )}
-                </Carousel>
-               ) : (
-                <div className="aspect-video w-full mb-4 relative">
-                    <Image
-                    src="https://placehold.co/800x600.png"
-                    alt={`${vehicle.make} ${vehicle.model}`}
-                    width={800}
-                    height={600}
-                    className="rounded-lg object-cover w-full h-full"
-                    data-ai-hint="car side"
-                    />
-              </div>
-               )}
+               <div className="aspect-video w-full mb-4 relative bg-muted rounded-lg flex items-center justify-center">
+                   <Car className="h-24 w-24 text-muted-foreground" />
+               </div>
             </div>
             <div className="space-y-6">
               <div>

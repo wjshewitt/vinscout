@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X, Search, Check, ChevronsUpDown, Car, Eye, Calendar, User, Flag, ShieldCheck, Pencil } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
-import { submitVehicleReport, VehicleReport, LocationInfo, uploadImageAndGetURL } from '@/lib/firebase';
+import { submitVehicleReport, VehicleReport, LocationInfo } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
@@ -34,7 +34,6 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel"
 import { sub, formatISO } from 'date-fns';
-import { ImageUploader } from '@/components/ui/image-uploader';
 
 const locationSchema = z.object({
   street: z.string().min(1, 'Street is required'),
@@ -57,7 +56,6 @@ const reportSchema = z.object({
   additionalInfo: z.string().optional(),
   lat: z.number({ required_error: 'Please select a location on the map.' }),
   lng: z.number({ required_error: 'Please select a location on the map.' }),
-  photos: z.array(z.string()).optional(),
   rewardAmount: z.coerce.number().optional(),
   rewardDetails: z.string().optional(),
 });
@@ -72,7 +70,7 @@ const steps: { title: string; fields: (keyof ReportFormValues)[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
     { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
     { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng'] },
-    { title: 'Reward & Photos', fields: ['rewardAmount', 'rewardDetails', 'photos'] },
+    { title: 'Reward & Photos', fields: ['rewardAmount', 'rewardDetails'] },
     { title: 'Review & Submit', fields: [] },
 ];
 
@@ -260,7 +258,6 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
     };
 
     const hasReward = data.rewardAmount || data.rewardDetails;
-    const hasPhotos = data.photos && data.photos.length > 0;
 
     return (
         <div className="space-y-6">
@@ -282,25 +279,10 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                 <CardContent>
                   <div className="grid md:grid-cols-2 gap-8">
                     <div>
-                       {hasPhotos ? (
-                         <Carousel className="w-full">
-                            <CarouselContent>
-                                {data.photos?.map((photo, index) => (
-                                    <CarouselItem key={index}>
-                                        <div className="aspect-video w-full relative">
-                                            <Image src={photo} alt={`Preview ${index}`} fill className="rounded-lg object-cover" />
-                                        </div>
-                                    </CarouselItem>
-                                ))}
-                            </CarouselContent>
-                             {data.photos!.length > 1 && <> <CarouselPrevious /> <CarouselNext /> </>}
-                        </Carousel>
-                       ) : (
                         <div className="aspect-video w-full mb-4 relative bg-muted rounded-lg flex items-center justify-center">
                             <Car className="h-16 w-16 text-muted-foreground" />
                         </div>
-                       )}
-                       <Button variant="outline" size="sm" onClick={() => onEdit(3)} className="mt-2 w-full"><Pencil className="mr-2 h-3 w-3" /> Edit Photos & Reward</Button>
+                       <p className="text-sm text-center text-muted-foreground">Image upload is temporarily disabled.</p>
                     </div>
                     <div className="space-y-6">
                       <div>
@@ -333,6 +315,7 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                                     <p className="text-2xl font-bold text-primary">£{data.rewardAmount.toLocaleString()}</p>
                                 )}
                                 {data.rewardDetails && <p className="text-sm text-muted-foreground mt-1">{data.rewardDetails}</p>}
+                                <Button variant="ghost" size="sm" onClick={() => onEdit(3)} className="mt-2 w-full"><Pencil className="mr-2 h-3 w-3" /> Edit Reward</Button>
                             </div>
                             <Separator />
                          </>
@@ -381,7 +364,6 @@ export function VehicleReportForm() {
       location: { street: '', city: '', postcode: '', country: '', fullAddress: '' },
       date: '',
       additionalInfo: '',
-      photos: [],
       rewardAmount: undefined,
       rewardDetails: '',
     },
@@ -390,12 +372,6 @@ export function VehicleReportForm() {
   const selectedMake = useWatch({
     control: form.control,
     name: 'make',
-  });
-   
-  const photoUrls = useWatch({
-      control: form.control,
-      name: 'photos',
-      defaultValue: [],
   });
 
   useEffect(() => {
@@ -884,15 +860,15 @@ export function VehicleReportForm() {
                     )}
                 </div>
                 <div>
-                    {user && (
-                        <ImageUploader
-                            userId={user.uid}
-                            imageUrls={photoUrls || []}
-                            onUrlsChange={(newUrls) => {
-                                form.setValue('photos', newUrls, { shouldValidate: true, shouldDirty: true });
-                            }}
-                        />
-                    )}
+                   <Label>Upload Photos</Label>
+                   <div className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10">
+                        <div className="text-center">
+                            <Car className="mx-auto h-12 w-12 text-muted-foreground" />
+                            <p className="mt-4 text-sm text-muted-foreground">
+                                Image upload is temporarily disabled. You can add photos after submitting the report.
+                            </p>
+                        </div>
+                    </div>
                 </div>
              </div>
         );

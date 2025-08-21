@@ -179,52 +179,13 @@ export const deleteUserAccount = async () => {
     }
 };
 
-export const uploadImageAndGetURL = (
-  file: File,
-  userId: string,
-  onProgress: (progress: number) => void
-): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
-      reject(new Error('File is too large. Maximum size is 10MB.'));
-      return;
-    }
-
-    const timestamp = new Date().getTime();
-    const randomSuffix = Math.random().toString(36).substring(2, 8);
-    const fileName = `${userId}-${timestamp}-${randomSuffix}-${file.name}`;
-    const storageRef = ref(storage, `vehicle-photos/${userId}/${fileName}`);
-
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        onProgress(progress);
-      },
-      (error) => {
-        console.error('Upload failed:', error);
-        reject(error);
-      },
-      () => {
-        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-          resolve(downloadURL);
-        });
-      }
-    );
-  });
-};
-
-
-export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'sightingsCount'> & { reporterId: string }) => {
+export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'sightingsCount' | 'photos'> & { reporterId: string }) => {
     if (!auth.currentUser || auth.currentUser.uid !== reportData.reporterId) {
         console.error("User is not authenticated or does not match reporter ID.");
         return null;
     }
 
     try {
-        // Image URLs are already in reportData.photos, no upload needed here.
         const reportPayload: any = {
             ...reportData,
             reportedAt: serverTimestamp(),

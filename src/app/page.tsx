@@ -128,8 +128,8 @@ export default function Home() {
             {recentVehicles.map(vehicle => (
               <Card key={vehicle.id} className="overflow-hidden hover:border-primary transition-colors">
                  <Link href={`/vehicles/${vehicle.id}`}>
-                  <div className="aspect-video w-full">
-                    <Image src={vehicle.photos?.[0] || "https://placehold.co/600x400.png"} alt={`${vehicle.make} ${vehicle.model}`} width={600} height={400} className="object-cover w-full h-full" data-ai-hint="car front" />
+                  <div className="aspect-video w-full bg-muted flex items-center justify-center">
+                    <Car className="h-16 w-16 text-muted-foreground" />
                   </div>
                   <CardHeader>
                     <CardTitle>{vehicle.make} {vehicle.model}</CardTitle>
@@ -207,8 +207,9 @@ export default function Home() {
                       <TableCell>
                         <div className="flex items-center gap-4">
                           <Avatar className="h-10 w-10 rounded-md">
-                            <AvatarImage src={vehicle.photos?.[0] || 'https://placehold.co/40x40.png'} alt={vehicle.make} data-ai-hint="car front" />
-                            <AvatarFallback className="rounded-md">{vehicle.make.charAt(0)}</AvatarFallback>
+                            <AvatarFallback className="rounded-md bg-muted">
+                                <Car className="h-5 w-5 text-muted-foreground"/>
+                            </AvatarFallback>
                           </Avatar>
                           <div>
                             <div className="font-medium">{vehicle.make} {vehicle.model}</div>

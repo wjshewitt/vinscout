@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { VehicleReport } from '@/lib/firebase';
-import { X, Calendar, MapPin as MapPinIcon } from 'lucide-react';
+import { X, Calendar, MapPin as MapPinIcon, Car } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VehicleInfoPanelProps {
@@ -42,14 +42,8 @@ export function VehicleInfoPanel({ vehicle, onClose }: VehicleInfoPanelProps) {
                     <CardDescription>{vehicle.year} &middot; {vehicle.color}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 space-y-4 p-6 pt-0 overflow-y-auto">
-                   <div className="aspect-video w-full relative overflow-hidden rounded-lg">
-                        <Image 
-                            src={vehicle.photos?.[0] || "https://placehold.co/600x400.png"}
-                            alt={`${vehicle.make} ${vehicle.model}`}
-                            fill
-                            className="object-cover"
-                            data-ai-hint="car side"
-                        />
+                   <div className="aspect-video w-full relative overflow-hidden rounded-lg bg-muted flex items-center justify-center">
+                        <Car className="h-16 w-16 text-muted-foreground" />
                    </div>
                    <div className="space-y-2 text-sm">
                      <div className="flex items-center gap-2">
