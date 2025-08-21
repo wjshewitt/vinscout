@@ -69,7 +69,7 @@ const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear -
 const steps: { title: string; fields: (keyof ReportFormValues)[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
     { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
-    { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng'] },
+    { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng', 'rewardAmount', 'rewardDetails'] },
     { title: 'Review & Submit', fields: [] },
 ];
 
@@ -281,7 +281,6 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                         <div className="aspect-video w-full mb-4 relative bg-muted rounded-lg flex items-center justify-center">
                             <Car className="h-16 w-16 text-muted-foreground" />
                         </div>
-                       <p className="text-sm text-center text-muted-foreground">Image upload is disabled.</p>
                     </div>
                     <div className="space-y-6">
                       <div>
@@ -314,7 +313,7 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                                     <p className="text-2xl font-bold text-primary">£{data.rewardAmount.toLocaleString()}</p>
                                 )}
                                 {data.rewardDetails && <p className="text-sm text-muted-foreground mt-1">{data.rewardDetails}</p>}
-                                <Button variant="ghost" size="sm" onClick={() => onEdit(3)} className="mt-2 w-full"><Pencil className="mr-2 h-3 w-3" /> Edit Reward</Button>
+                                <Button variant="ghost" size="sm" onClick={() => onEdit(2)} className="mt-2 w-full"><Pencil className="mr-2 h-3 w-3" /> Edit Reward</Button>
                             </div>
                             <Separator />
                          </>
@@ -780,7 +779,7 @@ export function VehicleReportForm() {
     }
     if (currentStep === 2) {
         return (
-            <div className="grid grid-cols-1 gap-x-8 gap-y-6">
+            <div className="space-y-6">
                 <APIProvider apiKey={apiKey}>
                     <LocationPicker onLocationChange={handleLocationChange} />
                 </APIProvider>
@@ -804,6 +803,51 @@ export function VehicleReportForm() {
                     </FormItem>
                     )}
                 />
+
+                <Separator />
+                
+                <div className="space-y-4">
+                    <div>
+                        <h3 className="text-lg font-medium">Offer a Reward (Optional)</h3>
+                        <p className="text-sm text-muted-foreground">You can offer a reward for information that leads to the recovery of your vehicle.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="rewardAmount"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Reward Amount (£)</FormLabel>
+                                <div className="relative">
+                                    <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                    <FormControl>
+                                        <Input type="number" {...field} className="pl-10 h-12 rounded-lg" value={field.value ?? ''}/>
+                                    </FormControl>
+                                </div>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                    <FormField
+                        control={form.control}
+                        name="rewardDetails"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Reward Details</FormLabel>
+                            <FormControl>
+                            <Textarea
+                                placeholder="e.g., Reward for information leading to recovery..."
+                                className="resize-none rounded-lg"
+                                {...field}
+                                value={field.value ?? ''}
+                            />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
             </div>
         );
     }
