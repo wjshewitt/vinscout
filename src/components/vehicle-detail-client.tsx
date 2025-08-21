@@ -166,7 +166,7 @@ function EditReportDialog({ vehicle, onUpdate }: { vehicle: VehicleReport, onUpd
             color: vehicle.color || '',
             vin: vehicle.vin || '',
             features: vehicle.features || '',
-            rewardAmount: vehicle.rewardAmount || undefined,
+            rewardAmount: vehicle.rewardAmount || 0,
             rewardDetails: vehicle.rewardDetails || '',
         },
     });
