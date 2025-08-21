@@ -645,11 +645,10 @@ export function VehicleReportForm() {
     );
   }
    
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <div className="space-y-6">
-            {currentStep === 0 && (
+  const renderStepContent = () => {
+    switch (currentStep) {
+        case 0:
+            return (
                  <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
                     <FormField
                         control={form.control}
@@ -836,8 +835,9 @@ export function VehicleReportForm() {
                         )}
                     />
                  </div>
-            )}
-             {currentStep === 1 && (
+            );
+        case 1:
+            return (
                  <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
                     <FormField
                         control={form.control}
@@ -901,9 +901,9 @@ export function VehicleReportForm() {
                     />
                     </div>
                 </div>
-            )}
-
-            {currentStep === 2 && (
+            );
+        case 2:
+            return (
                 <div className="grid grid-cols-1 gap-x-8 gap-y-6">
                     <APIProvider apiKey={apiKey}>
                         <LocationPicker onLocationChange={handleLocationChange} />
@@ -929,9 +929,9 @@ export function VehicleReportForm() {
                         )}
                     />
                 </div>
-            )}
-            
-            {currentStep === 3 && (
+            );
+        case 3:
+            return (
                  <div className="grid grid-cols-1 gap-x-8 gap-y-6">
                     <div>
                         <div className="flex items-center space-x-2 mb-4">
@@ -1025,10 +1025,19 @@ export function VehicleReportForm() {
                         )}
                     </div>
                  </div>
-            )}
-             {currentStep === 4 && (
-                <PreviewStep data={form.getValues()} onEdit={(step) => setCurrentStep(step)} />
-            )}
+            );
+        case 4:
+            return <PreviewStep data={form.getValues()} onEdit={(step) => setCurrentStep(step)} />;
+        default:
+            return null;
+    }
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <div className="space-y-6">
+            {renderStepContent()}
         </div>
         
         <div className="flex justify-between items-center pt-8 border-t">
@@ -1057,4 +1066,6 @@ export function VehicleReportForm() {
     </Form>
   );
 }
+    
+
     
