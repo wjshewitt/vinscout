@@ -276,7 +276,7 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                       </div>
                       <CardDescription>Reported Stolen on {formatDate(new Date().toISOString())}</CardDescription>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => onEdit(0)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(0)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -301,14 +301,14 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                                 <Car className="h-16 w-16 text-muted-foreground" />
                             </div>
                         )}
-                        <Button variant="ghost" size="sm" onClick={() => onEdit(3)} className="mt-2 w-full"><Pencil className="mr-2 h-3 w-3" /> Edit Photos</Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(3)} className="mt-2 w-full"><Pencil className="mr-2 h-3 w-3" /> Edit Photos</Button>
 
                     </div>
                     <div className="space-y-6">
                       <div>
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="text-lg font-semibold">Vehicle Details</h3>
-                            <Button variant="ghost" size="sm" onClick={() => onEdit(1)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(1)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
                         </div>
                         <div className="space-y-2">
                             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -342,7 +342,7 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                       <div>
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="text-lg font-semibold">Last Known Information</h3>
-                             <Button variant="ghost" size="sm" onClick={() => onEdit(2)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
+                             <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(2)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
                         </div>
                         <p className="text-sm"><strong>Date of Theft:</strong> {formatDate(data.date)}</p>
                         <p className="text-sm"><strong>Original Location:</strong> {data.location.fullAddress}</p>
