@@ -1,7 +1,16 @@
 
 'use client';
 
-import { VehicleReportFormLoader } from '@/components/vehicle-report-form-loader';
+import dynamic from 'next/dynamic';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const VehicleReportForm = dynamic(
+  () => import('@/components/vehicle-report-form').then((mod) => mod.VehicleReportForm),
+  {
+    loading: () => <div className="p-8"><Skeleton className="h-[500px] w-full" /></div>,
+  }
+);
+
 
 export default function ReportVehiclePage() {
   return (
@@ -16,7 +25,7 @@ export default function ReportVehiclePage() {
           </p>
         </div>
         <div className="mt-12 bg-card/50 backdrop-blur-sm border border-border rounded-2xl p-8">
-          <VehicleReportFormLoader />
+          <VehicleReportForm />
         </div>
       </div>
     </main>

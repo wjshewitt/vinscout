@@ -1,6 +1,5 @@
 
 'use client';
-export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, useRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -356,3 +355,5 @@ export default function MessagesPage() {
     </>
   );
 }
+
+    
