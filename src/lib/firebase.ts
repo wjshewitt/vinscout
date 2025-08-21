@@ -42,7 +42,7 @@ import {
     collectionGroup,
     FieldValue
 } from 'firebase/firestore';
-import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { toast } from '@/hooks/use-toast';
 import _ from 'lodash';
 
@@ -179,43 +179,49 @@ export const deleteUserAccount = async () => {
     }
 };
 
-const uploadImageAndGetURL = async (base64: string, userId: string): Promise<string> => {
+export const uploadImageAndGetURL = (
+  file: File,
+  userId: string,
+  onProgress: (progress: number) => void
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
     const timestamp = new Date().getTime();
     const randomSuffix = Math.random().toString(36).substring(2, 8);
     const fileName = `${userId}-${timestamp}-${randomSuffix}.jpg`;
     const storageRef = ref(storage, `vehicle-photos/${fileName}`);
-    
-    // The base64 string from canvas.toDataURL is 'data:image/jpeg;base64,....'
-    // We need to strip the header for uploadString
-    const base64Data = base64.split(',')[1];
-    
-    await uploadString(storageRef, base64Data, 'base64', {
-        contentType: 'image/jpeg'
-    });
-    
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
+
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        onProgress(progress);
+      },
+      (error) => {
+        console.error('Upload failed:', error);
+        reject(error);
+      },
+      () => {
+        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+          resolve(downloadURL);
+        });
+      }
+    );
+  });
 };
 
 
-export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'reporterId' | 'sightingsCount'>) => {
-    if (!auth.currentUser) {
-        console.error("No user is signed in to submit a report.");
+export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'sightingsCount'> & { reporterId: string }) => {
+    if (!auth.currentUser || auth.currentUser.uid !== reportData.reporterId) {
+        console.error("User is not authenticated or does not match reporter ID.");
         return null;
     }
-    const userId = auth.currentUser.uid;
 
     try {
-        // 1. Upload images to Firebase Storage and get their URLs in parallel
-        const imageUrls = await Promise.all(
-            (reportData.photos || []).map(photoBase64 => uploadImageAndGetURL(photoBase64, userId))
-        );
-
-        // 2. Prepare the report payload for Firestore, now with image URLs
+        // Image URLs are already in reportData.photos, no upload needed here.
         const reportPayload: any = {
             ...reportData,
-            photos: imageUrls, // Overwrite with URLs
-            reporterId: userId,
             reportedAt: serverTimestamp(),
             status: 'Active',
             sightingsCount: 0,
@@ -229,7 +235,6 @@ export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' |
             delete reportPayload.features;
         }
 
-        // 3. Add the document to Firestore
         const docRef = await addDoc(collection(db, 'vehicleReports'), reportPayload);
         
         return docRef.id;

@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X, Search, Check, ChevronsUpDown } from 'lucide-react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { submitVehicleReport, VehicleReport, LocationInfo } from '@/lib/firebase';
+import { submitVehicleReport, VehicleReport, LocationInfo, uploadImageAndGetURL } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
@@ -23,6 +23,7 @@ import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { Progress } from './ui/progress';
 
 const locationSchema = z.object({
   street: z.string().min(1, 'Street is required'),
@@ -240,7 +241,7 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
 }
 
 // Helper function to compress images client-side
-const compressImage = (file: File, quality = 0.7): Promise<string> => {
+const compressImage = (file: File, quality = 0.7): Promise<File> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -249,14 +250,40 @@ const compressImage = (file: File, quality = 0.7): Promise<string> => {
             img.src = event.target?.result as string;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 1920;
+                const MAX_HEIGHT = 1080;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
                 const ctx = canvas.getContext('2d');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx?.drawImage(img, 0, 0);
-                resolve(canvas.toDataURL('image/jpeg', quality));
+                ctx?.drawImage(img, 0, 0, width, height);
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        resolve(new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        }));
+                    } else {
+                        reject(new Error('Canvas to Blob conversion failed'));
+                    }
+                }, 'image/jpeg', quality);
             };
+            img.onerror = reject;
         };
-        reader.onerror = error => reject(error);
+        reader.onerror = reject;
     });
 };
 
@@ -272,6 +299,7 @@ export function VehicleReportForm() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   
   const [isMakePopoverOpen, setIsMakePopoverOpen] = useState(false);
   const [isModelPopoverOpen, setIsModelPopoverOpen] = useState(false);
@@ -393,30 +421,42 @@ export function VehicleReportForm() {
     form.setValue('location.fullAddress', locationInfo.fullAddress || '', { shouldValidate: true });
   }, [form]);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files) return;
+    if (!files || !user) return;
 
     setIsUploading(true);
-    toast({ title: 'Processing Images', description: 'Compressing images for upload...' });
-    const newImagePromises: Promise<string>[] = [];
+    toast({ title: 'Processing Images', description: 'Compressing and uploading images...' });
 
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        newImagePromises.push(compressImage(file));
+    const compressedFiles: { originalName: string, file: File }[] = [];
+    for (const file of Array.from(files)) {
+        try {
+            const compressed = await compressImage(file);
+            compressedFiles.push({ originalName: file.name, file: compressed });
+        } catch (error) {
+             toast({ variant: 'destructive', title: `Error compressing ${file.name}`, description: 'Skipping this file.' });
+        }
     }
+
+    const uploadPromises = compressedFiles.map(({ file, originalName }) => 
+        uploadImageAndGetURL(file, user.uid, (progress) => {
+            setUploadProgress(prev => ({ ...prev, [originalName]: progress }));
+        })
+    );
      
-    Promise.all(newImagePromises).then(newImages => {
-        const updatedPhotos = [...(form.getValues('photos') || []), ...newImages];
+    try {
+        const urls = await Promise.all(uploadPromises);
+        const updatedPhotos = [...(form.getValues('photos') || []), ...urls];
         form.setValue('photos', updatedPhotos, { shouldValidate: true });
         setImagePreviews(updatedPhotos);
+        toast({ title: 'Upload Complete', description: 'All images have been uploaded.' });
+    } catch (error) {
+         console.error("Error uploading files:", error);
+        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Some images could not be uploaded.' });
+    } finally {
         setIsUploading(false);
-        toast({ title: 'Images Ready', description: 'Your photos have been added to the report.' });
-    }).catch(error => {
-        console.error("Error processing files:", error);
-        toast({ variant: 'destructive', title: 'Error processing files', description: 'There was a problem preparing your images.' });
-        setIsUploading(false);
-    });
+        setUploadProgress({});
+    }
   };
    
   const removeImage = (indexToRemove: number) => {
@@ -449,7 +489,7 @@ export function VehicleReportForm() {
             return;
         }
      
-        const reportId = await submitVehicleReport(data as Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'reporterId' | 'sightingsCount'>);
+        const reportId = await submitVehicleReport({ ...data, reporterId: user.uid });
 
         if (reportId) {
             toast({
@@ -818,7 +858,7 @@ export function VehicleReportForm() {
                                     htmlFor="file-upload"
                                     className="relative cursor-pointer rounded-md bg-background font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary/80"
                                 >
-                                    <span>{isUploading ? 'Processing...' : 'Upload files'}</span>
+                                    <span>{isUploading ? 'Uploading...' : 'Upload files'}</span>
                                     <Input id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept="image/*" disabled={isUploading} />
                                 </Label>
                                 <p className="pl-1">or drag and drop</p>
@@ -826,6 +866,16 @@ export function VehicleReportForm() {
                                 <p className="text-xs leading-5 text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
                             </div>
                         </div>
+                        {isUploading && Object.keys(uploadProgress).length > 0 && (
+                            <div className="mt-4 space-y-2">
+                                {Object.entries(uploadProgress).map(([name, progress]) => (
+                                    <div key={name}>
+                                        <p className="text-sm text-muted-foreground">{name}</p>
+                                        <Progress value={progress} className="w-full h-2" />
+                                    </div>
+                                ))}
+                            </div>
+                         )}
                          {imagePreviews.length > 0 && (
                             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {imagePreviews.map((src, index) => (
@@ -864,7 +914,7 @@ export function VehicleReportForm() {
                 Next <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
-              <Button type="submit" disabled={isSubmitting || authLoading}>
+              <Button type="submit" disabled={isSubmitting || authLoading || isUploading}>
                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {isSubmitting ? 'Submitting...' : 'Submit Report'}
               </Button>
