@@ -475,28 +475,32 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div>
-               <div className="aspect-video w-full mb-4 relative bg-muted rounded-lg flex items-center justify-center">
-                    {hasPhotos ? (
-                        <Carousel className="w-full h-full">
-                            <CarouselContent>
-                                {vehicle.photos.map((src, index) => (
-                                <CarouselItem key={index}>
-                                    <div className="relative w-full h-full aspect-video">
-                                        <Image src={src} alt={`Vehicle photo ${index + 1}`} layout="fill" objectFit="cover" className="rounded-lg" />
-                                    </div>
-                                </CarouselItem>
-                                ))}
-                            </CarouselContent>
-                            <CarouselPrevious className="left-2" />
-                            <CarouselNext className="right-2" />
-                        </Carousel>
-                    ) : (
-                        <Car className="h-24 w-24 text-muted-foreground" />
-                    )}
-               </div>
-            </div>
+          <div className="w-full mb-8">
+             <div className="aspect-video w-full relative bg-muted rounded-lg flex items-center justify-center">
+                  {hasPhotos ? (
+                      <Carousel className="w-full h-full">
+                          <CarouselContent>
+                              {vehicle.photos.map((src, index) => (
+                              <CarouselItem key={index}>
+                                  <div className="relative w-full h-full aspect-video">
+                                      <Image src={src} alt={`Vehicle photo ${index + 1}`} layout="fill" objectFit="cover" className="rounded-lg" />
+                                  </div>
+                              </CarouselItem>
+                              ))}
+                          </CarouselContent>
+                          {vehicle.photos.length > 1 && (
+                            <>
+                                <CarouselPrevious className="left-2" />
+                                <CarouselNext className="right-2" />
+                            </>
+                          )}
+                      </Carousel>
+                  ) : (
+                      <Car className="h-24 w-24 text-muted-foreground" />
+                  )}
+             </div>
+          </div>
+          <div className="grid md:grid-cols-2 gap-x-8 gap-y-6">
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold mb-2">Vehicle Details</h3>
@@ -512,6 +516,17 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                 </div>
               </div>
               <Separator />
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Last Known Information</h3>
+                <p className="text-sm"><strong>Date of Theft:</strong> {formatDate(vehicle.date)}</p>
+                <p className="text-sm"><strong>Original Location:</strong> {vehicle.location.fullAddress}</p>
+                {mostRecentSighting && (
+                    <p className="text-sm text-primary"><strong>Last Sighting:</strong> {mostRecentSighting.location.fullAddress}</p>
+                )}
+                <p className="text-sm mt-2"><strong>Details:</strong> {vehicle.features || 'No additional details provided.'}</p>
+              </div>
+            </div>
+            <div className="space-y-6">
                {hasReward && (
                  <>
                     <div>
@@ -535,23 +550,13 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                     <Separator />
                  </>
                )}
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Last Known Information</h3>
-                <p className="text-sm"><strong>Date of Theft:</strong> {formatDate(vehicle.date)}</p>
-                <p className="text-sm"><strong>Original Location:</strong> {vehicle.location.fullAddress}</p>
-                {mostRecentSighting && (
-                    <p className="text-sm text-primary"><strong>Last Sighting:</strong> {mostRecentSighting.location.fullAddress}</p>
-                )}
-                <p className="text-sm mt-2"><strong>Details:</strong> {vehicle.features || 'No additional details provided.'}</p>
-              </div>
-              <Separator />
-              <div>
+              
                 {authLoading ? (
                   <Loader2 className="animate-spin text-primary" />
                 ) : !isOwner && vehicle.status === 'Active' && (
                   <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button size="lg" className="w-full" disabled={!isLoggedIn}>
+                      <Button size="lg" className="w-full">
                         <MessageSquare className="mr-2 h-4 w-4" /> Message Owner
                       </Button>
                     </DialogTrigger>
@@ -620,7 +625,6 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                     )}
                   </Dialog>
                 )}
-              </div>
             </div>
           </div>
         </CardContent>
