@@ -1019,7 +1019,11 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
 
 export const getUserSightings = async (userId: string): Promise<Sighting[]> => {
     try {
-        const q = query(collectionGroup(db, 'sightings'), where('sighterId', '==', userId), orderBy('sightedAt', 'desc'));
+        const q = query(
+            collectionGroup(db, 'sightings'), 
+            where('sighterId', '==', userId),
+            orderBy('sightedAt', 'desc')
+        );
         const querySnapshot = await getDocs(q);
         
         const sightingsPromises = querySnapshot.docs.map(async (docSnap) => {
