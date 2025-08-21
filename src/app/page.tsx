@@ -40,7 +40,6 @@ export default function Home() {
   const isLoggedIn = !!user;
 
   const filteredReports = useMemo(() => {
-    setCurrentPage(1); // Reset to first page on search
     if (!debouncedSearchQuery) {
       return reports;
     }
@@ -53,6 +52,10 @@ export default function Home() {
       report.licensePlate.toLowerCase().replace(/\s/g, '').includes(lowercasedQuery.replace(/\s/g, ''))
     );
   }, [reports, debouncedSearchQuery]);
+  
+  useEffect(() => {
+      setCurrentPage(1);
+  }, [debouncedSearchQuery]);
   
   const totalPages = Math.ceil(filteredReports.length / REPORTS_PER_PAGE);
   const paginatedReports = useMemo(() => {
