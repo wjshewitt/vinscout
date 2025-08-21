@@ -34,6 +34,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel"
 import { sub, formatISO } from 'date-fns';
+import { ImageUploader } from '@/components/ui/image-uploader';
 
 const locationSchema = z.object({
   street: z.string().min(1, 'Street is required'),
@@ -363,11 +364,6 @@ export function VehicleReportForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showReward, setShowReward] = useState(false);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [currentFile, setCurrentFile] = useState<string | null>(null);
   
   const [isMakePopoverOpen, setIsMakePopoverOpen] = useState(false);
   const [isModelPopoverOpen, setIsModelPopoverOpen] = useState(false);
@@ -396,15 +392,11 @@ export function VehicleReportForm() {
     name: 'make',
   });
    
-  const currentPhotos = useWatch({
-    control: form.control,
-    name: 'photos',
-    defaultValue: []
+  const photoUrls = useWatch({
+      control: form.control,
+      name: 'photos',
+      defaultValue: [],
   });
-
-  useEffect(() => {
-    setImagePreviews(currentPhotos || []);
-  }, [currentPhotos]);
 
   useEffect(() => {
     const fetchMakes = async () => {
@@ -493,42 +485,6 @@ export function VehicleReportForm() {
     form.setValue('location.country', locationInfo.country || '');
     form.setValue('location.fullAddress', locationInfo.fullAddress || '', { shouldValidate: true });
   }, [form]);
-  
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || !user) return;
-
-    const filesToUpload = Array.from(files);
-
-    setIsUploading(true);
-
-    for (const file of filesToUpload) {
-        setCurrentFile(file.name);
-        try {
-            const url = await uploadImageAndGetURL(file, user.uid, (progress) => {
-                setUploadProgress(progress);
-            });
-            const updatedPhotos = [...(form.getValues('photos') || []), url];
-            form.setValue('photos', updatedPhotos, { shouldValidate: true });
-            setImagePreviews(updatedPhotos);
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : `Could not upload ${file.name}.`;
-            toast({ variant: 'destructive', title: 'Upload Failed', description: errorMessage });
-            // Stop on first error
-            break; 
-        }
-    }
-
-    setIsUploading(false);
-    setCurrentFile(null);
-    setUploadProgress(0);
-  };
-   
-  const removeImage = (indexToRemove: number) => {
-    const updatedPhotos = (form.getValues('photos') || []).filter((_, index) => index !== indexToRemove);
-    form.setValue('photos', updatedPhotos, { shouldValidate: true });
-    setImagePreviews(updatedPhotos);
-  };
   
   const setDatePreset = (unit: 'days' | 'weeks' | 'months', amount: number) => {
       const newDate = sub(new Date(), { [unit]: amount });
@@ -927,49 +883,15 @@ export function VehicleReportForm() {
                         </div>
                     )}
                 </div>
-                 <div>
-                    <FormLabel>Upload Photos (Optional)</FormLabel>
-                    <div className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10">
-                        <div className="text-center">
-                            <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
-                            <Label
-                                htmlFor="file-upload"
-                                className={cn("relative cursor-pointer rounded-md bg-background font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary/80", isUploading && "pointer-events-none opacity-50")}
-                            >
-                                <span>{isUploading ? 'Uploading...' : 'Upload files'}</span>
-                                <Input id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept="image/*" disabled={isUploading} />
-                            </Label>
-                            <p className="pl-1">or drag and drop</p>
-                            </div>
-                            <p className="text-xs leading-5 text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
-                        </div>
-                    </div>
-                     {isUploading && currentFile && (
-                        <div className="mt-4 space-y-2">
-                            <div>
-                                <p className="text-sm text-muted-foreground">Uploading: {currentFile}</p>
-                                <Progress value={uploadProgress} className="w-full h-2" />
-                            </div>
-                        </div>
-                     )}
-                     {imagePreviews.length > 0 && (
-                        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {imagePreviews.map((src, index) => (
-                                <div key={index} className="relative group">
-                                    <Image src={src} alt={`Preview ${index}`} width={150} height={150} className="rounded-lg object-cover aspect-square" />
-                                    <Button
-                                        type="button"
-                                        variant="destructive"
-                                        size="icon"
-                                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        onClick={() => removeImage(index)}
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
+                <div>
+                    {user && (
+                        <ImageUploader
+                            userId={user.uid}
+                            imageUrls={photoUrls || []}
+                            onUrlsChange={(newUrls) => {
+                                form.setValue('photos', newUrls, { shouldValidate: true, shouldDirty: true });
+                            }}
+                        />
                     )}
                 </div>
              </div>
@@ -1003,7 +925,7 @@ export function VehicleReportForm() {
                 Next <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
-              <Button type="submit" disabled={isSubmitting || authLoading || isUploading}>
+              <Button type="submit" disabled={isSubmitting || authLoading}>
                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {isSubmitting ? 'Submitting...' : 'Submit Report'}
               </Button>
@@ -1014,8 +936,3 @@ export function VehicleReportForm() {
     </Form>
   );
 }
-    
-
-    
-
-
