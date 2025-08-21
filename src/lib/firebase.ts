@@ -526,8 +526,20 @@ const toUserProfile = (docSnap: any): UserProfile => {
     const data = docSnap.data();
     return {
         ...data,
+        uid: docSnap.id,
         createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
     } as UserProfile;
+}
+
+export const getAllUsers = async (): Promise<UserProfile[]> => {
+    try {
+        const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(toUserProfile);
+    } catch (error) {
+        console.error("Error fetching all users:", error);
+        return [];
+    }
 }
 
 
