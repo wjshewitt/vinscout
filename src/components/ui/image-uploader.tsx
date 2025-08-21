@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { uploadImageAndGetURL, logout } from '@/lib/firebase'; // Your existing upload function
+import { uploadImageAndGetURL } from '@/lib/firebase'; // Your existing upload function
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -46,14 +46,9 @@ export function ImageUploader({
 
     // --- Pre-upload checks ---
     if (!userId) {
-      setError("Your session has expired. Please log in again to upload images.");
-      toast({
-        variant: 'destructive',
-        title: 'Session Expired',
-        description: 'You have been logged out for security. Please log in again.'
-      });
-      await logout();
-      router.push('/login');
+      // The global SessionWatcher will handle logout and messaging.
+      // We just need to prevent the upload from starting.
+      setError("You must be logged in to upload images.");
       return;
     }
     
