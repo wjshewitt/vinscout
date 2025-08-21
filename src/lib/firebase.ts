@@ -49,7 +49,7 @@ import _ from 'lodash';
 const firebaseConfig = {
   "projectId": "vigilante-garage",
   "appId": "1:109449796594:web:9cdb5b50aed0dfa46ce96b",
-  "storageBucket": "vigilante-garage.firebasestorage.app",
+  "storageBucket": "vigilante-garage.appspot.com",
   "apiKey": "AIzaSyBdqrM1jTSCT3Iv4alBwpt1I48f4v4qZOg",
   "authDomain": "vigilante-garage.firebaseapp.com",
   "messagingSenderId": "109449796594",
@@ -59,9 +59,7 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app, {
-  persistence: browserSessionPersistence,
-});
+const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
@@ -379,6 +377,13 @@ export interface Sighting {
     lat: number;
     lng: number;
     sightedAt: string;
+    vehicle?: {
+      id: string;
+      make: string;
+      model: string;
+      year: number;
+      photos: string[];
+    }
 }
 
 
@@ -390,6 +395,14 @@ export interface GeofenceLocation {
     type: 'radius' | 'polygon';
     radius?: number; // in meters
     path?: { lat: number, lng: number }[];
+}
+
+export interface UserProfile {
+    uid: string;
+    displayName: string;
+    email: string;
+    photoURL: string;
+    createdAt: string;
 }
 
 export interface UserNotificationSettings {
@@ -503,6 +516,14 @@ const toMessage = (docSnap: any): Message => {
         createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
     } as Message;
 };
+
+const toUserProfile = (docSnap: any): UserProfile => {
+    const data = docSnap.data();
+    return {
+        ...data,
+        createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+    } as UserProfile;
+}
 
 
 // Fetch all vehicle reports
@@ -987,8 +1008,46 @@ export const deleteUserGeofence = async (userId: string, locationName: string) =
     });
 };
 
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
+    const userRef = doc(db, 'users', userId);
+    const docSnap = await getDoc(userRef);
+    if (docSnap.exists()) {
+        return toUserProfile(docSnap);
+    }
+    return null;
+}
+
+export const getUserSightings = async (userId: string): Promise<Sighting[]> => {
+    try {
+        const q = query(collectionGroup(db, 'sightings'), where('sighterId', '==', userId), orderBy('sightedAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+        
+        const sightingsPromises = querySnapshot.docs.map(async (docSnap) => {
+            const sighting = toSighting(docSnap);
+            const vehicleRef = doc(db, 'vehicleReports', sighting.vehicleId);
+            const vehicleSnap = await getDoc(vehicleRef);
+            if(vehicleSnap.exists()) {
+                const vehicleData = vehicleSnap.data();
+                sighting.vehicle = {
+                    id: vehicleSnap.id,
+                    make: vehicleData.make,
+                    model: vehicleData.model,
+                    year: vehicleData.year,
+                    photos: vehicleData.photos || []
+                }
+            }
+            return sighting;
+        });
+        
+        return await Promise.all(sightingsPromises);
+    } catch (error) {
+        console.error("Error fetching user sightings:", error);
+        return [];
+    }
+}
+
+
 
 export { auth, db };
 export type { User, AuthError };
 
-    

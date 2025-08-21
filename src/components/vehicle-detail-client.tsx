@@ -465,7 +465,7 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                     {vehicle.status}
                  </Badge>
               </div>
-              <CardDescription>Reported Stolen on {formatDate(vehicle.reportedAt)}</CardDescription>
+              <CardDescription>Reported Stolen on {formatDate(vehicle.reportedAt)} by <Link href={`/profile/${vehicle.reporterId}`} className="text-primary hover:underline">{isOwner ? 'you' : 'a community member'}</Link></CardDescription>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground bg-muted px-3 py-2 rounded-lg">
                 <Eye className="h-5 w-5 text-primary" />
@@ -525,32 +525,28 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                 )}
                 <p className="text-sm mt-2"><strong>Details:</strong> {vehicle.features || 'No additional details provided.'}</p>
               </div>
+                 {hasReward && (
+                     <>
+                        <Separator />
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                               Reward Offered
+                            </h3>
+                             {vehicle.rewardAmount && vehicle.rewardAmount > 0 && (
+                                <p className="text-2xl font-bold text-primary">£{vehicle.rewardAmount.toLocaleString()}</p>
+                            )}
+                            {vehicle.rewardDetails && <p className="text-sm text-muted-foreground mt-1">{vehicle.rewardDetails}</p>}
+                             {!isLoggedIn && (
+                                <p className="text-xs text-muted-foreground mt-2">You must be logged in to contact the owner about a reward.</p>
+                             )}
+                        </div>
+                     </>
+                   )}
             </div>
           </div>
           <div className="grid md:grid-cols-2 gap-x-8 gap-y-6 mt-6">
             <div className="space-y-6">
-                {hasReward && (
-                 <>
-                    <div>
-                        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                           <Badge variant="secondary" className="bg-green-700/20 text-green-400 border-green-700/40">
-                             <PoundSterling className="h-4 w-4 mr-1" />
-                             Reward Offered
-                           </Badge>
-                        </h3>
-                         {isLoggedIn && !isOwner ? (
-                             <>
-                                {vehicle.rewardAmount && vehicle.rewardAmount > 0 && (
-                                    <p className="text-2xl font-bold text-primary">£{vehicle.rewardAmount.toLocaleString()}</p>
-                                )}
-                                {vehicle.rewardDetails && <p className="text-sm text-muted-foreground mt-1">{vehicle.rewardDetails}</p>}
-                             </>
-                         ) : (
-                             <p className="text-sm text-muted-foreground">The owner is offering a reward for information leading to this vehicle's recovery. Please contact them for details.</p>
-                         )}
-                    </div>
-                 </>
-               )}
+
             </div>
             <div className="space-y-6">
                 {authLoading ? (
@@ -742,15 +738,17 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                     sightings.map(sighting => (
                         <div key={sighting.id} className="p-4 rounded-lg border bg-card flex flex-col sm:flex-row gap-4">
                            <div className="flex-shrink-0">
-                             <Avatar>
-                                <AvatarImage src={sighting.sighterAvatar} alt={sighting.sighterName} data-ai-hint="person face" />
-                                <AvatarFallback>{sighting.sighterName?.charAt(0) || 'U'}</AvatarFallback>
-                             </Avatar>
+                             <Link href={`/profile/${sighting.sighterId}`}>
+                                 <Avatar>
+                                    <AvatarImage src={sighting.sighterAvatar} alt={sighting.sighterName} data-ai-hint="person face" />
+                                    <AvatarFallback>{sighting.sighterName?.charAt(0) || 'U'}</AvatarFallback>
+                                 </Avatar>
+                             </Link>
                            </div>
                            <div className="flex-1">
                                 <p className="text-sm text-muted-foreground">{sighting.message}</p>
                                 <div className="mt-2 text-xs text-muted-foreground space-y-1">
-                                    <p className="flex items-center gap-2"><User size={14} /> Reported by {sighting.sighterName}</p>
+                                    <p className="flex items-center gap-2"><User size={14} /> Reported by <Link href={`/profile/${sighting.sighterId}`} className="hover:underline text-primary/80 hover:text-primary">{sighting.sighterName}</Link></p>
                                     <p className="flex items-center gap-2"><MapPin size={14} /> Sighted at {sighting.location.fullAddress}</p>
                                     <p className="flex items-center gap-2"><Calendar size={14} /> On {formatDateTime(sighting.sightedAt)}</p>
                                 </div>
