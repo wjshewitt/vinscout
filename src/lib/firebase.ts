@@ -391,6 +391,16 @@ export interface Sighting {
     }
 }
 
+export interface SystemNotification {
+    id: string;
+    title: string;
+    message: string;
+    link: string;
+    isRead: boolean;
+    createdAt: string;
+    type: 'VEHICLE_SIGHTING_AREA' | 'GENERAL';
+}
+
 
 export interface GeofenceLocation {
     name: string;
@@ -529,6 +539,15 @@ const toUserProfile = (docSnap: any): UserProfile => {
         uid: docSnap.id,
         createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
     } as UserProfile;
+}
+
+const toSystemNotification = (docSnap: any): SystemNotification => {
+    const data = docSnap.data();
+    return {
+        id: docSnap.id,
+        ...data,
+        createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+    } as SystemNotification;
 }
 
 export const getAllUsers = async (): Promise<UserProfile[]> => {
@@ -1072,6 +1091,38 @@ export const getUserSightings = async (userId: string): Promise<Sighting[]> => {
     }
 }
 
+// ---- New System Notification Functions ----
+
+export const listenToSystemNotifications = (userId: string, callback: (notifications: SystemNotification[]) => void): Unsubscribe => {
+    const q = query(
+        collection(db, 'users', userId, 'notifications'),
+        orderBy('createdAt', 'desc')
+    );
+    
+    return onSnapshot(q, (snapshot) => {
+        const notifications = snapshot.docs.map(toSystemNotification);
+        callback(notifications);
+    }, (error) => {
+        console.error("Error listening to system notifications:", error);
+    });
+};
+
+
+export const markSystemNotificationsAsRead = async (userId: string, notificationIds: string[]) => {
+    if (!userId || notificationIds.length === 0) return;
+    
+    const batch = writeBatch(db);
+    notificationIds.forEach(id => {
+        const notifRef = doc(db, 'users', userId, 'notifications', id);
+        batch.update(notifRef, { isRead: true });
+    });
+
+    try {
+        await batch.commit();
+    } catch (error) {
+        console.error("Error marking notifications as read:", error);
+    }
+};
 
 
 export { auth, db };

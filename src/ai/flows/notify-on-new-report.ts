@@ -6,7 +6,7 @@
 import { ai } from '@/ai/genkit';
 import { onFlow } from '@genkit-ai/firebase/functions';
 import { z } from 'genkit/zod';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, serverTimestamp } from 'firebase-admin/firestore';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { HttpsOptions } from 'firebase-functions/v2/https';
 
@@ -18,6 +18,7 @@ const db = getFirestore();
 
 // Define the structure of the data we expect from the Firestore trigger.
 const VehicleReportSchema = z.object({
+  id: z.string(),
   make: z.string(),
   model: z.string(),
   year: z.number(),
@@ -53,8 +54,9 @@ const newReportNotifierFlow = ai.defineFlow(
   },
   async (reportSnapshot) => {
     console.log('New vehicle report received. Processing for notifications.');
-
-    const reportData = VehicleReportSchema.parse(reportSnapshot.data());
+    
+    const reportId = reportSnapshot.id;
+    const reportData = VehicleReportSchema.parse({ ...reportSnapshot.data(), id: reportId });
 
     if (reportData.status !== 'Active') {
         console.log(`Report for ${reportData.licensePlate} is not active. Skipping notification.`);
@@ -69,17 +71,19 @@ const newReportNotifierFlow = ai.defineFlow(
         return;
     }
 
-    const notificationJobs: Promise<void>[] = [];
+    const notificationJobs: Promise<any>[] = [];
 
     usersSnapshot.forEach(doc => {
         const user = doc.data();
         const settings = NotificationSettingsSchema.parse(user.notificationSettings);
         
         let shouldNotify = false;
+        let notificationReason = '';
 
         // Case 1: User wants national alerts
         if (settings?.nationalAlerts) {
             shouldNotify = true;
+            notificationReason = 'national';
             console.log(`User ${user.uid} qualifies for notification due to national alert preference.`);
         }
         // Case 2: User wants local alerts
@@ -90,6 +94,7 @@ const newReportNotifierFlow = ai.defineFlow(
             // For this example, we will just log that we would perform this check.
             console.log(`User ${user.uid} qualifies for notification due to local alert preference. Geospatial check would be performed here.`);
             shouldNotify = true; // Simulating a match for demonstration purposes.
+            notificationReason = 'local';
         }
 
         if (shouldNotify && settings?.notificationChannels) {
@@ -101,12 +106,29 @@ const newReportNotifierFlow = ai.defineFlow(
             }
             if (settings.notificationChannels.sms && settings.phoneNumber) {
                 console.log(`ACTION: Send SMS to ${settings.phoneNumber} for new report on ${vehicleInfo} (${reportData.licensePlate}).`);
+                
+                // NEW: If it's a local alert and they get SMS, also create a web notification
+                if (notificationReason === 'local') {
+                    const webNotificationJob = db.collection('users').doc(user.uid).collection('notifications').add({
+                        type: 'VEHICLE_SIGHTING_AREA',
+                        title: 'Vehicle Stolen in Your Area',
+                        message: `A ${vehicleInfo} was reported stolen in one of your monitored areas.`,
+                        link: `/vehicles/${reportData.id}`,
+                        isRead: false,
+                        createdAt: serverTimestamp()
+                    });
+                    notificationJobs.push(webNotificationJob);
+                    console.log(`ACTION: Create WEB notification for user ${user.uid} for local alert.`);
+                }
             }
             if (settings.notificationChannels.whatsapp && settings.phoneNumber) {
                  console.log(`ACTION: Send WHATSAPP message to ${settings.phoneNumber} for new report on ${vehicleInfo} (${reportData.licensePlate}).`);
             }
         }
     });
+
+    await Promise.all(notificationJobs);
+    console.log(`Processed and created ${notificationJobs.length} web notifications.`);
   }
 );
 

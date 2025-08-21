@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, Menu, MessageSquare } from 'lucide-react';
+import { Bell, Menu, MessageSquare, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from '@/hooks/use-auth';
-import { logout, listenToConversations, Conversation } from '@/lib/firebase';
+import { logout, listenToConversations, Conversation, listenToSystemNotifications, SystemNotification, markSystemNotificationsAsRead } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { useEffect, useState } from 'react';
@@ -189,23 +189,44 @@ function UserMenu({ isMobile = false }) {
 function NotificationMenu() {
     const { user } = useAuth();
     const [unreadConversations, setUnreadConversations] = useState<Conversation[]>([]);
+    const [systemNotifications, setSystemNotifications] = useState<SystemNotification[]>([]);
 
     useEffect(() => {
       if (user) {
-        const unsubscribe = listenToConversations(user.uid, (conversations) => {
+        const unsubConversations = listenToConversations(user.uid, (conversations) => {
           const unread = conversations.filter(c => c.unread?.[user.uid] && c.unread[user.uid] > 0);
-          // Sort by last message time on the client
           unread.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
           setUnreadConversations(unread);
         });
-        return () => unsubscribe();
+
+        const unsubSystemNotifs = listenToSystemNotifications(user.uid, setSystemNotifications);
+
+        return () => {
+          unsubConversations();
+          unsubSystemNotifs();
+        }
       }
     }, [user]);
     
-    const totalUnreadCount = unreadConversations.reduce((acc, convo) => acc + (convo.unread?.[user?.uid || ''] || 0), 0);
+    const unreadSystemNotifications = systemNotifications.filter(n => !n.isRead);
+    const totalUnreadConversations = unreadConversations.reduce((acc, convo) => acc + (convo.unread?.[user?.uid || ''] || 0), 0);
+    const totalUnreadCount = totalUnreadConversations + unreadSystemNotifications.length;
+
+    const handleOpenChange = (open: boolean) => {
+        if (open && unreadSystemNotifications.length > 0 && user) {
+            // Mark system notifications as read
+            markSystemNotificationsAsRead(user.uid, unreadSystemNotifications.map(n => n.id));
+        }
+    }
+
+    const allNotifications = [
+        ...unreadConversations.map(c => ({...c, type: 'conversation', date: new Date(c.lastMessageAt)})),
+        ...systemNotifications.map(n => ({...n, type: 'system', date: new Date(n.createdAt)}))
+    ].sort((a,b) => b.date.getTime() - a.date.getTime());
+
 
     return (
-        <Popover>
+        <Popover onOpenChange={handleOpenChange}>
             <PopoverTrigger asChild>
                  <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
@@ -217,32 +238,58 @@ function NotificationMenu() {
             <PopoverContent className="w-80 p-0">
                 <div className="p-4 font-medium border-b">Notifications</div>
                 <div className="p-2 max-h-80 overflow-y-auto">
-                    {unreadConversations.length === 0 ? (
+                    {allNotifications.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-4">You have no new notifications.</p>
                     ) : (
-                        <div className="space-y-2">
-                           {unreadConversations.map(convo => {
-                               const otherParticipantId = convo.participants.find(p => p !== user?.uid);
-                               const otherParticipant = otherParticipantId ? convo.participantDetails[otherParticipantId] : { name: 'Unknown', avatar: ''};
-                               const unreadCount = user && convo.unread ? convo.unread[user.uid] || 0 : 0;
-                               
-                               return (
-                                   <Link href={`/dashboard/messages?conversationId=${convo.id}`} key={convo.id} className="block p-2 rounded-lg hover:bg-accent">
-                                        <div className="flex items-start gap-3">
-                                            <Avatar className="h-10 w-10">
-                                                <AvatarImage src={otherParticipant.avatar} alt={otherParticipant.name} data-ai-hint="person face" />
-                                                <AvatarFallback>{otherParticipant.name.charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1 text-sm">
-                                                <p><span className="font-bold">{otherParticipant.name}</span> sent you a message</p>
-                                                <p className="text-muted-foreground text-xs mt-1">{formatDistanceToNow(new Date(convo.lastMessageAt), { addSuffix: true })}</p>
+                        <div className="space-y-1">
+                           {allNotifications.map(item => {
+                               if(item.type === 'conversation') {
+                                   const convo = item as Conversation;
+                                   const otherParticipantId = convo.participants.find(p => p !== user?.uid);
+                                   const otherParticipant = otherParticipantId ? convo.participantDetails[otherParticipantId] : { name: 'Unknown', avatar: ''};
+                                   const unreadCount = user && convo.unread ? convo.unread[user.uid] || 0 : 0;
+                                   
+                                   return (
+                                       <Link href={`/dashboard/messages?conversationId=${convo.id}`} key={convo.id} className="block p-2 rounded-lg hover:bg-accent">
+                                            <div className="flex items-start gap-3">
+                                                <Avatar className="h-10 w-10">
+                                                    <AvatarImage src={otherParticipant.avatar} alt={otherParticipant.name} data-ai-hint="person face" />
+                                                    <AvatarFallback>{otherParticipant.name.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex-1 text-sm">
+                                                    <p><span className="font-bold">{otherParticipant.name}</span> sent you a message</p>
+                                                    <p className="text-muted-foreground text-xs mt-1">{formatDistanceToNow(new Date(convo.lastMessageAt), { addSuffix: true })}</p>
+                                                </div>
+                                                {unreadCount > 0 && 
+                                                    <div className="flex items-center justify-center bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 ml-2 self-center">
+                                                        {unreadCount}
+                                                    </div>
+                                                }
                                             </div>
-                                             <div className="flex items-center justify-center bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 ml-2 self-center">
-                                                {unreadCount}
-                                            </div>
-                                        </div>
-                                   </Link>
-                               )
+                                       </Link>
+                                   )
+                               } else {
+                                   const notif = item as SystemNotification;
+                                   return (
+                                     <Link href={notif.link} key={notif.id} className="block p-2 rounded-lg hover:bg-accent">
+                                          <div className="flex items-start gap-3">
+                                              <div className="h-10 w-10 flex items-center justify-center">
+                                                 <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                                                    <Car className="h-4 w-4 text-blue-400" />
+                                                 </div>
+                                              </div>
+                                              <div className="flex-1 text-sm">
+                                                  <p className="font-bold">{notif.title}</p>
+                                                  <p>{notif.message}</p>
+                                                  <p className="text-muted-foreground text-xs mt-1">{formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}</p>
+                                              </div>
+                                               {!notif.isRead && 
+                                                    <div className="mt-2.5 h-2 w-2 rounded-full bg-primary" />
+                                                }
+                                          </div>
+                                     </Link>
+                                   )
+                               }
                            })}
                         </div>
                     )}
