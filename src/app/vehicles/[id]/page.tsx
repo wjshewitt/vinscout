@@ -5,10 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic';
-
-export default async function VehicleDetailPage({ params: { id } }: { params: { id: string } }) {
-  const vehicle = await getVehicleReportById(id);
+export default async function VehicleDetailPage({ params }: { params: { id: string } }) {
+  const vehicle = await getVehicleReportById(params.id);
 
   if (!vehicle) {
     return (
