@@ -111,7 +111,19 @@ export const signInWithGoogle = async (): Promise<UserCredential | null> => {
     return result;
   } catch (error) {
     const authError = error as AuthError;
-    console.error("Error signing in with Google", authError);
+    if (authError.code === 'auth/popup-closed-by-user') {
+      toast({
+        title: 'Sign-in cancelled',
+        description: 'The sign-in window was closed before completing. Please try again.',
+      });
+    } else {
+      console.error("Error signing in with Google", authError);
+      toast({
+        variant: 'destructive',
+        title: 'Sign-in Error',
+        description: 'An unexpected error occurred during Google sign-in. Please try again.',
+      });
+    }
     return null;
   }
 };
@@ -197,7 +209,6 @@ export const uploadImageAndGetURL = (
       },
       (error) => {
         console.error("Upload failed:", error);
-        // Reject with the specific error so it can be caught
         reject(error);
       },
       async () => {
