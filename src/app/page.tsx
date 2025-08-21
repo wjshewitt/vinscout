@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useState, useEffect, useMemo } from 'react';
 import { getVehicleReports, VehicleReport, LocationInfo } from '@/lib/firebase';
 import { useDebounce } from 'use-debounce';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
@@ -21,6 +22,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -201,13 +203,16 @@ export default function Home() {
                   <TableHead>License Plate</TableHead>
                   <TableHead>Last Seen Location</TableHead>
                   <TableHead>Date Stolen</TableHead>
-                  <TableHead className="text-right"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredReports.length > 0 ? (
                   filteredReports.map((vehicle) => (
-                    <TableRow key={vehicle.id}>
+                    <TableRow 
+                        key={vehicle.id} 
+                        className="cursor-pointer" 
+                        onClick={() => router.push(`/vehicles/${vehicle.id}`)}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-4">
                           <Avatar className="h-10 w-10 rounded-md">
@@ -228,11 +233,6 @@ export default function Home() {
                       <TableCell><span className="font-mono">{vehicle.licensePlate}</span></TableCell>
                       <TableCell>{formatLocation(vehicle.location, 'city')}</TableCell>
                       <TableCell>{formatDate(vehicle.date)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/vehicles/${vehicle.id}`}>View Details</Link>
-                        </Button>
-                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
