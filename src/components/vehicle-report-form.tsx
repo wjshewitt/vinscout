@@ -18,8 +18,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useDebouncedCallback } from 'use-debounce';
-import { Switch } from './ui/switch';
-import { Label } from './ui/label';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Progress } from './ui/progress';
@@ -70,8 +68,8 @@ const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear -
 const steps: { title: string; fields: (keyof ReportFormValues)[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
     { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
-    { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng', 'rewardAmount', 'rewardDetails'] },
-    { title: 'Upload Photos', fields: ['photos'] },
+    { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng'] },
+    { title: 'Photos & Reward', fields: ['photos', 'rewardAmount', 'rewardDetails'] },
     { title: 'Review & Submit', fields: [] },
 ];
 
@@ -1014,7 +1012,15 @@ export function VehicleReportForm() {
         case 3:
           return (
             <div className="space-y-6">
-                 <div>
+                {user && (
+                    <ImageUploader 
+                        userId={user.uid} 
+                        imageUrls={photoUrls || []} 
+                        onUrlsChange={(urls) => form.setValue('photos', urls, { shouldValidate: true, shouldDirty: true })} 
+                    />
+                )}
+                <Separator />
+                <div>
                     <h3 className="text-lg font-medium">Offer a Reward (Optional)</h3>
                     <p className="text-sm text-muted-foreground">You can offer a reward for information that leads to the recovery of your vehicle.</p>
                 </div>
@@ -1054,14 +1060,6 @@ export function VehicleReportForm() {
                     </FormItem>
                     )}
                 />
-                 <Separator />
-                 {user && (
-                    <ImageUploader 
-                        userId={user.uid} 
-                        imageUrls={photoUrls || []} 
-                        onUrlsChange={(urls) => form.setValue('photos', urls, { shouldValidate: true, shouldDirty: true })} 
-                    />
-                 )}
             </div>
           );
         case 4:
