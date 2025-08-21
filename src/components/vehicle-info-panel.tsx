@@ -4,7 +4,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import Link from 'next/link';
-import Image from 'next/image';
+import Image from "next/image";
 import { VehicleReport } from '@/lib/firebase';
 import { X, Calendar, MapPin as MapPinIcon, Car } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -44,7 +44,7 @@ export function VehicleInfoPanel({ vehicle, onClose }: VehicleInfoPanelProps) {
                 <CardContent className="flex-1 space-y-4 p-6 pt-0 overflow-y-auto">
                    <div className="aspect-video w-full relative overflow-hidden rounded-lg bg-muted flex items-center justify-center">
                         {vehicle.photos && vehicle.photos.length > 0 ? (
-                            <Image src={vehicle.photos[0]} alt={`${vehicle.make} ${vehicle.model}`} layout="fill" objectFit="cover" />
+                            <Image src={vehicle.photos[0]} alt={`${vehicle.make} ${vehicle.model}`} fill className="object-cover" />
                         ) : (
                             <Car className="h-16 w-16 text-muted-foreground" />
                         )}

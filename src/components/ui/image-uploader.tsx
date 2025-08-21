@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
+import Image from "next/legacy/image";
 import { useToast } from '@/hooks/use-toast';
 import { uploadImageAndGetURL } from '@/lib/firebase';
 import { Label } from '@/components/ui/label';

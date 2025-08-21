@@ -7,7 +7,7 @@ import { notFound } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Car, Eye, Calendar } from 'lucide-react';
-import Image from 'next/image';
+import Image from "next/legacy/image";
 
 function ProfileHeader({ profile }: { profile: UserProfileData }) {
   return (

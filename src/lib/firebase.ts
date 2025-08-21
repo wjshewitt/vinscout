@@ -53,8 +53,7 @@ const firebaseConfig = {
   "storageBucket": "vigilante-garage.appspot.com",
   "apiKey": "AIzaSyBdqrM1jTSCT3Iv4alBwpt1I48f4v4qZOg",
   "authDomain": "vigilante-garage.firebaseapp.com",
-  "messagingSenderId": "109449796594",
-  "measurementId": ""
+  "messagingSenderId": "109449796594"
 };
 
 
