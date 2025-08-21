@@ -79,7 +79,7 @@ export function ImageUploader({
     // --- Start upload process ---
     setIsUploading(true);
     setError(null);
-    setUploadProgress({});
+    setUploadProgress({}); // Reset progress for new batch
 
     const uploadPromises = filesToUpload.map(file => 
       uploadImageAndGetURL(file, userId, (progress) => {
@@ -110,7 +110,7 @@ export function ImageUploader({
       console.error(err);
     } finally {
       setIsUploading(false);
-      setUploadProgress({});
+      // Don't reset progress here, so user can see final state if needed
       // Clear the file input so the same file can be selected again
       event.target.value = '';
     }
