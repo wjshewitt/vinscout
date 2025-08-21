@@ -1,4 +1,3 @@
-
 // src/components/ui/image-uploader.tsx
 'use client';
 
