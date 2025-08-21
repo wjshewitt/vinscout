@@ -9,11 +9,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X, Search, Check, ChevronsUpDown } from 'lucide-react';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X, Search, Check, ChevronsUpDown, Car, Eye, Calendar, User, Flag, ShieldCheck } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import { submitVehicleReport, VehicleReport, LocationInfo, uploadImageAndGetURL } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -24,6 +23,16 @@ import { Label } from './ui/label';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Progress } from './ui/progress';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel"
 
 const locationSchema = z.object({
   street: z.string().min(1, 'Street is required'),
@@ -62,6 +71,7 @@ const steps: { title: string; fields: (keyof ReportFormValues)[] }[] = [
     { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
     { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng'] },
     { title: 'Reward & Photos', fields: ['rewardAmount', 'rewardDetails', 'photos'] },
+    { title: 'Review & Submit', fields: [] },
 ];
 
 const parseAddressComponents = (components: google.maps.GeocoderAddressComponent[]): Partial<LocationInfo> => {
@@ -240,7 +250,6 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
     );
 }
 
-// Helper function to compress images client-side
 const compressImage = (file: File, quality = 0.7): Promise<File> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -286,6 +295,108 @@ const compressImage = (file: File, quality = 0.7): Promise<File> => {
         reader.onerror = reject;
     });
 };
+
+function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: number) => void }) {
+    const formatDate = (dateString: string) => {
+      if (!dateString) return 'N/A';
+      const date = new Date(`${dateString}T00:00:00.000Z`); // Treat as UTC
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+    };
+
+    const hasReward = data.rewardAmount || data.rewardDetails;
+    const hasPhotos = data.photos && data.photos.length > 0;
+
+    return (
+        <div className="space-y-6">
+            <h3 className="text-xl font-bold text-center text-primary">Review Your Report</h3>
+            <p className="text-center text-muted-foreground">This is how your report will appear to the public. Please review all details carefully before submitting.</p>
+             <Card className="shadow-lg">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-4 mb-2">
+                         <CardTitle className="text-3xl">{data.make} {data.model} ({data.year})</CardTitle>
+                         <Badge variant={'default'}>Active</Badge>
+                      </div>
+                      <CardDescription>Reported Stolen on {formatDate(new Date().toISOString())}</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => onEdit(0)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 gap-8">
+                    <div>
+                       {hasPhotos ? (
+                         <Carousel className="w-full">
+                            <CarouselContent>
+                                {data.photos?.map((photo, index) => (
+                                    <CarouselItem key={index}>
+                                        <div className="aspect-video w-full relative">
+                                            <Image src={photo} alt={`Preview ${index}`} fill className="rounded-lg object-cover" />
+                                        </div>
+                                    </CarouselItem>
+                                ))}
+                            </CarouselContent>
+                             {data.photos!.length > 1 && <> <CarouselPrevious /> <CarouselNext /> </>}
+                        </Carousel>
+                       ) : (
+                        <div className="aspect-video w-full mb-4 relative bg-muted rounded-lg flex items-center justify-center">
+                            <Car className="h-16 w-16 text-muted-foreground" />
+                        </div>
+                       )}
+                       <Button variant="outline" size="sm" onClick={() => onEdit(3)} className="mt-2 w-full"><Pencil className="mr-2 h-3 w-3" /> Edit Photos & Reward</Button>
+                    </div>
+                    <div className="space-y-6">
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="text-lg font-semibold">Vehicle Details</h3>
+                            <Button variant="ghost" size="sm" onClick={() => onEdit(1)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                            <span>Make:</span> <span className="text-muted-foreground">{data.make}</span>
+                            <span>Model:</span> <span className="text-muted-foreground">{data.model}</span>
+                            <span>Year:</span> <span className="text-muted-foreground">{data.year}</span>
+                            <span>Color:</span> <span className="text-muted-foreground">{data.color}</span>
+                            <span>License Plate:</span><span className="font-mono">{data.licensePlate}</span>
+                            {data.vin && <><span>VIN:</span> <span className="font-mono text-muted-foreground">{data.vin}</span></>}
+                            </div>
+                        </div>
+                      </div>
+                      <Separator />
+                       {hasReward && (
+                         <>
+                            <div>
+                                <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                                   <Badge variant="secondary" className="bg-green-700/20 text-green-400 border-green-700/40">
+                                     <PoundSterling className="h-4 w-4 mr-1" />
+                                     Reward Offered
+                                   </Badge>
+                                </h3>
+                                {data.rewardAmount && data.rewardAmount > 0 && (
+                                    <p className="text-2xl font-bold text-primary">£{data.rewardAmount.toLocaleString()}</p>
+                                )}
+                                {data.rewardDetails && <p className="text-sm text-muted-foreground mt-1">{data.rewardDetails}</p>}
+                            </div>
+                            <Separator />
+                         </>
+                       )}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="text-lg font-semibold">Last Known Information</h3>
+                             <Button variant="ghost" size="sm" onClick={() => onEdit(2)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
+                        </div>
+                        <p className="text-sm"><strong>Date of Theft:</strong> {formatDate(data.date)}</p>
+                        <p className="text-sm"><strong>Original Location:</strong> {data.location.fullAddress}</p>
+                        <p className="text-sm mt-2"><strong>Details:</strong> {data.features || 'No additional details provided.'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
 
 export function VehicleReportForm() {
   const { toast } = useToast();
@@ -401,8 +512,13 @@ export function VehicleReportForm() {
 
   const handleNextStep = async () => {
       const fields = steps[currentStep].fields;
-      const isValid = await form.trigger(fields as FieldName[], { shouldFocus: true });
-      if (isValid) {
+      if (fields.length > 0) {
+        const isValid = await form.trigger(fields as FieldName[], { shouldFocus: true });
+        if (!isValid) {
+          return;
+        }
+      }
+      if (currentStep < steps.length - 1) {
         setCurrentStep(prev => prev + 1);
       }
   };
@@ -486,6 +602,7 @@ export function VehicleReportForm() {
                 description: 'Please select a valid point on the map for the last known location.',
             });
             setIsSubmitting(false);
+            setCurrentStep(2); // Go back to location step
             return;
         }
      
@@ -896,6 +1013,9 @@ export function VehicleReportForm() {
                         )}
                     </div>
                  </div>
+            )}
+             {currentStep === 4 && (
+                <PreviewStep data={form.getValues()} onEdit={(step) => setCurrentStep(step)} />
             )}
         </div>
         
