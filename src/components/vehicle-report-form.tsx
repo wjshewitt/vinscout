@@ -293,8 +293,12 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                                   </CarouselItem>
                                 ))}
                               </CarouselContent>
-                              <CarouselPrevious />
-                              <CarouselNext />
+                              {data.photos.length > 1 && (
+                                <>
+                                  <CarouselPrevious />
+                                  <CarouselNext />
+                                </>
+                              )}
                             </Carousel>
                         ) : (
                              <div className="aspect-video w-full mb-4 relative bg-muted rounded-lg flex items-center justify-center">

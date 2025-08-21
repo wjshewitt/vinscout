@@ -15,7 +15,7 @@ import { Upload, X, Loader2, AlertCircle } from 'lucide-react';
 
 interface ImageUploaderProps {
   // The ID of the current user, required for the upload path.
-  userId: string;
+  userId: string | undefined;
   // An array of existing image URLs to display.
   imageUrls: string[];
   // A callback function that fires when the list of URLs changes (add or remove).
