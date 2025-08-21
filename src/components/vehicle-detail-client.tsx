@@ -762,3 +762,5 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
     </div>
   );
 }
+
+    
