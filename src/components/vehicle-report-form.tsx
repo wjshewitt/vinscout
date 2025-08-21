@@ -11,9 +11,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X, Search, Check, ChevronsUpDown, Car, Eye, Calendar, User, Flag, ShieldCheck, Pencil } from 'lucide-react';
+import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X, Search, Check, ChevronsUpDown, Car, Eye, Calendar, User, Flag, ShieldCheck, Pencil, AlertCircle } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
-import { submitVehicleReport, VehicleReport, LocationInfo } from '@/lib/firebase';
+import { submitVehicleReport, VehicleReport, LocationInfo, uploadImageAndGetURL } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
@@ -24,8 +24,8 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Progress } from './ui/progress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
+import { Separator } from './ui/separator';
+import { Badge } from './ui/badge';
 import {
   Carousel,
   CarouselContent,
@@ -58,6 +58,7 @@ const reportSchema = z.object({
   lng: z.number({ required_error: 'Please select a location on the map.' }),
   rewardAmount: z.coerce.number().optional(),
   rewardDetails: z.string().optional(),
+  photos: z.array(z.string()).optional().default([]),
 });
 
 type ReportFormValues = z.infer<typeof reportSchema>;
@@ -70,6 +71,7 @@ const steps: { title: string; fields: (keyof ReportFormValues)[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
     { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
     { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng', 'rewardAmount', 'rewardDetails'] },
+    { title: 'Upload Photos', fields: ['photos'] },
     { title: 'Review & Submit', fields: [] },
 ];
 
@@ -249,6 +251,181 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
     );
 }
 
+function ImageUploader({
+  userId,
+  imageUrls,
+  onUrlsChange,
+  maxFiles = 5,
+  maxFileSizeMB = 10,
+}: {
+  userId: string;
+  imageUrls: string[];
+  onUrlsChange: (urls: string[]) => void;
+  maxFiles?: number;
+  maxFileSizeMB?: number;
+}) {
+  const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    if (!userId) {
+      setError("You must be logged in to upload images.");
+      return;
+    }
+    
+    const totalImages = imageUrls.length + files.length;
+    if (totalImages > maxFiles) {
+      setError(`You can only upload a maximum of ${maxFiles} images.`);
+      return;
+    }
+
+    const filesToUpload = Array.from(files).filter(file => {
+        if (file.size > maxFileSizeMB * 1024 * 1024) {
+            toast({
+                variant: 'destructive',
+                title: 'File Too Large',
+                description: `${file.name} is larger than ${maxFileSizeMB}MB and was not uploaded.`
+            });
+            return false;
+        }
+        return true;
+    });
+
+    if (filesToUpload.length === 0) return;
+    
+    setIsUploading(true);
+    setError(null);
+    setUploadProgress({});
+
+    const uploadPromises = filesToUpload.map(file => 
+      uploadImageAndGetURL(file, userId, (progress) => {
+        setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+      }).catch(err => ({ error: err, file }))
+    );
+
+    try {
+      const results = await Promise.all(uploadPromises);
+      const successfulUrls = results.filter(res => typeof res === 'string') as string[];
+      const failedUploads = results.filter(res => res && typeof res === 'object' && res.error);
+
+      if (successfulUrls.length > 0) {
+        onUrlsChange([...imageUrls, ...successfulUrls]);
+        toast({
+          title: 'Upload Complete',
+          description: `${successfulUrls.length} image(s) uploaded successfully.`,
+        });
+      }
+
+      if (failedUploads.length > 0) {
+        setError(`${failedUploads.length} image(s) failed to upload. Please try again.`);
+        console.error("Failed uploads:", failedUploads);
+      }
+
+    } catch (err) {
+      setError("An unexpected error occurred during upload. Please check the console.");
+      console.error(err);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress({});
+      event.target.value = '';
+    }
+  };
+  
+  const handleRemoveImage = (indexToRemove: number) => {
+    const updatedUrls = imageUrls.filter((_, index) => index !== indexToRemove);
+    onUrlsChange(updatedUrls);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="file-upload">Upload Photos (Optional)</Label>
+        <div className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10">
+          <div className="text-center">
+            <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+            <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
+              <Label
+                htmlFor="file-upload"
+                className={cn(
+                  "relative cursor-pointer rounded-md bg-background font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary/80",
+                  isUploading && "cursor-not-allowed opacity-50"
+                )}
+              >
+                <span>{isUploading ? 'Uploading...' : 'Choose files'}</span>
+                <Input 
+                  id="file-upload" 
+                  name="file-upload" 
+                  type="file" 
+                  className="sr-only" 
+                  multiple 
+                  onChange={handleFileChange} 
+                  accept="image/png, image/jpeg, image/gif, image/webp" 
+                  disabled={isUploading} 
+                />
+              </Label>
+              <p className="pl-1">or drag and drop</p>
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">Up to {maxFiles} images, {maxFileSizeMB}MB per file</p>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-x-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <p>{error}</p>
+        </div>
+      )}
+
+      {isUploading && Object.keys(uploadProgress).length > 0 && (
+        <div className="space-y-2">
+          {Object.entries(uploadProgress).map(([name, progress]) => (
+            <div key={name}>
+              <p className="text-sm text-muted-foreground">{name}</p>
+              <Progress value={progress} className="h-2 w-full" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {imageUrls.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {imageUrls.map((src, index) => (
+            <div key={src} className="group relative">
+              <Image
+                src={src}
+                alt={`Preview ${index + 1}`}
+                width={200}
+                height={200}
+                className="aspect-square w-full rounded-lg object-cover"
+              />
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleRemoveImage(index)}
+                  disabled={isUploading}
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Remove image</span>
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: number) => void }) {
     const formatDate = (dateString: string) => {
       if (!dateString) return 'N/A';
@@ -257,6 +434,7 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
     };
 
     const hasReward = data.rewardAmount || data.rewardDetails;
+    const hasPhotos = data.photos && data.photos.length > 0;
 
     return (
         <div className="space-y-6">
@@ -278,9 +456,27 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                 <CardContent>
                   <div className="grid md:grid-cols-2 gap-8">
                     <div>
-                        <div className="aspect-video w-full mb-4 relative bg-muted rounded-lg flex items-center justify-center">
-                            <Car className="h-16 w-16 text-muted-foreground" />
-                        </div>
+                        {hasPhotos ? (
+                             <Carousel className="w-full">
+                              <CarouselContent>
+                                {data.photos!.map((src, index) => (
+                                  <CarouselItem key={index}>
+                                    <div className="aspect-video w-full relative bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                                       <Image src={src} alt={`Vehicle photo ${index + 1}`} layout="fill" objectFit="cover" />
+                                    </div>
+                                  </CarouselItem>
+                                ))}
+                              </CarouselContent>
+                              <CarouselPrevious />
+                              <CarouselNext />
+                            </Carousel>
+                        ) : (
+                             <div className="aspect-video w-full mb-4 relative bg-muted rounded-lg flex items-center justify-center">
+                                <Car className="h-16 w-16 text-muted-foreground" />
+                            </div>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => onEdit(3)} className="mt-2 w-full"><Pencil className="mr-2 h-3 w-3" /> Edit Photos</Button>
+
                     </div>
                     <div className="space-y-6">
                       <div>
@@ -313,7 +509,6 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                                     <p className="text-2xl font-bold text-primary">£{data.rewardAmount.toLocaleString()}</p>
                                 )}
                                 {data.rewardDetails && <p className="text-sm text-muted-foreground mt-1">{data.rewardDetails}</p>}
-                                <Button variant="ghost" size="sm" onClick={() => onEdit(2)} className="mt-2 w-full"><Pencil className="mr-2 h-3 w-3" /> Edit Reward</Button>
                             </div>
                             <Separator />
                          </>
@@ -363,12 +558,19 @@ export function VehicleReportForm() {
       additionalInfo: '',
       rewardAmount: undefined,
       rewardDetails: '',
+      photos: [],
     },
   });
 
   const selectedMake = useWatch({
     control: form.control,
     name: 'make',
+  });
+  
+  const photoUrls = useWatch({
+    control: form.control,
+    name: 'photos',
+    defaultValue: [],
   });
 
   useEffect(() => {
@@ -392,8 +594,13 @@ export function VehicleReportForm() {
   useEffect(() => {
     const savedFormData = localStorage.getItem('vehicleReportForm');
     if (savedFormData) {
-        const parsedData = JSON.parse(savedFormData);
-        form.reset(parsedData);
+        try {
+            const parsedData = JSON.parse(savedFormData);
+            form.reset(parsedData);
+        } catch (e) {
+            console.error("Could not parse saved form data", e);
+            localStorage.removeItem('vehicleReportForm');
+        }
     }
   }, [form]);
 
@@ -520,325 +727,251 @@ export function VehicleReportForm() {
   }
    
   const renderStepContent = () => {
-    if (currentStep === 0) {
-        return (
-             <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-                <FormField
-                    control={form.control}
-                    name="make"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                            <FormLabel>Make</FormLabel>
-                              <Popover open={isMakePopoverOpen} onOpenChange={setIsMakePopoverOpen}>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className={cn(
-                                                "w-full justify-between h-12 rounded-lg",
-                                                !field.value && "text-muted-foreground"
-                                            )}
-                                        >
-                                            {field.value || "Select Make"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                    <Command>
-                                        <CommandInput 
-                                          placeholder="Search make..."
-                                        />
-                                        <CommandEmpty>No make found.</CommandEmpty>
-                                        <CommandList>
-                                            <CommandGroup>
-                                                {makes.map((make) => (
-                                                    <CommandItem
-                                                        value={make}
-                                                        key={make}
-                                                        onSelect={() => {
-                                                            form.setValue("make", make);
-                                                            handleMakeChange(make);
-                                                            setIsMakePopoverOpen(false);
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                make === field.value
-                                                                    ? "opacity-100"
-                                                                    : "opacity-0"
-                                                            )}
-                                                        />
-                                                        {make}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                              </Popover>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="model"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                            <FormLabel>Model</FormLabel>
-                              <Popover open={isModelPopoverOpen} onOpenChange={setIsModelPopoverOpen}>
-                                  <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            disabled={!selectedMake}
-                                            className={cn(
-                                                "w-full justify-between h-12 rounded-lg",
-                                                !field.value && "text-muted-foreground"
-                                            )}
-                                        >
-                                            {field.value || "Select or Type Model"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                      <Command
-                                        filter={(value, search) => {
-                                            if (value.toLowerCase().includes(search.toLowerCase())) return 1
-                                            return 0
-                                        }}
-                                      >
-                                          <CommandInput 
-                                              placeholder="Search or type model..."
-                                              onValueChange={field.onChange}
-                                              value={field.value}
-                                          />
-                                          <CommandEmpty>No model found. You can type a custom one.</CommandEmpty>
-                                          <CommandList>
-                                              <CommandGroup>
-                                                  {models.map((model) => (
-                                                      <CommandItem
-                                                          value={model}
-                                                          key={model}
-                                                          onSelect={(currentValue) => {
-                                                              form.setValue("model", currentValue === field.value ? "" : currentValue)
-                                                              setIsModelPopoverOpen(false)
-                                                          }}
-                                                      >
-                                                          <Check
-                                                              className={cn(
-                                                                  "mr-2 h-4 w-4",
-                                                                  model === field.value
-                                                                      ? "opacity-100"
-                                                                      : "opacity-0"
-                                                              )}
-                                                          />
-                                                          {model}
-                                                      </CommandItem>
-                                                  ))}
-                                              </CommandGroup>
-                                          </CommandList>
-                                      </Command>
-                                  </PopoverContent>
-                              </Popover>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="year"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                            <FormLabel>Year</FormLabel>
-                            <Popover open={isYearPopoverOpen} onOpenChange={setIsYearPopoverOpen}>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className={cn(
-                                                "w-full justify-between h-12 rounded-lg",
-                                                !field.value && "text-muted-foreground"
-                                            )}
-                                        >
-                                            {field.value || "Select Year"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                    <Command>
-                                        <CommandInput placeholder="Search year..." />
-                                        <CommandEmpty>No year found.</CommandEmpty>
-                                        <CommandList>
-                                            <CommandGroup>
-                                                {years.map((year) => (
-                                                    <CommandItem
-                                                        value={year.toString()}
-                                                        key={year}
-                                                        onSelect={() => {
-                                                            form.setValue("year", year);
-                                                            setIsYearPopoverOpen(false);
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                year === field.value
-                                                                    ? "opacity-100"
-                                                                    : "opacity-0"
-                                                            )}
-                                                        />
-                                                        {year}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-             </div>
-        );
-    }
-    if (currentStep === 1) {
-        return (
-             <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-                <FormField
-                    control={form.control}
-                    name="color"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Color</FormLabel>
-                        <FormControl>
-                        <Input placeholder="e.g., Python Green" {...field} className="h-12 rounded-lg" />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="licensePlate"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>License Plate Number</FormLabel>
-                        <FormControl>
-                        <Input placeholder="Enter License Plate Number" {...field} className="h-12 rounded-lg" />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <div className="sm:col-span-2">
-                <FormField
-                    control={form.control}
-                    name="vin"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>VIN (Optional)</FormLabel>
-                        <FormControl>
-                            <Input placeholder="Enter Vehicle Identification Number" {...field} value={field.value ?? ''} className="h-12 rounded-lg" />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                </div>
-                <div className="sm:col-span-2">
-                <FormField
-                    control={form.control}
-                    name="features"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Distinctive Features (Optional)</FormLabel>
-                        <FormControl>
-                        <Textarea
-                            placeholder="e.g., Carbon fiber roof, aftermarket wheels, small dent on rear bumper"
-                            className="resize-none min-h-[100px] rounded-lg"
-                            {...field}
-                            value={field.value ?? ''}
-                        />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                </div>
-            </div>
-        );
-    }
-    if (currentStep === 2) {
-        return (
-            <div className="space-y-6">
-                <APIProvider apiKey={apiKey}>
-                    <LocationPicker onLocationChange={handleLocationChange} />
-                </APIProvider>
-                 
-                <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Date of Theft</FormLabel>
-                         <p className="text-sm text-muted-foreground">If you do not know exactly when the vehicle was stolen, please estimate or choose one of the below options.</p>
-                        <FormControl>
-                            <Input type="date" {...field} className="h-12 rounded-lg" />
-                        </FormControl>
-                         <div className="flex gap-2 pt-2">
-                            <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('days', 1)}>Today</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('weeks', 1)}>Last Week</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('months', 1)}>Last Month</Button>
-                        </div>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-
-                <Separator />
-                
-                <div className="space-y-4">
-                    <div>
-                        <h3 className="text-lg font-medium">Offer a Reward (Optional)</h3>
-                        <p className="text-sm text-muted-foreground">You can offer a reward for information that leads to the recovery of your vehicle.</p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                            control={form.control}
-                            name="rewardAmount"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Reward Amount (£)</FormLabel>
-                                <div className="relative">
-                                    <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                    <FormControl>
-                                        <Input type="number" {...field} className="pl-10 h-12 rounded-lg" value={field.value ?? ''}/>
-                                    </FormControl>
-                                </div>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    </div>
+    switch(currentStep) {
+        case 0:
+            return (
+                 <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
                     <FormField
                         control={form.control}
-                        name="rewardDetails"
+                        name="make"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Make</FormLabel>
+                                  <Popover open={isMakePopoverOpen} onOpenChange={setIsMakePopoverOpen}>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "w-full justify-between h-12 rounded-lg",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value || "Select Make"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput 
+                                              placeholder="Search make..."
+                                            />
+                                            <CommandEmpty>No make found.</CommandEmpty>
+                                            <CommandList>
+                                                <CommandGroup>
+                                                    {makes.map((make) => (
+                                                        <CommandItem
+                                                            value={make}
+                                                            key={make}
+                                                            onSelect={() => {
+                                                                form.setValue("make", make);
+                                                                handleMakeChange(make);
+                                                                setIsMakePopoverOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    make === field.value
+                                                                        ? "opacity-100"
+                                                                        : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {make}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                  </Popover>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="model"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Model</FormLabel>
+                                  <Popover open={isModelPopoverOpen} onOpenChange={setIsModelPopoverOpen}>
+                                      <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                disabled={!selectedMake}
+                                                className={cn(
+                                                    "w-full justify-between h-12 rounded-lg",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value || "Select or Type Model"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                          <Command
+                                            filter={(value, search) => {
+                                                if (value.toLowerCase().includes(search.toLowerCase())) return 1
+                                                return 0
+                                            }}
+                                          >
+                                              <CommandInput 
+                                                  placeholder="Search or type model..."
+                                                  onValueChange={field.onChange}
+                                                  value={field.value}
+                                              />
+                                              <CommandEmpty>No model found. You can type a custom one.</CommandEmpty>
+                                              <CommandList>
+                                                  <CommandGroup>
+                                                      {models.map((model) => (
+                                                          <CommandItem
+                                                              value={model}
+                                                              key={model}
+                                                              onSelect={(currentValue) => {
+                                                                  form.setValue("model", currentValue === field.value ? "" : currentValue)
+                                                                  setIsModelPopoverOpen(false)
+                                                              }}
+                                                          >
+                                                              <Check
+                                                                  className={cn(
+                                                                      "mr-2 h-4 w-4",
+                                                                      model === field.value
+                                                                          ? "opacity-100"
+                                                                          : "opacity-0"
+                                                                  )}
+                                                              />
+                                                              {model}
+                                                          </CommandItem>
+                                                      ))}
+                                                  </CommandGroup>
+                                              </CommandList>
+                                          </Command>
+                                      </PopoverContent>
+                                  </Popover>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="year"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Year</FormLabel>
+                                <Popover open={isYearPopoverOpen} onOpenChange={setIsYearPopoverOpen}>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "w-full justify-between h-12 rounded-lg",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value || "Select Year"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search year..." />
+                                            <CommandEmpty>No year found.</CommandEmpty>
+                                            <CommandList>
+                                                <CommandGroup>
+                                                    {years.map((year) => (
+                                                        <CommandItem
+                                                            value={year.toString()}
+                                                            key={year}
+                                                            onSelect={() => {
+                                                                form.setValue("year", year);
+                                                                setIsYearPopoverOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    year === field.value
+                                                                        ? "opacity-100"
+                                                                        : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {year}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                 </div>
+            );
+        case 1:
+            return (
+                 <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+                    <FormField
+                        control={form.control}
+                        name="color"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Reward Details</FormLabel>
+                            <FormLabel>Color</FormLabel>
+                            <FormControl>
+                            <Input placeholder="e.g., Python Green" {...field} className="h-12 rounded-lg" />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="licensePlate"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>License Plate Number</FormLabel>
+                            <FormControl>
+                            <Input placeholder="Enter License Plate Number" {...field} className="h-12 rounded-lg" />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <div className="sm:col-span-2">
+                    <FormField
+                        control={form.control}
+                        name="vin"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>VIN (Optional)</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Enter Vehicle Identification Number" {...field} value={field.value ?? ''} className="h-12 rounded-lg" />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    </div>
+                    <div className="sm:col-span-2">
+                    <FormField
+                        control={form.control}
+                        name="features"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Distinctive Features (Optional)</FormLabel>
                             <FormControl>
                             <Textarea
-                                placeholder="e.g., Reward for information leading to recovery..."
-                                className="resize-none rounded-lg"
+                                placeholder="e.g., Carbon fiber roof, aftermarket wheels, small dent on rear bumper"
+                                className="resize-none min-h-[100px] rounded-lg"
                                 {...field}
                                 value={field.value ?? ''}
                             />
@@ -847,14 +980,95 @@ export function VehicleReportForm() {
                         </FormItem>
                         )}
                     />
+                    </div>
                 </div>
+            );
+        case 2:
+            return (
+                <div className="space-y-6">
+                    <APIProvider apiKey={apiKey}>
+                        <LocationPicker onLocationChange={handleLocationChange} />
+                    </APIProvider>
+                     
+                    <FormField
+                        control={form.control}
+                        name="date"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Date of Theft</FormLabel>
+                             <p className="text-sm text-muted-foreground">If you do not know exactly when the vehicle was stolen, please estimate or choose one of the below options.</p>
+                            <FormControl>
+                                <Input type="date" {...field} className="h-12 rounded-lg" />
+                            </FormControl>
+                             <div className="flex gap-2 pt-2">
+                                <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('days', 1)}>Today</Button>
+                                <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('weeks', 1)}>Last Week</Button>
+                                <Button type="button" size="sm" variant="outline" onClick={() => setDatePreset('months', 1)}>Last Month</Button>
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
+            );
+        case 3:
+          return (
+            <div className="space-y-6">
+                 <div>
+                    <h3 className="text-lg font-medium">Offer a Reward (Optional)</h3>
+                    <p className="text-sm text-muted-foreground">You can offer a reward for information that leads to the recovery of your vehicle.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="rewardAmount"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Reward Amount (£)</FormLabel>
+                            <div className="relative">
+                                <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                <FormControl>
+                                    <Input type="number" {...field} className="pl-10 h-12 rounded-lg" value={field.value ?? ''}/>
+                                </FormControl>
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
+                <FormField
+                    control={form.control}
+                    name="rewardDetails"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Reward Details</FormLabel>
+                        <FormControl>
+                        <Textarea
+                            placeholder="e.g., Reward for information leading to recovery..."
+                            className="resize-none rounded-lg"
+                            {...field}
+                            value={field.value ?? ''}
+                        />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <Separator />
+                 {user && (
+                    <ImageUploader 
+                        userId={user.uid} 
+                        imageUrls={photoUrls || []} 
+                        onUrlsChange={(urls) => form.setValue('photos', urls, { shouldValidate: true, shouldDirty: true })} 
+                    />
+                 )}
             </div>
-        );
+          );
+        case 4:
+          return <PreviewStep data={form.getValues()} onEdit={(step) => setCurrentStep(step)} />;
+        default:
+            return null;
     }
-    if (currentStep === 3) {
-      return <PreviewStep data={form.getValues()} onEdit={(step) => setCurrentStep(step)} />;
-    }
-    return null;
   };
 
   return (

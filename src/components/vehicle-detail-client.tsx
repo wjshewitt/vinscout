@@ -478,7 +478,23 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
           <div className="grid md:grid-cols-2 gap-8">
             <div>
                <div className="aspect-video w-full mb-4 relative bg-muted rounded-lg flex items-center justify-center">
-                   <Car className="h-24 w-24 text-muted-foreground" />
+                    {hasPhotos ? (
+                        <Carousel className="w-full h-full">
+                            <CarouselContent>
+                                {vehicle.photos.map((src, index) => (
+                                <CarouselItem key={index}>
+                                    <div className="relative w-full h-full aspect-video">
+                                        <Image src={src} alt={`Vehicle photo ${index + 1}`} layout="fill" objectFit="cover" className="rounded-lg" />
+                                    </div>
+                                </CarouselItem>
+                                ))}
+                            </CarouselContent>
+                            <CarouselPrevious className="left-2" />
+                            <CarouselNext className="right-2" />
+                        </Carousel>
+                    ) : (
+                        <Car className="h-24 w-24 text-muted-foreground" />
+                    )}
                </div>
             </div>
             <div className="space-y-6">

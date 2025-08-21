@@ -128,9 +128,13 @@ export default function Home() {
             {recentVehicles.map(vehicle => (
               <Card key={vehicle.id} className="overflow-hidden hover:border-primary transition-colors">
                  <Link href={`/vehicles/${vehicle.id}`}>
-                  <div className="aspect-video w-full bg-muted flex items-center justify-center">
-                    <Car className="h-16 w-16 text-muted-foreground" />
-                  </div>
+                    <div className="aspect-video w-full bg-muted flex items-center justify-center relative">
+                        {vehicle.photos && vehicle.photos.length > 0 ? (
+                            <Image src={vehicle.photos[0]} alt={`${vehicle.make} ${vehicle.model}`} layout="fill" objectFit="cover" />
+                        ) : (
+                            <Car className="h-16 w-16 text-muted-foreground" />
+                        )}
+                    </div>
                   <CardHeader>
                     <CardTitle>{vehicle.make} {vehicle.model}</CardTitle>
                     <CardDescription>{vehicle.year} - Last seen in {formatLocation(vehicle.location, 'full')}</CardDescription>
@@ -207,9 +211,13 @@ export default function Home() {
                       <TableCell>
                         <div className="flex items-center gap-4">
                           <Avatar className="h-10 w-10 rounded-md">
-                            <AvatarFallback className="rounded-md bg-muted">
-                                <Car className="h-5 w-5 text-muted-foreground"/>
-                            </AvatarFallback>
+                            {vehicle.photos && vehicle.photos.length > 0 ? (
+                                <AvatarImage src={vehicle.photos[0]} alt={`${vehicle.make} ${vehicle.model}`} />
+                            ) : (
+                                <AvatarFallback className="rounded-md bg-muted">
+                                    <Car className="h-5 w-5 text-muted-foreground"/>
+                                </AvatarFallback>
+                            )}
                           </Avatar>
                           <div>
                             <div className="font-medium">{vehicle.make} {vehicle.model}</div>

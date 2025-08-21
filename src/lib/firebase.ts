@@ -42,7 +42,7 @@ import {
     collectionGroup,
     FieldValue
 } from 'firebase/firestore';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { toast } from '@/hooks/use-toast';
 import _ from 'lodash';
 
@@ -179,7 +179,42 @@ export const deleteUserAccount = async () => {
     }
 };
 
-export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'sightingsCount' | 'photos'> & { reporterId: string }) => {
+export const uploadImageAndGetURL = (
+  file: File,
+  userId: string,
+  progressCallback: (progress: number) => void
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const fileId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const storageRef = ref(storage, `vehicle-photos/${userId}/${fileId}-${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        progressCallback(progress);
+      },
+      (error) => {
+        console.error("Upload failed:", error);
+        // Reject with the specific error so it can be caught
+        reject(error);
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadURL);
+        } catch (error) {
+          console.error("Failed to get download URL:", error);
+          reject(error);
+        }
+      }
+    );
+  });
+};
+
+
+export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' | 'reportedAt' | 'status' | 'sightingsCount'> & { reporterId: string }) => {
     if (!auth.currentUser || auth.currentUser.uid !== reportData.reporterId) {
         console.error("User is not authenticated or does not match reporter ID.");
         return null;
@@ -265,7 +300,7 @@ export interface VehicleReport {
     reportedAt: string;
     status: 'Active' | 'Recovered';
     reporterId: string;
-    photos?: string[];
+    photos: string[];
     lat: number;
     lng: number;
     sightingsCount: number;

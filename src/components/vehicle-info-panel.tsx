@@ -43,7 +43,11 @@ export function VehicleInfoPanel({ vehicle, onClose }: VehicleInfoPanelProps) {
                 </CardHeader>
                 <CardContent className="flex-1 space-y-4 p-6 pt-0 overflow-y-auto">
                    <div className="aspect-video w-full relative overflow-hidden rounded-lg bg-muted flex items-center justify-center">
-                        <Car className="h-16 w-16 text-muted-foreground" />
+                        {vehicle.photos && vehicle.photos.length > 0 ? (
+                            <Image src={vehicle.photos[0]} alt={`${vehicle.make} ${vehicle.model}`} layout="fill" objectFit="cover" />
+                        ) : (
+                            <Car className="h-16 w-16 text-muted-foreground" />
+                        )}
                    </div>
                    <div className="space-y-2 text-sm">
                      <div className="flex items-center gap-2">
