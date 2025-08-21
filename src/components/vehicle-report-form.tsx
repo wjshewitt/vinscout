@@ -70,7 +70,6 @@ const steps: { title: string; fields: (keyof ReportFormValues)[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
     { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
     { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng'] },
-    { title: 'Reward & Photos', fields: ['rewardAmount', 'rewardDetails'] },
     { title: 'Review & Submit', fields: [] },
 ];
 
@@ -282,7 +281,7 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                         <div className="aspect-video w-full mb-4 relative bg-muted rounded-lg flex items-center justify-center">
                             <Car className="h-16 w-16 text-muted-foreground" />
                         </div>
-                       <p className="text-sm text-center text-muted-foreground">Image upload is temporarily disabled.</p>
+                       <p className="text-sm text-center text-muted-foreground">Image upload is disabled.</p>
                     </div>
                     <div className="space-y-6">
                       <div>
@@ -345,7 +344,6 @@ export function VehicleReportForm() {
   const [models, setModels] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showReward, setShowReward] = useState(false);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   
   const [isMakePopoverOpen, setIsMakePopoverOpen] = useState(false);
@@ -397,9 +395,6 @@ export function VehicleReportForm() {
     if (savedFormData) {
         const parsedData = JSON.parse(savedFormData);
         form.reset(parsedData);
-        if (parsedData.rewardAmount > 0 || parsedData.rewardDetails) {
-            setShowReward(true);
-        }
     }
   }, [form]);
 
@@ -813,67 +808,6 @@ export function VehicleReportForm() {
         );
     }
     if (currentStep === 3) {
-        return (
-             <div className="grid grid-cols-1 gap-x-8 gap-y-6">
-                <div>
-                    <div className="flex items-center space-x-2 mb-4">
-                        <Switch id="reward-switch" checked={showReward} onCheckedChange={setShowReward} />
-                        <Label htmlFor="reward-switch">Offer a reward?</Label>
-                    </div>
-                    {showReward && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
-                            <FormField
-                                control={form.control}
-                                name="rewardAmount"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Reward Amount (£)</FormLabel>
-                                    <div className="relative">
-                                        <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                        <FormControl>
-                                            <Input type="number" {...field} value={field.value ?? ''} className="pl-10 h-12 rounded-lg" />
-                                        </FormControl>
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="rewardDetails"
-                                render={({ field }) => (
-                                <FormItem className="md:col-span-2">
-                                    <FormLabel>Reward Details</FormLabel>
-                                    <FormControl>
-                                    <Textarea
-                                        placeholder="e.g., Reward for information leading to recovery..."
-                                        className="resize-none min-h-[100px] rounded-lg"
-                                        {...field}
-                                        value={field.value ?? ''}
-                                    />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
-                        </div>
-                    )}
-                </div>
-                <div>
-                   <Label>Upload Photos</Label>
-                   <div className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10">
-                        <div className="text-center">
-                            <Car className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <p className="mt-4 text-sm text-muted-foreground">
-                                Image upload is temporarily disabled. You can add photos after submitting the report.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-             </div>
-        );
-    }
-    if (currentStep === 4) {
       return <PreviewStep data={form.getValues()} onEdit={(step) => setCurrentStep(step)} />;
     }
     return null;
