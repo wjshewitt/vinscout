@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'firebasestorage.googleapis.com',
         port: '',
-        pathname: '/v0/b/vigilante-garage.appspot.com/o/**',
+        pathname: '/v0/b/**',
       },
       {
         protocol: 'https',
