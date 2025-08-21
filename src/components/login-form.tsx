@@ -50,7 +50,7 @@ export function LoginForm() {
     } else if (result.error) {
        let description = 'An unknown error occurred. Please try again.';
        if (result.error.code === 'auth/invalid-credential' || result.error.code === 'auth/wrong-password' || result.error.code === 'auth/user-not-found') {
-        description = 'Invalid email or password. Please check your credentials and try again.';
+        description = 'Invalid email or password. If you signed up with Google, please try signing in with Google instead.';
        }
        toast({
         variant: 'destructive',
