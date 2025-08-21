@@ -49,21 +49,21 @@ import _ from 'lodash';
 const firebaseConfig = {
   "projectId": "vigilante-garage",
   "appId": "1:109449796594:web:9cdb5b50aed0dfa46ce96b",
-  "storageBucket": "vigilante-garage.appspot.com",
+  "storageBucket": "vigilante-garage.firebasestorage.app",
   "apiKey": "AIzaSyBdqrM1jTSCT3Iv4alBwpt1I48f4v4qZOg",
   "authDomain": "vigilante-garage.firebaseapp.com",
   "messagingSenderId": "109449796594",
   "measurementId": ""
 };
 
+
 // Initialize Firebase
 const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app, {
   persistence: browserSessionPersistence,
-  authDomain: firebaseConfig.authDomain,
 });
 const db = getFirestore(app);
-const storage = getStorage(app, firebaseConfig.storageBucket);
+const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
 
@@ -195,31 +195,49 @@ export const deleteUserAccount = async () => {
 export const uploadImageAndGetURL = (
   file: File,
   userId: string,
-  progressCallback: (progress: number) => void
+  onProgress: (progress: number) => void
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const fileId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    const storageRef = ref(storage, `vehicle-photos/${userId}/${fileId}-${file.name}`);
+    if (file.size > 10 * 1024 * 1024) {
+      reject(new Error('File is too large. Maximum size is 10MB.'));
+      return;
+    }
+
+    const timestamp = new Date().getTime();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const fileName = `${userId}-${timestamp}-${randomSuffix}-${file.name}`;
+    const storageRef = ref(storage, `vehicle-photos/${userId}/${fileName}`);
+
     const uploadTask = uploadBytesResumable(storageRef, file);
 
     uploadTask.on(
       'state_changed',
       (snapshot) => {
         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        progressCallback(progress);
+        onProgress(progress);
       },
       (error) => {
-        console.error("Upload failed:", error);
-        reject(error);
-      },
-      async () => {
-        try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve(downloadURL);
-        } catch (error) {
-          console.error("Failed to get download URL:", error);
-          reject(error);
+        console.error('Upload failed:', error);
+        // Provide more specific error messages
+        if (error.code === 'storage/unauthorized') {
+          reject(new Error('You do not have permission to upload files. Please ensure you are logged in.'));
+        } else if (error.code === 'storage/canceled') {
+          reject(new Error('Upload was cancelled.'));
+        } else if (error.code === 'storage/unknown') {
+          reject(new Error('An unknown error occurred. Please check your internet connection and try again.'));
+        } else {
+          reject(new Error(`Upload failed: ${error.message}`));
         }
+      },
+      () => {
+        getDownloadURL(uploadTask.snapshot.ref)
+          .then((downloadURL) => {
+            resolve(downloadURL);
+          })
+          .catch((error) => {
+            console.error('Failed to get download URL:', error);
+            reject(new Error('Upload succeeded but failed to get download URL.'));
+          });
       }
     );
   });
@@ -246,6 +264,10 @@ export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' |
         }
         if (!reportPayload.features?.trim()) {
             delete reportPayload.features;
+        }
+        
+        if (!reportPayload.photos) {
+            reportPayload.photos = [];
         }
 
         const docRef = await addDoc(collection(db, 'vehicleReports'), reportPayload);

@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, ChevronLeft, ChevronRight, Loader2, MapPin, PoundSterling, X, Search, Check, ChevronsUpDown, Car, Eye, Calendar, User, Flag, ShieldCheck, Pencil, AlertCircle } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
-import { submitVehicleReport, VehicleReport, LocationInfo, uploadImageAndGetURL } from '@/lib/firebase';
+import { submitVehicleReport, VehicleReport, LocationInfo } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
@@ -33,6 +33,8 @@ import {
 } from "@/components/ui/carousel"
 import { sub, formatISO } from 'date-fns';
 import { Label } from '@/components/ui/label';
+import { ImageUploader } from '@/components/ui/image-uploader';
+
 
 const locationSchema = z.object({
   street: z.string().min(1, 'Street is required'),
@@ -69,8 +71,8 @@ const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear -
 const steps: { title: string; fields: (keyof ReportFormValues)[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
     { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
-    { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng'] },
-    { title: 'Photos & Reward', fields: ['photos', 'rewardAmount', 'rewardDetails'] },
+    { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng', 'rewardAmount', 'rewardDetails'] },
+    { title: 'Photos', fields: ['photos'] },
     { title: 'Review & Submit', fields: [] },
 ];
 
@@ -249,181 +251,6 @@ function LocationPicker({ onLocationChange }: { onLocationChange: (pos: { lat: n
         </div>
     );
 }
-
-function ImageUploader({
-  userId,
-  imageUrls,
-  onUrlsChange,
-  maxFiles = 5,
-  maxFileSizeMB = 10,
-}: {
-  userId: string;
-  imageUrls: string[];
-  onUrlsChange: (urls: string[]) => void;
-  maxFiles?: number;
-  maxFileSizeMB?: number;
-}) {
-  const { toast } = useToast();
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
-  const [error, setError] = useState<string | null>(null);
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    if (!userId) {
-      setError("You must be logged in to upload images.");
-      return;
-    }
-    
-    const totalImages = imageUrls.length + files.length;
-    if (totalImages > maxFiles) {
-      setError(`You can only upload a maximum of ${maxFiles} images.`);
-      return;
-    }
-
-    const filesToUpload = Array.from(files).filter(file => {
-        if (file.size > maxFileSizeMB * 1024 * 1024) {
-            toast({
-                variant: 'destructive',
-                title: 'File Too Large',
-                description: `${file.name} is larger than ${maxFileSizeMB}MB and was not uploaded.`
-            });
-            return false;
-        }
-        return true;
-    });
-
-    if (filesToUpload.length === 0) return;
-    
-    setIsUploading(true);
-    setError(null);
-    setUploadProgress({});
-
-    const uploadPromises = filesToUpload.map(file => 
-      uploadImageAndGetURL(file, userId, (progress) => {
-        setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
-      }).catch(err => ({ error: err, file }))
-    );
-
-    try {
-      const results = await Promise.all(uploadPromises);
-      const successfulUrls = results.filter(res => typeof res === 'string') as string[];
-      const failedUploads = results.filter(res => res && typeof res === 'object' && res.error);
-
-      if (successfulUrls.length > 0) {
-        onUrlsChange([...imageUrls, ...successfulUrls]);
-        toast({
-          title: 'Upload Complete',
-          description: `${successfulUrls.length} image(s) uploaded successfully.`,
-        });
-      }
-
-      if (failedUploads.length > 0) {
-        setError(`${failedUploads.length} image(s) failed to upload. Please try again.`);
-        console.error("Failed uploads:", failedUploads);
-      }
-
-    } catch (err) {
-      setError("An unexpected error occurred during upload. Please check the console.");
-      console.error(err);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress({});
-      event.target.value = '';
-    }
-  };
-  
-  const handleRemoveImage = (indexToRemove: number) => {
-    const updatedUrls = imageUrls.filter((_, index) => index !== indexToRemove);
-    onUrlsChange(updatedUrls);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="file-upload">Upload Photos (Optional)</Label>
-        <div className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10">
-          <div className="text-center">
-            <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-            <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
-              <Label
-                htmlFor="file-upload"
-                className={cn(
-                  "relative cursor-pointer rounded-md bg-background font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary/80",
-                  isUploading && "cursor-not-allowed opacity-50"
-                )}
-              >
-                <span>{isUploading ? 'Uploading...' : 'Choose files'}</span>
-                <Input 
-                  id="file-upload" 
-                  name="file-upload" 
-                  type="file" 
-                  className="sr-only" 
-                  multiple 
-                  onChange={handleFileChange} 
-                  accept="image/png, image/jpeg, image/gif, image/webp" 
-                  disabled={isUploading} 
-                />
-              </Label>
-              <p className="pl-1">or drag and drop</p>
-            </div>
-            <p className="text-xs leading-5 text-muted-foreground">Up to {maxFiles} images, {maxFileSizeMB}MB per file</p>
-          </div>
-        </div>
-      </div>
-
-      {error && (
-        <div className="flex items-center gap-x-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            <p>{error}</p>
-        </div>
-      )}
-
-      {isUploading && Object.keys(uploadProgress).length > 0 && (
-        <div className="space-y-2">
-          {Object.entries(uploadProgress).map(([name, progress]) => (
-            <div key={name}>
-              <p className="text-sm text-muted-foreground">{name}</p>
-              <Progress value={progress} className="h-2 w-full" />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {imageUrls.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {imageUrls.map((src, index) => (
-            <div key={src} className="group relative">
-              <Image
-                src={src}
-                alt={`Preview ${index + 1}`}
-                width={200}
-                height={200}
-                className="aspect-square w-full rounded-lg object-cover"
-              />
-              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleRemoveImage(index)}
-                  disabled={isUploading}
-                >
-                  <X className="h-4 w-4" />
-                  <span className="sr-only">Remove image</span>
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 
 function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: number) => void }) {
     const formatDate = (dateString: string) => {
@@ -1008,59 +835,63 @@ export function VehicleReportForm() {
                         </FormItem>
                         )}
                     />
+                      <Separator />
+                        <div>
+                            <h3 className="text-lg font-medium">Offer a Reward (Optional)</h3>
+                            <p className="text-sm text-muted-foreground">You can offer a reward for information that leads to the recovery of your vehicle.</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="rewardAmount"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Reward Amount (£)</FormLabel>
+                                    <div className="relative">
+                                        <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                        <FormControl>
+                                            <Input type="number" {...field} className="pl-10 h-12 rounded-lg" value={field.value ?? ''}/>
+                                        </FormControl>
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                        </div>
+                        <FormField
+                            control={form.control}
+                            name="rewardDetails"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Reward Details</FormLabel>
+                                <FormControl>
+                                <Textarea
+                                    placeholder="e.g., Reward for information leading to recovery..."
+                                    className="resize-none rounded-lg"
+                                    {...field}
+                                    value={field.value ?? ''}
+                                />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
                 </div>
             );
         case 3:
           return (
-            <div className="space-y-6">
-                {user && (
-                    <ImageUploader 
-                        userId={user.uid} 
-                        imageUrls={photoUrls || []} 
-                        onUrlsChange={(urls) => form.setValue('photos', urls, { shouldValidate: true, shouldDirty: true })} 
-                    />
-                )}
-                <Separator />
-                <div>
-                    <h3 className="text-lg font-medium">Offer a Reward (Optional)</h3>
-                    <p className="text-sm text-muted-foreground">You can offer a reward for information that leads to the recovery of your vehicle.</p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="rewardAmount"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Reward Amount (£)</FormLabel>
-                            <div className="relative">
-                                <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                <FormControl>
-                                    <Input type="number" {...field} className="pl-10 h-12 rounded-lg" value={field.value ?? ''}/>
-                                </FormControl>
-                            </div>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                </div>
-                <FormField
-                    control={form.control}
-                    name="rewardDetails"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Reward Details</FormLabel>
-                        <FormControl>
-                        <Textarea
-                            placeholder="e.g., Reward for information leading to recovery..."
-                            className="resize-none rounded-lg"
-                            {...field}
-                            value={field.value ?? ''}
-                        />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
+             <div className="space-y-6">
+              {user ? (
+                <ImageUploader
+                  userId={user.uid}
+                  imageUrls={photoUrls || []}
+                  onUrlsChange={(urls) => form.setValue('photos', urls, { shouldValidate: true, shouldDirty: true })}
                 />
+              ) : (
+                <div className="flex items-center justify-center p-8 bg-muted/50 border border-dashed rounded-lg">
+                  <p className="text-muted-foreground">Please log in to upload photos.</p>
+                </div>
+              )}
             </div>
           );
         case 4:
@@ -1103,5 +934,3 @@ export function VehicleReportForm() {
     </Form>
   );
 }
-
-    
