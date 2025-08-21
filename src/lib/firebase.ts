@@ -1,3 +1,4 @@
+
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { 
@@ -130,6 +131,10 @@ export const signInWithGoogle = async (): Promise<UserCredential | null> => {
 export const logout = async () => {
   try {
     await signOut(auth);
+     toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+    });
   } catch (error) {
     console.error("Error signing out", error);
   }
@@ -288,7 +293,21 @@ export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' |
 
 export const updateVehicleReport = async (reportId: string, dataToUpdate: Partial<VehicleReport>) => {
     const reportRef = doc(db, 'vehicleReports', reportId);
-    return updateDoc(reportRef, dataToUpdate);
+    // Ensure all optional fields are handled correctly
+    const updateData = {...dataToUpdate};
+    if (updateData.vin === '') {
+        updateData.vin = undefined;
+    }
+    if (updateData.features === '') {
+        updateData.features = undefined;
+    }
+    if (updateData.rewardAmount === 0 || updateData.rewardAmount === undefined) {
+        updateData.rewardAmount = undefined;
+    }
+    if (updateData.rewardDetails === '') {
+        updateData.rewardDetails = undefined;
+    }
+    return updateDoc(reportRef, updateData);
 }
 
 export const deleteVehicleReport = async (reportId: string): Promise<void> => {

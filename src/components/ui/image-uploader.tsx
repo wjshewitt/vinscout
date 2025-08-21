@@ -1,3 +1,4 @@
+
 // src/components/ui/image-uploader.tsx
 'use client';
 
@@ -45,11 +46,10 @@ export function ImageUploader({
 
     // --- Pre-upload checks ---
     if (!userId) {
-      setError("You must be logged in to upload images.");
        toast({
             variant: 'destructive',
             title: 'Authentication Required',
-            description: 'Please log in again to upload images.',
+            description: 'You must be logged in to upload images.',
        });
        router.push('/login');
       return;
