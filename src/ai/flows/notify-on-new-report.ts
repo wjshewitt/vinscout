@@ -4,18 +4,20 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { onDocumentCreated } from 'genkit/firebase';
+import { onFlow } from '@genkit-ai/firebase/functions';
 import { z } from 'genkit/zod';
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps } from 'firebase-admin/app';
+import { HttpsOptions } from 'firebase-functions/v2/https';
 
-// Initialize Firebase Admin SDK. It automatically uses the project's service account.
+// Initialize Firebase Admin SDK if not already done.
 if (getApps().length === 0) {
     initializeApp();
 }
 const db = getFirestore();
 
 // Define the structure of the data we expect from the Firestore trigger.
+// This is what the `data()` of the DocumentSnapshot will contain.
 const VehicleReportSchema = z.object({
   make: z.string(),
   model: z.string(),
@@ -23,21 +25,19 @@ const VehicleReportSchema = z.object({
   licensePlate: z.string(),
   status: z.string(),
   location: z.object({
-    city: z.string(),
-    country: z.string(),
-  }),
+    city: z.string().optional(),
+    country: z.string().optional(),
+    fullAddress: z.string().optional(),
+  }).optional(),
 });
 
-export const newReportNotifier = ai.defineFlow(
+
+// This is the core logic of our flow.
+const newReportNotifierFlow = ai.defineFlow(
   {
-    name: 'newReportNotifier',
+    name: 'newReportNotifierFlow',
     inputSchema: z.any(),
     outputSchema: z.void(),
-    trigger: onDocumentCreated({
-      collection: 'vehicleReports',
-      // You must specify your Google Cloud project ID in your environment for this to work on deployment.
-      // Make sure GOOGLE_CLOUD_PROJECT is set in your .env file or deployment environment.
-    }),
   },
   async (reportSnapshot) => {
     console.log('New vehicle report received. Processing for notifications.');
@@ -90,4 +90,21 @@ export const newReportNotifier = ai.defineFlow(
         console.log("No users matched notification criteria for this report.");
     }
   }
+);
+
+
+// This exports the flow as a Cloud Function triggered by Firestore.
+export const newReportNotifier = onFlow(
+  {
+    name: 'newReportNotifier',
+    flow: newReportNotifierFlow,
+    trigger: {
+      firestore: {
+        document: 'vehicleReports/{reportId}',
+        event: 'oncreate',
+      },
+    },
+    httpsOptions: {} as HttpsOptions,
+  },
+  (data) => data
 );
