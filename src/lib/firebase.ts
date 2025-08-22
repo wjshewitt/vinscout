@@ -52,7 +52,7 @@ const firebaseConfig = {
   "appId": "1:109449796594:web:9cdb5b50aed0dfa46ce96b",
   "storageBucket": "vigilante-garage.appspot.com",
   "apiKey": "AIzaSyBdqrM1jTSCT3Iv4alBwpt1I48f4v4qZOg",
-  "authDomain": "studio--vigilante-garage.us-central1.hosted.app",
+  "authDomain": "vigilante-garage.firebaseapp.com",
   "messagingSenderId": "109449796594"
 };
 
@@ -502,7 +502,7 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         make: data.make || '',
         model: data.model || '',
         year: data.year || 0,
-        colour: data.colour || data.color || '',
+        colour: data.colour || '',
         licensePlate: data.licensePlate || '',
         vin: data.vin,
         features: data.features,
