@@ -12,7 +12,7 @@ async function CommunityPage() {
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold tracking-tighter mb-4">Community Directory</h1>
         <p className="text-muted-foreground text-lg max-w-3xl mx-auto">
-          Browse the members of the Vinchaser community. Every member plays a part in keeping our roads safe.
+          Browse the members of the Vinscout community. Every member plays a part in keeping our roads safe.
         </p>
       </div>
 

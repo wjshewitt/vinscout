@@ -30,7 +30,7 @@ export default function AboutPage() {
   return (
     <div className="container mx-auto py-12 max-w-4xl">
        <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold tracking-tighter mb-4">How Vinchaser Works</h1>
+        <h1 className="text-4xl font-bold tracking-tighter mb-4">How Vinscout Works</h1>
         <p className="text-muted-foreground text-lg max-w-3xl mx-auto">
           A simple, community-driven approach to recovering stolen vehicles.
         </p>

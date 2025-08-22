@@ -13,7 +13,7 @@ export default function TermsOfServicePage() {
         <CardContent className="prose prose-invert max-w-none space-y-4">
           <h2 className="text-2xl font-bold pt-4">1. Introduction</h2>
           <p>
-            Welcome to Vinchaser ("we," "our," or "us"). These Terms of Service ("Terms") govern your use of our application and services. By accessing or using our service, you agree to be bound by these Terms. If you disagree with any part of the terms, you may not access the service.
+            Welcome to Vinscout ("we," "our," or "us"). These Terms of Service ("Terms") govern your use of our application and services. By accessing or using our service, you agree to be bound by these Terms. If you disagree with any part of the terms, you may not access the service.
           </p>
 
           <h2 className="text-2xl font-bold">2. User Accounts</h2>
@@ -23,7 +23,7 @@ export default function TermsOfServicePage() {
 
           <h2 className="text-2xl font-bold">3. User Conduct and Responsibilities</h2>
           <p>
-            You agree not to use the service for any unlawful purpose or any purpose prohibited under this clause. You agree not to use the service in any way that could damage the service, the reputation of Vinchaser, or the general business of Vinchaser.
+            You agree not to use the service for any unlawful purpose or any purpose prohibited under this clause. You agree not to use the service in any way that could damage the service, the reputation of Vinscout, or the general business of Vinscout.
           </p>
            <ul className="list-disc pl-6 space-y-2">
                 <li>You are solely responsible for your interactions with other users. We are not responsible for the conduct of any user.</li>
@@ -38,10 +38,10 @@ export default function TermsOfServicePage() {
 
           <h2 className="text-2xl font-bold">5. Disclaimers and Limitation of Liability</h2>
           <p>
-            Our service is provided on an "AS IS" and "AS AVAILABLE" basis. Vinchaser makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
+            Our service is provided on an "AS IS" and "AS AVAILABLE" basis. Vinscout makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
           </p>
           <p>
-            In no event shall Vinchaser or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on Vinchaser's website, even if Vinchaser or a Vinchaser authorized representative has been notified orally or in writing of the possibility of such damage.
+            In no event shall Vinscout or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on Vinscout's website, even if Vinscout or a Vinscout authorized representative has been notified orally or in writing of the possibility of such damage.
           </p>
 
           <h2 className="text-2xl font-bold">6. Governing Law</h2>
