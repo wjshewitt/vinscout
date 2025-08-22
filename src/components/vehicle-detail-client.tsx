@@ -5,7 +5,7 @@ import Image from "next/legacy/image";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, PoundSterling, ShieldCheck, Pencil, Car } from 'lucide-react';
+import { MessageSquare, Loader2, Eye, HelpCircle, CheckCircle, MapPin, User, Calendar, Trash2, PoundSterling, ShieldCheck, Pencil, Car, AlertTriangle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
@@ -35,6 +35,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 
 const formatDateUTC = (dateString: string, options: Intl.DateTimeFormatOptions) => {
     if (!dateString) return 'N/A';
@@ -475,6 +476,15 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
           </div>
         </CardHeader>
         <CardContent>
+             {!vehicle.reportedToPolice && (
+                <Alert variant="destructive" className="mb-6">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Not Reported to Police</AlertTitle>
+                    <AlertDescription>
+                        The owner has indicated this vehicle theft has not yet been reported to law enforcement. Please exercise caution.
+                    </AlertDescription>
+                </Alert>
+             )}
           <div className="grid md:grid-cols-2 gap-x-8 gap-y-6">
             <div className="w-full">
                  <div className="aspect-video w-full relative bg-muted rounded-lg flex items-center justify-center">
@@ -762,5 +772,3 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
     </div>
   );
 }
-
-    

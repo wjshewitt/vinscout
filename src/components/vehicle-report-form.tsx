@@ -33,6 +33,8 @@ import {
 import { sub, formatISO } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { ImageUploader } from '@/components/ui/image-uploader';
+import { Switch } from './ui/switch';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 
 const locationSchema = z.object({
@@ -59,6 +61,7 @@ const reportSchema = z.object({
   rewardAmount: z.coerce.number().optional(),
   rewardDetails: z.string().optional(),
   photos: z.array(z.string()).optional().default([]),
+  reportedToPolice: z.boolean().default(false),
 });
 
 type ReportFormValues = z.infer<typeof reportSchema>;
@@ -70,7 +73,7 @@ const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear -
 const steps: { title: string; fields: FieldName[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
     { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
-    { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng', 'rewardAmount', 'rewardDetails'] },
+    { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng', 'reportedToPolice', 'rewardAmount', 'rewardDetails'] },
     { title: 'Photos', fields: ['photos'] },
     { title: 'Review & Submit', fields: [] },
 ];
@@ -350,6 +353,10 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                         <p className="text-sm"><strong>Date of Theft:</strong> {formatDate(data.date)}</p>
                         <p className="text-sm"><strong>Original Location:</strong> {data.location.fullAddress}</p>
                         <p className="text-sm mt-2"><strong>Details:</strong> {data.features || 'No additional details provided.'}</p>
+                         <div className="flex items-center gap-2 mt-2">
+                            <dt className="text-sm font-medium">Reported to Police:</dt>
+                            <dd className={`text-sm ${data.reportedToPolice ? 'text-green-400' : 'text-amber-400'}`}>{data.reportedToPolice ? 'Yes' : 'No'}</dd>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -388,6 +395,7 @@ export function VehicleReportForm() {
       rewardAmount: undefined,
       rewardDetails: '',
       photos: [],
+      reportedToPolice: false,
     },
   });
 
@@ -400,6 +408,11 @@ export function VehicleReportForm() {
     control: form.control,
     name: 'photos',
     defaultValue: [],
+  });
+  
+  const reportedToPolice = useWatch({
+    control: form.control,
+    name: 'reportedToPolice',
   });
 
   useEffect(() => {
@@ -843,7 +856,36 @@ export function VehicleReportForm() {
                         </FormItem>
                         )}
                     />
-                      <Separator />
+                    <Separator />
+
+                     <FormField
+                        control={form.control}
+                        name="reportedToPolice"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                    <FormLabel className="text-base">Have you reported this theft to the police?</FormLabel>
+                                    <p className="text-sm text-muted-foreground">This information helps add legitimacy to your report.</p>
+                                </div>
+                                <FormControl>
+                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+
+                    {!reportedToPolice && (
+                        <Alert variant="destructive" className="bg-amber-500/10 border-amber-500/30 text-amber-500">
+                             <AlertCircle className="h-4 w-4 text-amber-500" />
+                            <AlertTitle className="text-amber-400">Please Contact Law Enforcement</AlertTitle>
+                            <AlertDescription className="text-amber-500/80">
+                                If you have not already done so, you should report your stolen vehicle to your local police department immediately. Vinchaser is a community tool and not a substitute for law enforcement.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
+
+                     <Separator />
                         <div>
                             <h3 className="text-lg font-medium">Offer a Reward (Optional)</h3>
                             <p className="text-sm text-muted-foreground">You can offer a reward for information that leads to the recovery of your vehicle.</p>

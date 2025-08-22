@@ -50,9 +50,9 @@ import _ from 'lodash';
 const firebaseConfig = {
   "projectId": "vigilante-garage",
   "appId": "1:109449796594:web:9cdb5b50aed0dfa46ce96b",
-  "storageBucket": "vigilante-garage.appspot.com",
+  "storageBucket": "vigilante-garage.firebasestorage.app",
   "apiKey": "AIzaSyBdqrM1jTSCT3Iv4alBwpt1I48f4v4qZOg",
-  "authDomain": "vigilante-garage.firebaseapp.com",
+  "authDomain": "studio--vigilante-garage.us-central1.hosted.app",
   "messagingSenderId": "109449796594"
 };
 
@@ -357,6 +357,7 @@ export interface VehicleReport {
     location: LocationInfo;
     date: string;
     reportedAt: string;
+    reportedToPolice: boolean;
     status: 'Active' | 'Recovered';
     reporterId: string;
     photos: string[];
@@ -511,6 +512,7 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         location, // Use the safely parsed location object
         date: formatDateString(data.date),
         reportedAt: convertTimestampToString(data.reportedAt),
+        reportedToPolice: data.reportedToPolice || false,
         status: data.status || 'Active',
         reporterId: data.reporterId || '',
         photos: data.photos || [],
@@ -1164,7 +1166,3 @@ export const markSystemNotificationsAsRead = async (userId: string, notification
 
 export { auth, db };
 export type { User, AuthError };
-
-
-
-    
