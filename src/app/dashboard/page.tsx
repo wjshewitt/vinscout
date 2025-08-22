@@ -97,7 +97,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Bell className="text-primary"/> Settings</CardTitle>
-            <CardDescription>Configure your notifications and account.</CardDescription>
+            <CardDescription>Change your settings</CardDescription>
           </CardHeader>
           <CardContent>
             <p>Manage your alert and account preferences.</p>
