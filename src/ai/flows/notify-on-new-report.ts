@@ -110,6 +110,24 @@ const newReportNotifierFlow = ai.defineFlow(
             // Check which channels are enabled and log the action.
             if (settings.notificationChannels.email && settings.email) {
                 console.log(`ACTION: Send EMAIL to ${settings.email} for new report on ${vehicleInfo} (${reportData.licensePlate}).`);
+                // Create an email document in the 'mail' collection.
+                // The 'Trigger Email' Firebase Extension should be configured to listen to this collection.
+                const emailJob = db.collection('mail').add({
+                    to: [settings.email],
+                    message: {
+                        subject: `Vinscout Alert: Stolen Vehicle Reported in Your Area`,
+                        html: `
+                            <h1>Vehicle Theft Alert</h1>
+                            <p>A <b>${vehicleInfo}</b> with license plate <b>${reportData.licensePlate}</b> has been reported stolen in an area you monitor.</p>
+                            <p>It was last seen in: ${reportData.location?.fullAddress || 'an undisclosed location'}.</p>
+                            <p>If you see this vehicle, please report a sighting safely. Do not approach the vehicle or individuals involved.</p>
+                            <a href="https://your-app-url.com/vehicles/${reportData.id}">View the full report here</a>
+                            <hr>
+                            <p><small>You are receiving this email because you opted in for ${notificationReason} alerts on Vinscout. You can change your preferences in your dashboard settings.</small></p>
+                        `,
+                    },
+                });
+                notificationJobs.push(emailJob);
             }
             if (settings.notificationChannels.sms && settings.phoneNumber) {
                 console.log(`ACTION: Send SMS to ${settings.phoneNumber} for new report on ${vehicleInfo} (${reportData.licensePlate}).`);
@@ -135,7 +153,7 @@ const newReportNotifierFlow = ai.defineFlow(
     });
 
     await Promise.all(notificationJobs);
-    console.log(`Processed and created ${notificationJobs.length} web notifications.`);
+    console.log(`Processed and created ${notificationJobs.length} notifications.`);
   }
 );
 
