@@ -8,7 +8,7 @@ import { Footer } from '@/components/layout/footer';
 
 
 export const metadata: Metadata = {
-  title: 'Vinscout',
+  title: 'VINscout',
   description: 'Community-based stolen vehicle recovery.',
 };
 

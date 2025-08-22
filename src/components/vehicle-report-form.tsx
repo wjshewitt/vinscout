@@ -877,7 +877,7 @@ export function VehicleReportForm() {
                              <AlertCircle className="h-4 w-4 text-amber-500" />
                             <AlertTitle className="text-amber-400">Please Contact Law Enforcement</AlertTitle>
                             <AlertDescription className="text-amber-500/80">
-                                If you have not already done so, you should report your stolen vehicle to your local police department immediately. Vinchaser is a community tool and not a substitute for law enforcement.
+                                If you have not already done so, you should report your stolen vehicle to your local police department immediately. VINscout is a community tool and not a substitute for law enforcement.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -982,5 +982,3 @@ export function VehicleReportForm() {
     </FormProvider>
   );
 }
-
-    

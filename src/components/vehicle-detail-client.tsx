@@ -529,7 +529,7 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
                     vehicle.reportedToPolice ? 'bg-green-500/10' : 'bg-amber-500/10'
                   )}>
                     {vehicle.reportedToPolice 
-                      ? <CheckCircle className="h-4 w-4 text-green-500" />
+                      ? <ShieldCheck className="h-4 w-4 text-green-500" />
                       : <AlertTriangle className="h-4 w-4 text-amber-500" />
                     }
                     <span className={cn("text-xs font-medium", vehicle.reportedToPolice ? 'text-green-400' : 'text-amber-400')}>
@@ -775,7 +775,3 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
     </div>
   );
 }
-
-
-
-    

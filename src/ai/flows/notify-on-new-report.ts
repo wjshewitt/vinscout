@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A flow that triggers when a new vehicle report is created and notifies relevant users.
@@ -115,7 +116,7 @@ const newReportNotifierFlow = ai.defineFlow(
                 const emailJob = db.collection('mail').add({
                     to: [settings.email],
                     message: {
-                        subject: `Vinscout Alert: Stolen Vehicle Reported in Your Area`,
+                        subject: `VINscout Alert: Stolen Vehicle Reported in Your Area`,
                         html: `
                             <h1>Vehicle Theft Alert</h1>
                             <p>A <b>${vehicleInfo}</b> with license plate <b>${reportData.licensePlate}</b> has been reported stolen in an area you monitor.</p>
@@ -123,7 +124,7 @@ const newReportNotifierFlow = ai.defineFlow(
                             <p>If you see this vehicle, please report a sighting safely. Do not approach the vehicle or individuals involved.</p>
                             <a href="https://your-app-url.com/vehicles/${reportData.id}">View the full report here</a>
                             <hr>
-                            <p><small>You are receiving this email because you opted in for ${notificationReason} alerts on Vinscout. You can change your preferences in your dashboard settings.</small></p>
+                            <p><small>You are receiving this email because you opted in for ${notificationReason} alerts on VINscout. You can change your preferences in your dashboard settings.</small></p>
                         `,
                     },
                 });

@@ -12,7 +12,7 @@ export default function PrivacyPolicyPage() {
         </CardHeader>
         <CardContent className="prose prose-invert max-w-none space-y-4">
             <p>
-                Welcome to Vinscout. We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application.
+                Welcome to VINscout. We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application.
             </p>
             
             <h2 className="text-2xl font-bold">Information We Collect</h2>

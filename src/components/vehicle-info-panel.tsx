@@ -82,5 +82,3 @@ export function VehicleInfoPanel({ vehicle, onClose }: VehicleInfoPanelProps) {
     </div>
   );
 }
-
-    
