@@ -75,7 +75,7 @@ export default function MessagesPage() {
   }, [selectedConversation, user, isPageActive]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSendMessage = async () => {
