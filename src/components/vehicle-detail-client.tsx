@@ -476,15 +476,6 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
           </div>
         </CardHeader>
         <CardContent>
-             {!vehicle.reportedToPolice && (
-                <Alert variant="destructive" className="mb-6">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Not Reported to Police</AlertTitle>
-                    <AlertDescription>
-                        The owner has indicated this vehicle theft has not yet been reported to law enforcement. Please exercise caution.
-                    </AlertDescription>
-                </Alert>
-             )}
           <div className="grid md:grid-cols-2 gap-x-8 gap-y-6">
             <div className="w-full">
                  <div className="aspect-video w-full relative bg-muted rounded-lg flex items-center justify-center">
@@ -528,12 +519,26 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
               <Separator />
               <div>
                 <h3 className="text-lg font-semibold mb-2">Last Known Information</h3>
-                <p className="text-sm"><strong>Date of Theft:</strong> {formatDate(vehicle.date)}</p>
-                <p className="text-sm"><strong>Original Location:</strong> {vehicle.location.fullAddress}</p>
-                {mostRecentSighting && (
-                    <p className="text-sm text-primary"><strong>Last Sighting:</strong> {mostRecentSighting.location.fullAddress}</p>
-                )}
-                <p className="text-sm mt-2"><strong>Details:</strong> {vehicle.features || 'No additional details provided.'}</p>
+                <div className="space-y-2 text-sm">
+                  <p><strong>Date of Theft:</strong> {formatDate(vehicle.date)}</p>
+                  <p><strong>Original Location:</strong> {vehicle.location.fullAddress}</p>
+                  {mostRecentSighting && (
+                      <p className="text-primary"><strong>Last Sighting:</strong> {mostRecentSighting.location.fullAddress}</p>
+                  )}
+                  <p className="mt-2"><strong>Details:</strong> {vehicle.features || 'No additional details provided.'}</p>
+                  <div className={cn(
+                    "flex items-center gap-2 mt-2 p-2 rounded-md",
+                    vehicle.reportedToPolice ? 'bg-green-500/10' : 'bg-amber-500/10'
+                  )}>
+                    {vehicle.reportedToPolice 
+                      ? <CheckCircle className="h-4 w-4 text-green-500" />
+                      : <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    }
+                    <span className={cn("text-xs font-medium", vehicle.reportedToPolice ? 'text-green-400' : 'text-amber-400')}>
+                      {vehicle.reportedToPolice ? 'Theft has been reported to the police.' : 'Theft has not yet been reported to the police.'}
+                    </span>
+                  </div>
+                </div>
               </div>
                  {hasReward && (
                      <>
@@ -772,3 +777,4 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
     </div>
   );
 }
+
