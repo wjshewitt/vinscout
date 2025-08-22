@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Bell, Menu, MessageSquare, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,17 +55,16 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 px-4 md:px-10 py-3 backdrop-blur">
       <div className="container flex h-14 max-w-7xl items-center justify-between mx-auto">
-        <div className="flex items-center gap-6">
-          <Logo />
+        <div className="flex items-center gap-8">
+            <Logo />
+            <nav className="hidden md:flex items-center gap-8">
+                {(isLoggedIn ? loggedInNavLinks : navLinks).map((link) => (
+                  <Link key={link.href} href={link.href} className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
         </div>
-        
-        <nav className="hidden md:flex items-center gap-8">
-            {(isLoggedIn ? loggedInNavLinks : navLinks).map((link) => (
-              <Link key={link.href} href={link.href} className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                {link.label}
-              </Link>
-            ))}
-          </nav>
         
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-4">
@@ -93,8 +92,8 @@ export function Header() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right">
-              <SheetHeader className="sr-only">
-                <SheetTitle>Navigation Menu</SheetTitle>
+               <SheetHeader>
+                <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
               </SheetHeader>
               <nav className="grid gap-6 text-lg font-medium mt-8">
                 <Logo />
