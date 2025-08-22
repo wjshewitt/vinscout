@@ -58,6 +58,16 @@ export function LoginForm() {
   }, [debouncedEmail]);
 
   const handleSuccessfulLogin = (user: User, isNewUser = false) => {
+    if (!user.emailVerified) {
+        toast({
+            variant: "destructive",
+            title: "Email Not Verified",
+            description: "Please check your inbox and verify your email address before logging in.",
+        });
+        router.push('/verify-email');
+        return;
+    }
+    
     if (isNewUser) {
         router.replace('/welcome');
     } else {
