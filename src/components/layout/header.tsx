@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Bell, Menu, MessageSquare, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,6 +93,9 @@ export function Header() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation Menu</SheetTitle>
+              </SheetHeader>
               <nav className="grid gap-6 text-lg font-medium mt-8">
                 <Logo />
                 {(isLoggedIn ? loggedInNavLinks : navLinks).map((link) => (
@@ -304,3 +307,5 @@ function NotificationMenu() {
         </Popover>
     )
 }
+
+    
