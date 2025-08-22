@@ -14,6 +14,7 @@ import { useSearchParams } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 
 export default function MessagesPage() {
   const { user, loading: authLoading } = useAuth();
@@ -29,6 +30,7 @@ export default function MessagesPage() {
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isPageActive, setIsPageActive] = useState(true);
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -275,12 +277,43 @@ export default function MessagesPage() {
                         >
                             <p className={cn("text-sm font-medium mb-1", isYou ? 'text-primary-foreground/80' : 'text-primary')}>{senderDetails?.name}</p>
                             
-                            {message.messageType === 'Sighting' && message.sightingLocation && (
-                                <div className="mb-2 p-2 bg-black/20 rounded-md">
-                                    <p className="font-bold text-sm">Sighting Reported:</p>
-                                    <div className="flex items-center gap-2 text-xs mt-1">
+                             {message.messageType === 'Sighting' && message.sightingLocation && apiKey && (
+                                <div className="mb-2 p-3 bg-black/20 rounded-md">
+                                    <p className="font-bold text-sm mb-2">Sighting Reported:</p>
+                                    
+                                    <div className="flex items-center gap-2 text-xs mb-3">
                                         <MapPin size={12} />
                                         <span>{message.sightingLocation.address}</span>
+                                    </div>
+                                    
+                                    <div className="w-full h-32 rounded-md overflow-hidden border border-white/20">
+                                        <APIProvider apiKey={apiKey}>
+                                            <Map
+                                                defaultCenter={{
+                                                    lat: message.sightingLocation.lat,
+                                                    lng: message.sightingLocation.lng
+                                                }}
+                                                defaultZoom={15}
+                                                mapId={`map_${message.id}`}
+                                                gestureHandling={'none'}
+                                                disableDefaultUI={true}
+                                            >
+                                                <AdvancedMarker position={{lat: message.sightingLocation.lat, lng: message.sightingLocation.lng}}>
+                                                    <Pin />
+                                                </AdvancedMarker>
+                                            </Map>
+                                        </APIProvider>
+                                    </div>
+                                    
+                                    <div className="mt-2">
+                                        <a 
+                                            href={`https://www.google.com/maps?q=${message.sightingLocation.lat},${message.sightingLocation.lng}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-blue-300 hover:text-blue-200 underline"
+                                        >
+                                            Open in Maps →
+                                        </a>
                                     </div>
                                 </div>
                             )}
@@ -338,7 +371,7 @@ export default function MessagesPage() {
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
-     <AlertDialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
+     <AlertDialog open={showBlockDialog} onOpenChange={showBlockDialog}>
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>{isBlocked ? 'Unblock' : 'Block'} this user?</AlertDialogTitle>
