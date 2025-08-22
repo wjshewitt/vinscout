@@ -15,7 +15,8 @@ import {
   User,
   UserCredential,
   deleteUser,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendEmailVerification
 } from 'firebase/auth';
 import { 
     getFirestore, 
@@ -145,6 +146,7 @@ export const signUpWithEmail = async (name: string, email: string, pass: string)
         const user = userCredential.user;
         await updateProfile(user, { displayName: name });
         await createUserProfileDocument(user, { displayName: name });
+        await sendEmailVerification(user);
         
         return { user: auth.currentUser, error: null };
     } catch (error) {

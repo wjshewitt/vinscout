@@ -34,7 +34,7 @@ export function SignupForm() {
   async function onSubmit(data: SignupFormValues) {
     const result = await signUpWithEmail(data.name, data.email, data.password);
     if (result.user) {
-      router.replace('/welcome');
+      router.replace('/verify-email');
     } else if (result.error) {
         let description = 'An unknown error occurred. Please try again.';
         if(result.error.code === 'auth/email-already-in-use') {
@@ -130,3 +130,5 @@ export function SignupForm() {
     </div>
   );
 }
+
+    
