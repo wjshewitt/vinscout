@@ -50,7 +50,7 @@ import _ from 'lodash';
 const firebaseConfig = {
   "projectId": "vigilante-garage",
   "appId": "1:109449796594:web:9cdb5b50aed0dfa46ce96b",
-  "storageBucket": "vigilante-garage.firebasestorage.app",
+  "storageBucket": "vigilante-garage.appspot.com",
   "apiKey": "AIzaSyBdqrM1jTSCT3Iv4alBwpt1I48f4v4qZOg",
   "authDomain": "studio--vigilante-garage.us-central1.hosted.app",
   "messagingSenderId": "109449796594"
@@ -292,21 +292,18 @@ export const submitVehicleReport = async (reportData: Omit<VehicleReport, 'id' |
 
 export const updateVehicleReport = async (reportId: string, dataToUpdate: Partial<VehicleReport>) => {
     const reportRef = doc(db, 'vehicleReports', reportId);
-    // Ensure all optional fields are handled correctly
-    const updateData = {...dataToUpdate};
-    if (updateData.vin === '') {
-        updateData.vin = undefined;
-    }
-    if (updateData.features === '') {
-        updateData.features = undefined;
-    }
-    if (updateData.rewardAmount === 0 || updateData.rewardAmount === undefined) {
-        updateData.rewardAmount = undefined;
-    }
-    if (updateData.rewardDetails === '') {
-        updateData.rewardDetails = undefined;
-    }
-    return updateDoc(reportRef, updateData);
+    
+    // Create a mutable copy
+    const cleanedData: { [key: string]: any } = { ...dataToUpdate };
+
+    // Remove any keys where the value is undefined, as Firestore doesn't support it.
+    Object.keys(cleanedData).forEach(key => {
+        if (cleanedData[key] === undefined) {
+            delete cleanedData[key];
+        }
+    });
+
+    return updateDoc(reportRef, cleanedData);
 }
 
 export const deleteVehicleReport = async (reportId: string): Promise<void> => {
