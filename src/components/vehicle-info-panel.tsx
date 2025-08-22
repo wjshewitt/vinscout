@@ -39,7 +39,7 @@ export function VehicleInfoPanel({ vehicle, onClose }: VehicleInfoPanelProps) {
                 <>
                 <CardHeader className="p-6">
                     <CardTitle className="text-2xl pr-8">{vehicle.make} {vehicle.model}</CardTitle>
-                    <CardDescription>{vehicle.year} &middot; {vehicle.color}</CardDescription>
+                    <CardDescription>{vehicle.year} &middot; {vehicle.colour}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 space-y-4 p-6 pt-0 overflow-y-auto">
                    <div className="aspect-video w-full relative overflow-hidden rounded-lg bg-muted flex items-center justify-center">
@@ -82,3 +82,5 @@ export function VehicleInfoPanel({ vehicle, onClose }: VehicleInfoPanelProps) {
     </div>
   );
 }
+
+    

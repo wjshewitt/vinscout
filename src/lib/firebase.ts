@@ -347,7 +347,7 @@ export interface VehicleReport {
     make: string;
     model: string;
     year: number;
-    color: string;
+    colour: string;
     licensePlate: string;
     vin?: string;
     features?: string;
@@ -502,7 +502,7 @@ const toVehicleReport = (docSnap: any): VehicleReport => {
         make: data.make || '',
         model: data.model || '',
         year: data.year || 0,
-        color: data.color || '',
+        colour: data.colour || data.color || '',
         licensePlate: data.licensePlate || '',
         vin: data.vin,
         features: data.features,
@@ -1163,3 +1163,5 @@ export const markSystemNotificationsAsRead = async (userId: string, notification
 
 export { auth, db };
 export type { User, AuthError };
+
+    

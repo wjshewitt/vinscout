@@ -49,7 +49,7 @@ const reportSchema = z.object({
   make: z.string().min(1, 'Make is required'),
   model: z.string().min(1, 'Model is required'),
   year: z.coerce.number().min(1900, 'Invalid year').max(new Date().getFullYear() + 1, 'Invalid year'),
-  color: z.string().min(2, 'Color is required'),
+  colour: z.string().min(2, 'Colour is required'),
   vin: z.string().optional(),
   licensePlate: z.string().min(2, 'License plate is required'),
   features: z.string().optional(),
@@ -72,7 +72,7 @@ const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear -
 
 const steps: { title: string; fields: FieldName[] }[] = [
     { title: 'Vehicle Information', fields: ['make', 'model', 'year'] },
-    { title: 'Vehicle Details', fields: ['color', 'licensePlate', 'vin', 'features'] },
+    { title: 'Vehicle Details', fields: ['colour', 'licensePlate', 'vin', 'features'] },
     { title: 'Theft Details', fields: ['location', 'date', 'lat', 'lng', 'reportedToPolice', 'rewardAmount', 'rewardDetails'] },
     { title: 'Photos', fields: ['photos'] },
     { title: 'Review & Submit', fields: [] },
@@ -317,14 +317,12 @@ function PreviewStep({ data, onEdit }: { data: ReportFormValues, onEdit: (step: 
                             <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(1)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
                         </div>
                         <div className="space-y-2 text-sm">
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                            <span>Make:</span> <span className="text-muted-foreground">{data.make}</span>
-                            <span>Model:</span> <span className="text-muted-foreground">{data.model}</span>
-                            <span>Year:</span> <span className="text-muted-foreground">{data.year}</span>
-                            <span>Color:</span> <span className="text-muted-foreground">{data.color}</span>
-                            <span>License Plate:</span><span className="font-mono">{data.licensePlate}</span>
-                            {data.vin && <><span>VIN:</span> <span className="font-mono text-muted-foreground">{data.vin}</span></>}
-                            </div>
+                            <p><strong>Make:</strong> <span className="text-muted-foreground">{data.make}</span></p>
+                            <p><strong>Model:</strong> <span className="text-muted-foreground">{data.model}</span></p>
+                            <p><strong>Year:</strong> <span className="text-muted-foreground">{data.year}</span></p>
+                            <p><strong>Colour:</strong> <span className="text-muted-foreground">{data.colour}</span></p>
+                            <p><strong>License Plate:</strong><span className="font-mono">{data.licensePlate}</span></p>
+                            {data.vin && <p><strong>VIN:</strong> <span className="font-mono text-muted-foreground">{data.vin}</span></p>}
                         </div>
                       </div>
                       <Separator />
@@ -385,7 +383,7 @@ export function VehicleReportForm() {
     defaultValues: {
       make: '',
       model: '',
-      color: '',
+      colour: '',
       licensePlate: '',
       vin: '',
       features: '',
@@ -769,10 +767,10 @@ export function VehicleReportForm() {
                  <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
                     <FormField
                         control={form.control}
-                        name="color"
+                        name="colour"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Color</FormLabel>
+                            <FormLabel>Colour</FormLabel>
                             <FormControl>
                             <Input placeholder="e.g., Python Green" {...field} className="h-12 rounded-lg" />
                             </FormControl>
@@ -984,3 +982,5 @@ export function VehicleReportForm() {
     </FormProvider>
   );
 }
+
+    

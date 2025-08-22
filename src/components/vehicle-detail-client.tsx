@@ -147,7 +147,7 @@ function SightingLocationPicker({ onLocationChange }: { onLocationChange: (pos: 
 }
 
 const editReportSchema = z.object({
-  color: z.string().min(2, 'Color is required'),
+  colour: z.string().min(2, 'Colour is required'),
   vin: z.string().optional(),
   features: z.string().optional(),
   rewardAmount: z.coerce.number().optional(),
@@ -164,7 +164,7 @@ function EditReportDialog({ vehicle, onUpdate }: { vehicle: VehicleReport, onUpd
     const form = useForm<EditReportFormValues>({
         resolver: zodResolver(editReportSchema),
         defaultValues: {
-            color: vehicle.color || '',
+            colour: vehicle.colour || '',
             vin: vehicle.vin || '',
             features: vehicle.features || '',
             rewardAmount: vehicle.rewardAmount || 0,
@@ -204,10 +204,10 @@ function EditReportDialog({ vehicle, onUpdate }: { vehicle: VehicleReport, onUpd
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                              <FormField
                                 control={form.control}
-                                name="color"
+                                name="colour"
                                 render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Color</FormLabel>
+                                    <FormLabel>Colour</FormLabel>
                                     <FormControl>
                                     <Input {...field} />
                                     </FormControl>
@@ -505,15 +505,13 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold mb-2">Vehicle Details</h3>
-                <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                    <span>Make:</span> <span className="text-muted-foreground">{vehicle.make}</span>
-                    <span>Model:</span> <span className="text-muted-foreground">{vehicle.model}</span>
-                    <span>Year:</span> <span className="text-muted-foreground">{vehicle.year}</span>
-                    <span>Color:</span> <span className="text-muted-foreground">{vehicle.color}</span>
-                    <span>License Plate:</span><span className="font-mono">{vehicle.licensePlate}</span>
-                    {vehicle.vin && <><span>VIN:</span> <span className="font-mono text-muted-foreground">{vehicle.vin}</span></>}
-                    </div>
+                <div className="space-y-2 text-sm">
+                    <p><strong>Make:</strong> <span className="text-muted-foreground">{vehicle.make}</span></p>
+                    <p><strong>Model:</strong> <span className="text-muted-foreground">{vehicle.model}</span></p>
+                    <p><strong>Year:</strong> <span className="text-muted-foreground">{vehicle.year}</span></p>
+                    <p><strong>Colour:</strong> <span className="text-muted-foreground">{vehicle.colour}</span></p>
+                    <p><strong>License Plate:</strong> <span className="font-mono">{vehicle.licensePlate}</span></p>
+                    {vehicle.vin && <p><strong>VIN:</strong> <span className="font-mono text-muted-foreground">{vehicle.vin}</span></p>}
                 </div>
               </div>
               <Separator />
@@ -778,3 +776,6 @@ export function VehicleDetailClient({ vehicle: initialVehicle }: { vehicle: Vehi
   );
 }
 
+
+
+    
